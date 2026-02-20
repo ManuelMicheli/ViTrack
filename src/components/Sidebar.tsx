@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { HomeIcon, UtensilsIcon, DumbbellIcon, ChartIcon, SettingsIcon, ChatIcon } from "./icons";
 import { useChat } from "@/lib/chat-context";
+import { springs } from "@/lib/animation-config";
 
 interface SidebarProps {
   currentPath: string;
@@ -44,15 +46,20 @@ export default function Sidebar({ currentPath, user, onLogout }: SidebarProps) {
               <Icon className="w-5 h-5" filled={isActive} />
               {item.label}
               {isActive && (
-                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />
+                <motion.div
+                  layoutId="sidebar-indicator"
+                  className="ml-auto w-1.5 h-1.5 rounded-full bg-[#3B82F6]"
+                  transition={springs.smooth}
+                />
               )}
             </Link>
           );
         })}
 
         <div className="pt-2">
-          <button
+          <motion.button
             onClick={toggleChat}
+            whileTap={{ scale: 0.98 }}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 w-full ${
               isChatOpen
                 ? "text-white bg-white/[0.08] shadow-[0_0_12px_rgba(59,130,246,0.08)]"
@@ -62,9 +69,13 @@ export default function Sidebar({ currentPath, user, onLogout }: SidebarProps) {
             <ChatIcon className="w-5 h-5" filled={isChatOpen} />
             Assistente
             {isChatOpen && (
-              <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />
+              <motion.div
+                layoutId="sidebar-chat-indicator"
+                className="ml-auto w-1.5 h-1.5 rounded-full bg-[#3B82F6]"
+                transition={springs.smooth}
+              />
             )}
-          </button>
+          </motion.button>
         </div>
       </nav>
 
