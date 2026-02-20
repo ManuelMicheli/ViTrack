@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { HomeIcon, UtensilsIcon, DumbbellIcon, ChartIcon, SettingsIcon, ChatIcon } from "./icons";
 import { useChat } from "@/lib/chat-context";
+import { springs } from "@/lib/animation-config";
 
 interface BottomNavProps {
   currentPath: string;
@@ -22,7 +24,10 @@ export default function BottomNav({ currentPath }: BottomNavProps) {
   return (
     <>
       {/* FAB — floating chat button above bottom nav */}
-      <button
+      <motion.button
+        whileTap={{ scale: 0.9 }}
+        whileHover={{ scale: 1.05 }}
+        transition={springs.tap}
         onClick={toggleChat}
         className={`md:hidden fixed right-4 bottom-20 z-30 w-14 h-14 rounded-full
           flex items-center justify-center shadow-lg shadow-black/40
@@ -34,7 +39,7 @@ export default function BottomNav({ currentPath }: BottomNavProps) {
           pb-[env(safe-area-inset-bottom)]`}
       >
         <ChatIcon className="w-6 h-6 text-white" filled={isChatOpen} />
-      </button>
+      </motion.button>
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#0A0A0A]/80 backdrop-blur-xl border-t border-white/[0.06] z-20 pb-[env(safe-area-inset-bottom)]">
         <div className="flex items-center justify-around py-2">
@@ -49,12 +54,16 @@ export default function BottomNav({ currentPath }: BottomNavProps) {
                   isActive ? "text-white" : "text-white/50"
                 }`}
               >
-                <div className="relative">
+                <motion.div whileTap={{ scale: 0.85 }} className="relative">
                   <Icon className="w-5 h-5" filled={isActive} />
                   {isActive && (
-                    <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#3B82F6]" />
+                    <motion.div
+                      layoutId="bottomnav-indicator"
+                      className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#3B82F6]"
+                      transition={springs.smooth}
+                    />
                   )}
-                </div>
+                </motion.div>
                 <span>{item.label}</span>
               </Link>
             );
