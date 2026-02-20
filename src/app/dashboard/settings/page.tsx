@@ -13,11 +13,21 @@ export default function SettingsPage() {
   const [goalValue, setGoalValue] = useState("");
   const [savingGoal, setSavingGoal] = useState(false);
 
+  // Goals states
+  const [editWaterGoal, setEditWaterGoal] = useState(false);
+  const [waterGoalValue, setWaterGoalValue] = useState("");
+  const [editWeightGoal, setEditWeightGoal] = useState(false);
+  const [weightGoalValue, setWeightGoalValue] = useState("");
+  const [editHeight, setEditHeight] = useState(false);
+  const [heightValue, setHeightValue] = useState("");
+  const [savingField, setSavingField] = useState("");
+
   // Reset data states
   const [resetType, setResetType] = useState<"meals" | "workouts" | "all" | null>(null);
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [resetting, setResetting] = useState(false);
   const [resetSuccess, setResetSuccess] = useState("");
+  const [resetError, setResetError] = useState("");
 
   const userId = typeof window !== "undefined" ? localStorage.getItem("vitrack_user_id") : null;
 
@@ -54,21 +64,47 @@ export default function SettingsPage() {
     } catch { /* ignore */ } finally { setSavingGoal(false); }
   };
 
+  const handleSaveField = async (field: string, value: unknown) => {
+    if (!user) return;
+    setSavingField(field);
+    try {
+      const res = await fetch(`/api/user?id=${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setUser(updated);
+      }
+    } catch { /* ignore */ } finally {
+      setSavingField("");
+    }
+  };
+
   const handleReset = async () => {
     if (!userId || !resetType) return;
     if (resetType === "all" && resetConfirmText !== "CONFERMA") return;
     setResetting(true);
+    setResetError("");
     try {
       const res = await fetch(`/api/reset-data?user_id=${userId}&type=${resetType}`, { method: "DELETE" });
+      const data = await res.json();
       if (res.ok) {
         setResetSuccess(
-          resetType === "meals" ? "Dati dieta azzerati" :
-          resetType === "workouts" ? "Dati allenamento azzerati" :
-          "Tutti i dati azzerati"
+          resetType === "meals" ? `Dati dieta azzerati (${data.deleted} record)` :
+          resetType === "workouts" ? `Dati allenamento azzerati (${data.deleted} record)` :
+          `Tutti i dati azzerati (${data.deleted} record)`
         );
-        setTimeout(() => setResetSuccess(""), 3000);
+        setTimeout(() => setResetSuccess(""), 4000);
+      } else {
+        setResetError(data.error || "Errore durante l'eliminazione");
+        setTimeout(() => setResetError(""), 5000);
       }
-    } catch { /* ignore */ } finally {
+    } catch {
+      setResetError("Errore di connessione. Riprova.");
+      setTimeout(() => setResetError(""), 5000);
+    } finally {
       setResetting(false);
       setResetType(null);
       setResetConfirmText("");
@@ -98,6 +134,13 @@ export default function SettingsPage() {
       {resetSuccess && (
         <div className="p-3 rounded-xl bg-[#22C55E]/10 border border-[#22C55E]/20 text-[#22C55E] text-sm text-center animate-slide-up">
           {resetSuccess}
+        </div>
+      )}
+
+      {/* Error toast */}
+      {resetError && (
+        <div className="p-3 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#EF4444] text-sm text-center animate-slide-up">
+          {resetError}
         </div>
       )}
 
@@ -137,6 +180,166 @@ export default function SettingsPage() {
             ) : (
               <button onClick={() => setEditGoal(true)} className="text-sm font-medium hover:text-[#3B82F6] transition-colors">
                 {user?.daily_calorie_goal} kcal
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Obiettivi section */}
+      <div>
+        <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium mb-3">Obiettivi</h3>
+        <div className="glass-card divide-y divide-white/[0.06]">
+          {/* Water goal */}
+          <div className="p-4 flex justify-between items-center">
+            <div>
+              <span className="text-sm text-[#A1A1A1]">Obiettivo acqua</span>
+              <p className="text-[10px] text-[#666] mt-0.5">Consumo giornaliero target</p>
+            </div>
+            {editWaterGoal ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={waterGoalValue}
+                  onChange={(e) => setWaterGoalValue(e.target.value)}
+                  className="w-20 bg-transparent border-b border-white/10 text-sm text-right py-0.5 focus:outline-none focus:border-[#06B6D4]/50"
+                  autoFocus
+                />
+                <span className="text-xs text-[#666]">ml</span>
+                <button
+                  onClick={() => {
+                    const val = parseInt(waterGoalValue);
+                    if (val > 0 && val <= 10000) {
+                      handleSaveField("water_goal_ml", val);
+                      setEditWaterGoal(false);
+                    }
+                  }}
+                  disabled={savingField === "water_goal_ml"}
+                  className="text-xs text-[#06B6D4] font-medium"
+                >
+                  {savingField === "water_goal_ml" ? "..." : "Salva"}
+                </button>
+                <button onClick={() => setEditWaterGoal(false)} className="text-xs text-[#666]">Annulla</button>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setEditWaterGoal(true); setWaterGoalValue(String(user?.water_goal_ml ?? 2000)); }}
+                className="text-sm font-medium text-[#06B6D4] hover:text-[#06B6D4]/80 transition-colors"
+              >
+                {user?.water_goal_ml ?? 2000} ml
+              </button>
+            )}
+          </div>
+
+          {/* Water tracking mode */}
+          <div className="p-4 flex justify-between items-center">
+            <div>
+              <span className="text-sm text-[#A1A1A1]">Modalita tracciamento</span>
+              <p className="text-[10px] text-[#666] mt-0.5">Bicchieri o millilitri</p>
+            </div>
+            <div className="flex bg-white/[0.04] rounded-lg p-0.5">
+              <button
+                onClick={() => handleSaveField("water_tracking_mode", "glasses")}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  (user?.water_tracking_mode ?? "glasses") === "glasses"
+                    ? "bg-[#06B6D4]/20 text-[#06B6D4]"
+                    : "text-[#666] hover:text-[#999]"
+                }`}
+              >
+                Bicchieri
+              </button>
+              <button
+                onClick={() => handleSaveField("water_tracking_mode", "ml")}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  user?.water_tracking_mode === "ml"
+                    ? "bg-[#06B6D4]/20 text-[#06B6D4]"
+                    : "text-[#666] hover:text-[#999]"
+                }`}
+              >
+                ML
+              </button>
+            </div>
+          </div>
+
+          {/* Weight goal */}
+          <div className="p-4 flex justify-between items-center">
+            <div>
+              <span className="text-sm text-[#A1A1A1]">Peso obiettivo</span>
+              <p className="text-[10px] text-[#666] mt-0.5">Il tuo peso target</p>
+            </div>
+            {editWeightGoal ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  step="0.1"
+                  value={weightGoalValue}
+                  onChange={(e) => setWeightGoalValue(e.target.value)}
+                  className="w-20 bg-transparent border-b border-white/10 text-sm text-right py-0.5 focus:outline-none focus:border-[#A78BFA]/50"
+                  autoFocus
+                />
+                <span className="text-xs text-[#666]">kg</span>
+                <button
+                  onClick={() => {
+                    const val = parseFloat(weightGoalValue);
+                    if (val > 0 && val < 500) {
+                      handleSaveField("weight_goal_kg", val);
+                      setEditWeightGoal(false);
+                    }
+                  }}
+                  disabled={savingField === "weight_goal_kg"}
+                  className="text-xs text-[#A78BFA] font-medium"
+                >
+                  {savingField === "weight_goal_kg" ? "..." : "Salva"}
+                </button>
+                <button onClick={() => setEditWeightGoal(false)} className="text-xs text-[#666]">Annulla</button>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setEditWeightGoal(true); setWeightGoalValue(user?.weight_goal_kg ? String(user.weight_goal_kg) : ""); }}
+                className="text-sm font-medium text-[#A78BFA] hover:text-[#A78BFA]/80 transition-colors"
+              >
+                {user?.weight_goal_kg ? `${user.weight_goal_kg} kg` : "Non impostato"}
+              </button>
+            )}
+          </div>
+
+          {/* Height */}
+          <div className="p-4 flex justify-between items-center">
+            <div>
+              <span className="text-sm text-[#A1A1A1]">Altezza</span>
+              <p className="text-[10px] text-[#666] mt-0.5">Per il calcolo del BMI</p>
+            </div>
+            {editHeight ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={heightValue}
+                  onChange={(e) => setHeightValue(e.target.value)}
+                  className="w-20 bg-transparent border-b border-white/10 text-sm text-right py-0.5 focus:outline-none focus:border-[#22C55E]/50"
+                  autoFocus
+                />
+                <span className="text-xs text-[#666]">cm</span>
+                <button
+                  onClick={() => {
+                    const val = parseInt(heightValue);
+                    if (val > 50 && val < 300) {
+                      handleSaveField("height_cm", val);
+                      setEditHeight(false);
+                    }
+                  }}
+                  disabled={savingField === "height_cm"}
+                  className="text-xs text-[#22C55E] font-medium"
+                >
+                  {savingField === "height_cm" ? "..." : "Salva"}
+                </button>
+                <button onClick={() => setEditHeight(false)} className="text-xs text-[#666]">Annulla</button>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setEditHeight(true); setHeightValue(user?.height_cm ? String(user.height_cm) : ""); }}
+                className="text-sm font-medium hover:text-[#22C55E] transition-colors"
+              >
+                {user?.height_cm ? `${user.height_cm} cm` : "Non impostato"}
               </button>
             )}
           </div>

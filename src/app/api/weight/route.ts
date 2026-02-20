@@ -1,20 +1,30 @@
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   const userId = request.nextUrl.searchParams.get("user_id");
   const limit = request.nextUrl.searchParams.get("limit") || "30";
+  const days = request.nextUrl.searchParams.get("days");
 
   if (!userId) {
     return NextResponse.json({ error: "user_id required" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  let query = supabaseAdmin
     .from("weight_logs")
     .select("*")
     .eq("user_id", userId)
-    .order("logged_at", { ascending: false })
-    .limit(parseInt(limit));
+    .order("logged_at", { ascending: false });
+
+  if (days) {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - parseInt(days));
+    query = query.gte("logged_at", startDate.toISOString());
+  } else {
+    query = query.limit(parseInt(limit));
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -31,7 +41,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "user_id and weight_kg required" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("weight_logs")
     .insert({ user_id, weight_kg })
     .select()

@@ -40,15 +40,15 @@ export default function LoginPage() {
 
       <div className="w-full max-w-sm relative z-10 animate-fade-in">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold gradient-text">ViTrack</h1>
-          <p className="text-[#666] mt-2 text-sm">
+          <h1 className="text-4xl font-bold text-white">ViTrack</h1>
+          <p className="text-white/60 mt-2 text-sm">
             Tracker calorie e allenamenti
           </p>
         </div>
 
         <form onSubmit={handleLogin} className="glass-card-strong p-6 space-y-4">
           <div>
-            <label htmlFor="telegram_id" className="block text-xs text-[#666] uppercase tracking-wider font-medium mb-2">
+            <label htmlFor="telegram_id" className="block text-xs text-white/60 uppercase tracking-wider font-medium mb-2">
               Telegram ID
             </label>
             <input
@@ -60,7 +60,7 @@ export default function LoginPage() {
               className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_15px_rgba(59,130,246,0.1)] text-white placeholder-[#444] transition-all"
               required
             />
-            <p className="text-xs text-[#666] mt-2">
+            <p className="text-xs text-white/50 mt-2">
               Puoi trovare il tuo Telegram ID inviando /start al bot @userinfobot
             </p>
           </div>
@@ -80,7 +80,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="text-center text-xs text-[#666] mt-6">
+        <p className="text-center text-xs text-white/50 mt-6">
           Non hai un account? Avvia il bot Telegram per registrarti.
         </p>
       </div>

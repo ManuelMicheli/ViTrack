@@ -90,10 +90,13 @@ export default function WorkoutsPage() {
           {workouts.map((workout) => {
             const isExpanded = expandedId === workout.id;
             return (
-              <div key={workout.id} className="glass-card overflow-hidden transition-all duration-300 group">
-                <button
+              <div key={workout.id} className="glass-card overflow-hidden transition-all duration-300 group relative">
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setExpandedId(isExpanded ? null : workout.id)}
-                  className="w-full p-4 flex items-start justify-between text-left"
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setExpandedId(isExpanded ? null : workout.id); }}
+                  className="w-full p-4 flex items-start justify-between text-left cursor-pointer"
                 >
                   <div className="flex gap-3">
                     <span className="text-xl">🏋️</span>
@@ -109,13 +112,13 @@ export default function WorkoutsPage() {
                     {workout.calories_burned && (
                       <span className="text-sm font-semibold text-[#F59E0B]">-{workout.calories_burned} kcal</span>
                     )}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setDeleteId(workout.id); }}
-                      className="opacity-0 group-hover:opacity-100 text-[#666] hover:text-[#EF4444] transition-all p-1"
-                    >
-                      <TrashIcon className="w-4 h-4" />
-                    </button>
                   </div>
+                </div>
+                <button
+                  onClick={() => setDeleteId(workout.id)}
+                  className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-[#666] hover:text-[#EF4444] transition-all p-1"
+                >
+                  <TrashIcon className="w-4 h-4" />
                 </button>
 
                 {isExpanded && workout.exercises && workout.exercises.length > 0 && (

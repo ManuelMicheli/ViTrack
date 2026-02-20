@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { HomeIcon, UtensilsIcon, DumbbellIcon, ChartIcon, SettingsIcon } from "./icons";
+import { HomeIcon, UtensilsIcon, DumbbellIcon, ChartIcon, SettingsIcon, ChatIcon } from "./icons";
+import { useChat } from "@/lib/chat-context";
 
 interface SidebarProps {
   currentPath: string;
@@ -18,10 +19,12 @@ const navItems = [
 ];
 
 export default function Sidebar({ currentPath, user, onLogout }: SidebarProps) {
+  const { toggleChat, isChatOpen } = useChat();
+
   return (
     <aside className="hidden md:flex md:flex-col fixed left-0 top-0 h-full w-60 bg-[#0A0A0A]/80 backdrop-blur-xl border-r border-white/[0.06] z-20">
       <div className="p-6">
-        <h1 className="text-xl font-bold tracking-tight gradient-text">ViTrack</h1>
+        <h1 className="text-xl font-bold tracking-tight text-white">ViTrack</h1>
       </div>
 
       <nav className="flex-1 px-3 space-y-1">
@@ -35,7 +38,7 @@ export default function Sidebar({ currentPath, user, onLogout }: SidebarProps) {
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 ${
                 isActive
                   ? "text-white bg-white/[0.08] shadow-[0_0_12px_rgba(59,130,246,0.08)]"
-                  : "text-[#A1A1A1] hover:text-white hover:bg-white/[0.04]"
+                  : "text-white/60 hover:text-white hover:bg-white/[0.04]"
               }`}
             >
               <Icon className="w-5 h-5" filled={isActive} />
@@ -46,6 +49,23 @@ export default function Sidebar({ currentPath, user, onLogout }: SidebarProps) {
             </Link>
           );
         })}
+
+        <div className="pt-2">
+          <button
+            onClick={toggleChat}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 w-full ${
+              isChatOpen
+                ? "text-white bg-white/[0.08] shadow-[0_0_12px_rgba(59,130,246,0.08)]"
+                : "text-white/60 hover:text-white hover:bg-white/[0.04]"
+            }`}
+          >
+            <ChatIcon className="w-5 h-5" filled={isChatOpen} />
+            Assistente
+            {isChatOpen && (
+              <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />
+            )}
+          </button>
+        </div>
       </nav>
 
       <div className="p-4 border-t border-white/[0.06]">

@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  let query = supabase
+  let query = supabaseAdmin
     .from("meals")
     .select("*")
     .eq("user_id", userId)
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("meals")
     .insert({ user_id, description, calories, protein_g, carbs_g, fat_g, fiber_g, meal_type })
     .select()
@@ -62,7 +62,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "id and user_id required" }, { status: 400 });
   }
 
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from("meals")
     .delete()
     .eq("id", id)

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import type { DailySummary } from "@/lib/types";
+import type { DailySummary, User } from "@/lib/types";
 import CalorieProgress from "@/components/CalorieProgress";
 import DailySummaryCard from "@/components/DailySummary";
 import MealList from "@/components/MealList";
@@ -19,10 +19,25 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<DailySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [mealModalOpen, setMealModalOpen] = useState(false);
-  const [weightInput, setWeightInput] = useState(false);
-  const [weightValue, setWeightValue] = useState("");
+  const [user, setUser] = useState<User | null>(null);
 
   const userId = typeof window !== "undefined" ? localStorage.getItem("vitrack_user_id") : null;
+
+  // Fetch user settings
+  useEffect(() => {
+    const telegramId = typeof window !== "undefined" ? localStorage.getItem("vitrack_telegram_id") : null;
+    if (!telegramId) return;
+    const fetchUser = async () => {
+      try {
+        const res = await fetch(`/api/user?telegram_id=${encodeURIComponent(telegramId)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data);
+        }
+      } catch { /* ignore */ }
+    };
+    fetchUser();
+  }, []);
 
   const fetchSummary = useCallback(async () => {
     if (!userId) return;
@@ -71,16 +86,18 @@ export default function DashboardPage() {
     } catch { /* ignore */ }
   };
 
-  const handleSaveWeight = async () => {
-    if (!userId || !weightValue) return;
+  const updateUserSettings = async (updates: Record<string, unknown>) => {
+    if (!user) return;
     try {
-      await fetch("/api/weight", {
-        method: "POST",
+      const res = await fetch(`/api/user?id=${user.id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, weight_kg: parseFloat(weightValue) }),
+        body: JSON.stringify(updates),
       });
-      setWeightInput(false);
-      setWeightValue("");
+      if (res.ok) {
+        const updated = await res.json();
+        setUser(updated);
+      }
     } catch { /* ignore */ }
   };
 
@@ -107,32 +124,13 @@ export default function DashboardPage() {
         <DatePicker value={date} onChange={setDate} />
       </div>
 
-      {/* Quick Add Bar */}
+      {/* Quick Add Bar - removed weight since it's now in the widget */}
       <QuickAddBar
         onAddMeal={() => setMealModalOpen(true)}
         onAddWater={() => {}}
         onAddWorkout={() => {}}
-        onAddWeight={() => setWeightInput(true)}
+        onAddWeight={() => {}}
       />
-
-      {/* Weight input inline */}
-      {weightInput && (
-        <div className="glass-card p-4 flex items-center gap-3 animate-scale-in">
-          <span className="text-base">⚖️</span>
-          <input
-            type="number"
-            step="0.1"
-            value={weightValue}
-            onChange={(e) => setWeightValue(e.target.value)}
-            placeholder="Es: 75.5"
-            className="flex-1 bg-transparent border-b border-white/10 text-white text-sm py-1 focus:outline-none focus:border-[#A78BFA]/50"
-            autoFocus
-          />
-          <span className="text-xs text-[#666]">kg</span>
-          <button onClick={handleSaveWeight} className="px-3 py-1.5 rounded-lg bg-[#A78BFA]/20 text-[#A78BFA] text-xs font-medium">Salva</button>
-          <button onClick={() => setWeightInput(false)} className="text-[#666] text-xs">Annulla</button>
-        </div>
-      )}
 
       {summary && (
         <>
@@ -147,13 +145,26 @@ export default function DashboardPage() {
           {/* Water + Streak */}
           {userId && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <WaterTracker userId={userId} date={date} />
+              <WaterTracker
+                userId={userId}
+                date={date}
+                waterGoalMl={user?.water_goal_ml ?? 2000}
+                trackingMode={user?.water_tracking_mode ?? "glasses"}
+                onSettingsChange={(settings) => updateUserSettings(settings)}
+              />
               <StreakCalendar userId={userId} />
             </div>
           )}
 
           {/* Weight */}
-          {userId && <WeightChart userId={userId} />}
+          {userId && (
+            <WeightChart
+              userId={userId}
+              weightGoalKg={user?.weight_goal_kg}
+              heightCm={user?.height_cm}
+              onGoalChange={(goal) => updateUserSettings({ weight_goal_kg: goal })}
+            />
+          )}
 
           {/* Meals */}
           <div>

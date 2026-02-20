@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:docs.n8n.io)",
+      "WebFetch(domain:blog.horizon.dev)",
+      "WebFetch(domain:www.hostinger.com)",
+      "WebFetch(domain:n8n.io)",
+      "Bash(npx create-next-app@latest:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "mcp__claude_ai_Supabase__list_organizations",
+      "mcp__claude_ai_Supabase__get_cost",
+      "mcp__claude_ai_Supabase__confirm_cost",
+      "mcp__claude_ai_Supabase__create_project",
+      "mcp__claude_ai_Supabase__list_projects",
+      "mcp__claude_ai_Supabase__pause_project",
+      "mcp__claude_ai_Supabase__apply_migration",
+      "mcp__claude_ai_Supabase__list_tables",
+      "mcp__claude_ai_n8n__search_workflows",
+      "Bash(npx next build)",
+      "Bash(curl:*)",
+      "Bash(python:*)",
+      "Bash(npx ngrok:*)",
+      "Bash(ls:*)",
+      "Bash(taskkill:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run dev:*)",
+      "Bash(node -e \":*)",
+      "Bash(powershell -Command:*)",
+      "WebFetch(domain:platform.fatsecret.com)",
+      "WebFetch(domain:fdc.nal.usda.gov)",
+      "WebFetch(domain:openfoodfacts.github.io)",
+      "WebFetch(domain:gist.github.com)",
+      "WebFetch(domain:wiki.openfoodfacts.org)",
+      "Bash(npx next dev --turbopack)"
+    ]
+  }
+}

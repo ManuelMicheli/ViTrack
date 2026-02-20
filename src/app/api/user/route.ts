@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("users")
     .select("*")
     .eq("telegram_id", parseInt(telegramId))
@@ -31,11 +31,21 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { daily_calorie_goal } = body;
+  const allowedFields = ["daily_calorie_goal", "water_goal_ml", "water_tracking_mode", "weight_goal_kg", "height_cm"];
+  const updates: Record<string, unknown> = {};
+  for (const field of allowedFields) {
+    if (body[field] !== undefined) {
+      updates[field] = body[field];
+    }
+  }
 
-  const { data, error } = await supabase
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+  }
+
+  const { data, error } = await supabaseAdmin
     .from("users")
-    .update({ daily_calorie_goal })
+    .update(updates)
     .eq("id", id)
     .select()
     .single();

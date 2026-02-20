@@ -4,6 +4,10 @@ export interface User {
   username: string | null;
   first_name: string | null;
   daily_calorie_goal: number;
+  water_goal_ml: number;
+  water_tracking_mode: "glasses" | "ml";
+  weight_goal_kg: number | null;
+  height_cm: number | null;
   created_at: string;
 }
 
@@ -59,6 +63,7 @@ export interface WaterLog {
   id: string;
   user_id: string;
   glasses: number;
+  ml: number;
   date: string;
 }
 
@@ -67,4 +72,21 @@ export interface WeightLog {
   user_id: string;
   weight_kg: number;
   logged_at: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  user_id: string;
+  role: "user" | "assistant";
+  content: string;
+  message_type:
+    | "text"
+    | "meal_saved"
+    | "workout_saved"
+    | "need_info"
+    | "command_result"
+    | "error";
+  source: "telegram" | "web";
+  metadata: Record<string, unknown>;
+  created_at: string;
 }
