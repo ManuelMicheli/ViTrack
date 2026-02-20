@@ -1,7 +1,27 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
+import { springs } from "@/lib/animation-config";
+
+function AnimatedNum({ value }: { value: number }) {
+  const mv = useMotionValue(value);
+  const spring = useSpring(mv, springs.number);
+  const display = useTransform(spring, (v) => Math.round(v));
+  const isFirst = useRef(true);
+
+  useEffect(() => {
+    if (isFirst.current) {
+      isFirst.current = false;
+      mv.set(value);
+      return;
+    }
+    mv.set(value);
+  }, [value, mv]);
+
+  return <motion.span>{display}</motion.span>;
+}
 
 interface WaterTrackerProps {
   userId: string;
@@ -192,7 +212,7 @@ export default function WaterTracker({
                   stroke="rgba(255,255,255,0.04)"
                   strokeWidth={strokeWidth}
                 />
-                <circle
+                <motion.circle
                   cx={size / 2}
                   cy={size / 2}
                   r={radius}
@@ -201,18 +221,22 @@ export default function WaterTracker({
                   strokeWidth={strokeWidth}
                   strokeLinecap="round"
                   strokeDasharray={circumference}
-                  strokeDashoffset={offset}
-                  className="transition-all duration-700 ease-out"
+                  animate={{ strokeDashoffset: offset }}
+                  transition={springs.smooth}
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className={`text-lg font-bold transition-colors ${isComplete ? "text-[#06B6D4]" : "text-white"}`}>
-                  {Math.round(percentage)}%
+                  <AnimatedNum value={Math.round(percentage)} />%
                 </span>
               </div>
               {/* Celebration pulse */}
               {celebrated && (
-                <div className="absolute inset-0 rounded-full border-2 border-[#06B6D4] animate-ping opacity-30" />
+                <motion.div
+                  className="absolute inset-0 rounded-full border-2 border-[#06B6D4]"
+                  animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                />
               )}
             </div>
 
@@ -223,11 +247,11 @@ export default function WaterTracker({
                 <p className="text-lg font-bold leading-tight">
                   {mode === "glasses" ? (
                     <>
-                      {glasses} <span className="text-xs text-[#666] font-normal">/ {goalGlasses} bicchieri</span>
+                      <AnimatedNum value={glasses} /> <span className="text-xs text-[#666] font-normal">/ {goalGlasses} bicchieri</span>
                     </>
                   ) : (
                     <>
-                      {ml} <span className="text-xs text-[#666] font-normal">/ {goalMl} ml</span>
+                      <AnimatedNum value={ml} /> <span className="text-xs text-[#666] font-normal">/ {goalMl} ml</span>
                     </>
                   )}
                 </p>
@@ -259,36 +283,44 @@ export default function WaterTracker({
               {/* Quick add buttons */}
               {mode === "glasses" ? (
                 <div className="flex gap-1.5">
-                  <button
+                  <motion.button
                     onClick={() => handleGlassToggle(glasses)}
-                    className="flex-1 py-1.5 rounded-lg bg-[#06B6D4]/10 border border-[#06B6D4]/20 text-[#06B6D4] text-[10px] font-medium hover:bg-[#06B6D4]/20 transition-all active:scale-95"
+                    className="flex-1 py-1.5 rounded-lg bg-[#06B6D4]/10 border border-[#06B6D4]/20 text-[#06B6D4] text-[10px] font-medium hover:bg-[#06B6D4]/20 transition-colors"
+                    whileTap={{ scale: 0.9 }}
+                    transition={springs.tap}
                   >
                     +1
-                  </button>
-                  <button
+                  </motion.button>
+                  <motion.button
                     onClick={() => { const n = Math.max(0, glasses - 1); setGlasses(n); saveWater(n, ml); }}
-                    className="flex-1 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[#666] text-[10px] font-medium hover:bg-white/[0.06] transition-all active:scale-95"
+                    className="flex-1 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[#666] text-[10px] font-medium hover:bg-white/[0.06] transition-colors"
+                    whileTap={{ scale: 0.9 }}
+                    transition={springs.tap}
                   >
                     -1
-                  </button>
+                  </motion.button>
                 </div>
               ) : (
                 <div className="flex gap-1">
                   {QUICK_ML_OPTIONS.map((amount) => (
-                    <button
+                    <motion.button
                       key={amount}
                       onClick={() => handleAddMl(amount)}
-                      className="flex-1 py-1.5 rounded-lg bg-[#06B6D4]/10 border border-[#06B6D4]/20 text-[#06B6D4] text-[10px] font-medium hover:bg-[#06B6D4]/20 transition-all active:scale-95"
+                      className="flex-1 py-1.5 rounded-lg bg-[#06B6D4]/10 border border-[#06B6D4]/20 text-[#06B6D4] text-[10px] font-medium hover:bg-[#06B6D4]/20 transition-colors"
+                      whileTap={{ scale: 0.9 }}
+                      transition={springs.tap}
                     >
                       +{amount}
-                    </button>
+                    </motion.button>
                   ))}
-                  <button
+                  <motion.button
                     onClick={() => handleAddMl(-250)}
-                    className="py-1.5 px-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[#666] text-[10px] font-medium hover:bg-white/[0.06] transition-all active:scale-95"
+                    className="py-1.5 px-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[#666] text-[10px] font-medium hover:bg-white/[0.06] transition-colors"
+                    whileTap={{ scale: 0.9 }}
+                    transition={springs.tap}
                   >
                     -
-                  </button>
+                  </motion.button>
                 </div>
               )}
             </div>
@@ -298,14 +330,16 @@ export default function WaterTracker({
           {mode === "glasses" && (
             <div className="flex gap-1 mb-3">
               {Array.from({ length: goalGlasses }).map((_, i) => (
-                <button
+                <motion.button
                   key={i}
                   onClick={() => handleGlassToggle(i)}
-                  className={`flex-1 h-6 rounded-md transition-all duration-300 ${
+                  className={`flex-1 h-6 rounded-md transition-colors duration-300 ${
                     i < glasses
                       ? "bg-[#06B6D4]/30 border border-[#06B6D4]/40"
                       : "bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06]"
                   }`}
+                  whileTap={{ scale: 0.9 }}
+                  transition={springs.tap}
                 />
               ))}
             </div>
