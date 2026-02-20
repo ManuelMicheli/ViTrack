@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { staggerContainer, staggerItem, springs } from "@/lib/animation-config";
 
 interface StreakCalendarProps {
   userId: string;
@@ -79,13 +81,21 @@ export default function StreakCalendar({ userId }: StreakCalendarProps) {
       {loading ? (
         <div className="h-10 shimmer rounded-lg" />
       ) : (
-        <div className="grid grid-cols-10 gap-1">
+        <motion.div
+          className="grid grid-cols-10 gap-1"
+          initial="initial"
+          animate="animate"
+          variants={staggerContainer(0.02)}
+        >
           {days.map((day) => {
             const isActive = activeDays.has(day);
             const isToday = day === today.toISOString().split("T")[0];
             return (
-              <div
+              <motion.div
                 key={day}
+                variants={staggerItem}
+                whileHover={{ scale: 1.2 }}
+                transition={springs.tap}
                 className={`aspect-square rounded-sm transition-colors ${
                   isActive
                     ? "bg-[#22C55E]/60"
@@ -95,7 +105,7 @@ export default function StreakCalendar({ userId }: StreakCalendarProps) {
               />
             );
           })}
-        </div>
+        </motion.div>
       )}
     </div>
   );
