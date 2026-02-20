@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { HomeIcon, UtensilsIcon, DumbbellIcon, ChartIcon, SettingsIcon, ChatIcon } from "./icons";
 import VTLogoIcon from "./VTLogo";
 import { useChat } from "@/lib/chat-context";
+import { usePreferences } from "@/lib/preferences-context";
 import { springs } from "@/lib/animation-config";
 
 interface SidebarProps {
@@ -24,6 +25,7 @@ const navItems = [
 
 export default function Sidebar({ currentPath, user, onLogout }: SidebarProps) {
   const { toggleChat, isChatOpen } = useChat();
+  const { accentHex } = usePreferences();
 
   return (
     <aside className="hidden md:flex md:flex-col fixed left-0 top-0 h-full w-60 bg-[#0A0A0A]/80 backdrop-blur-xl border-r border-white/[0.06] z-20">
@@ -42,16 +44,18 @@ export default function Sidebar({ currentPath, user, onLogout }: SidebarProps) {
               href={item.href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 ${
                 isActive
-                  ? "text-white bg-white/[0.08] shadow-[0_0_12px_rgba(59,130,246,0.08)]"
+                  ? "text-white bg-white/[0.08]"
                   : "text-white/60 hover:text-white hover:bg-white/[0.04]"
               }`}
+              style={isActive ? { boxShadow: `0 0 12px ${accentHex}14` } : undefined}
             >
               <Icon className="w-5 h-5" filled={isActive} />
               {item.label}
               {isActive && (
                 <motion.div
                   layoutId="sidebar-indicator"
-                  className="ml-auto w-1.5 h-1.5 rounded-full bg-[#3B82F6]"
+                  className="ml-auto w-1.5 h-1.5 rounded-full"
+                  style={{ backgroundColor: accentHex }}
                   transition={springs.smooth}
                 />
               )}
@@ -65,16 +69,18 @@ export default function Sidebar({ currentPath, user, onLogout }: SidebarProps) {
             whileTap={{ scale: 0.98 }}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 w-full ${
               isChatOpen
-                ? "text-white bg-white/[0.08] shadow-[0_0_12px_rgba(59,130,246,0.08)]"
+                ? "text-white bg-white/[0.08]"
                 : "text-white/60 hover:text-white hover:bg-white/[0.04]"
             }`}
+            style={isChatOpen ? { boxShadow: `0 0 12px ${accentHex}14` } : undefined}
           >
             <ChatIcon className="w-5 h-5" filled={isChatOpen} />
             Assistente
             {isChatOpen && (
               <motion.div
                 layoutId="sidebar-chat-indicator"
-                className="ml-auto w-1.5 h-1.5 rounded-full bg-[#3B82F6]"
+                className="ml-auto w-1.5 h-1.5 rounded-full"
+                style={{ backgroundColor: accentHex }}
                 transition={springs.smooth}
               />
             )}
@@ -94,7 +100,7 @@ export default function Sidebar({ currentPath, user, onLogout }: SidebarProps) {
                 className="w-8 h-8 rounded-full object-cover"
               />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3B82F6] to-[#8B5CF6] flex items-center justify-center text-xs font-bold">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: `linear-gradient(to bottom right, ${accentHex}, #8B5CF6)` }}>
                 {user.first_name?.[0]?.toUpperCase() || "U"}
               </div>
             )}

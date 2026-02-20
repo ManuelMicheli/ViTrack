@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { motion, Reorder } from "framer-motion";
+import { motion, Reorder, AnimatePresence } from "framer-motion";
 import type { User } from "@/lib/types";
 import ConfirmModal from "@/components/ConfirmModal";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
@@ -20,7 +20,7 @@ const sectionLabels: Record<string, string> = {
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { accentColor, setAccentColor, layoutMode, setLayoutMode, sectionOrder, setSectionOrder } = usePreferences();
+  const { accentColor, accentHex, setAccentColor, layoutMode, setLayoutMode, sectionOrder, setSectionOrder } = usePreferences();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -54,6 +54,16 @@ export default function SettingsPage() {
   const [resetting, setResetting] = useState(false);
   const [resetSuccess, setResetSuccess] = useState("");
   const [resetError, setResetError] = useState("");
+
+  // Personalization save feedback
+  const [prefSaved, setPrefSaved] = useState(false);
+  const prefSavedTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const showPrefSaved = useCallback(() => {
+    setPrefSaved(true);
+    if (prefSavedTimer.current) clearTimeout(prefSavedTimer.current);
+    prefSavedTimer.current = setTimeout(() => setPrefSaved(false), 2000);
+  }, []);
 
   const userId = typeof window !== "undefined" ? localStorage.getItem("vitrack_user_id") : null;
 
@@ -644,7 +654,22 @@ export default function SettingsPage() {
 
       {/* ──────────── Personalizzazione ──────────── */}
       <div className="glass-card-strong rounded-2xl p-5">
-        <h3 className="text-lg font-semibold text-white mb-4">Personalizzazione</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">Personalizzazione</h3>
+          <AnimatePresence>
+            {prefSaved && (
+              <motion.span
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                className="text-xs font-medium px-2.5 py-1 rounded-full"
+                style={{ backgroundColor: `${accentHex}20`, color: accentHex }}
+              >
+                Salvato
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </div>
         <div className="space-y-0 divide-y divide-white/[0.06]">
           {/* Accent color */}
           <div className="py-3">
@@ -653,7 +678,7 @@ export default function SettingsPage() {
               {(Object.entries(ACCENT_COLORS) as [AccentColor, string][]).map(([key, hex]) => (
                 <motion.button
                   key={key}
-                  onClick={() => setAccentColor(key)}
+                  onClick={() => { setAccentColor(key); showPrefSaved(); }}
                   className={`w-8 h-8 rounded-full border-2 transition-colors ${
                     accentColor === key ? "border-white" : "border-transparent"
                   }`}
@@ -673,18 +698,16 @@ export default function SettingsPage() {
             </div>
             <div className="flex bg-white/[0.04] rounded-lg p-0.5">
               <button
-                onClick={() => setLayoutMode("compact")}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  layoutMode === "compact" ? "bg-white/[0.1] text-white" : "text-[#666] hover:text-[#999]"
-                }`}
+                onClick={() => { setLayoutMode("compact"); showPrefSaved(); }}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all`}
+                style={layoutMode === "compact" ? { backgroundColor: `${accentHex}20`, color: accentHex } : { color: "#666" }}
               >
                 Compatto
               </button>
               <button
-                onClick={() => setLayoutMode("expanded")}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  layoutMode === "expanded" ? "bg-white/[0.1] text-white" : "text-[#666] hover:text-[#999]"
-                }`}
+                onClick={() => { setLayoutMode("expanded"); showPrefSaved(); }}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all`}
+                style={layoutMode === "expanded" ? { backgroundColor: `${accentHex}20`, color: accentHex } : { color: "#666" }}
               >
                 Espanso
               </button>
@@ -697,20 +720,60 @@ export default function SettingsPage() {
             <Reorder.Group
               axis="y"
               values={sectionOrder}
-              onReorder={setSectionOrder}
+              onReorder={(newOrder) => { setSectionOrder(newOrder); showPrefSaved(); }}
               className="space-y-1.5"
             >
-              {sectionOrder.map((section) => (
+              {sectionOrder.map((section, i) => (
                 <Reorder.Item
                   key={section}
                   value={section}
                   className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] cursor-grab active:cursor-grabbing"
                 >
                   <span className="text-[#666]">&#x2807;</span>
-                  <span className="text-sm">{sectionLabels[section] || section}</span>
+                  <span className="text-sm flex-1">{sectionLabels[section] || section}</span>
+                  <span className="text-[10px] text-[#444] tabular-nums">{i + 1}</span>
                 </Reorder.Item>
               ))}
             </Reorder.Group>
+          </div>
+
+          {/* Live preview */}
+          <div className="py-3">
+            <span className="text-sm text-[#A1A1A1] block mb-3">Anteprima</span>
+            <div className="rounded-xl bg-black/40 border border-white/[0.06] p-3 overflow-hidden">
+              {/* Mini sidebar + content preview */}
+              <div className="flex gap-2">
+                {/* Mini sidebar */}
+                <div className="hidden sm:flex flex-col gap-1 w-10 shrink-0">
+                  {[0,1,2,3,4].map((i) => (
+                    <div
+                      key={i}
+                      className="h-2 rounded-full transition-all duration-300"
+                      style={i === 0 ? { backgroundColor: `${accentHex}40`, border: `1px solid ${accentHex}30` } : { backgroundColor: "rgba(255,255,255,0.05)" }}
+                    />
+                  ))}
+                </div>
+                {/* Mini dashboard sections */}
+                <div className={`flex-1 ${layoutMode === "compact" ? "space-y-1" : "space-y-2"} transition-all duration-300`}>
+                  {sectionOrder.slice(0, 5).map((section, i) => (
+                    <motion.div
+                      key={section}
+                      layout
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      className={`rounded-md transition-all duration-300 flex items-center gap-1.5 px-2 ${
+                        layoutMode === "compact" ? "h-4" : "h-6"
+                      }`}
+                      style={{
+                        backgroundColor: i === 0 ? `${accentHex}15` : "rgba(255,255,255,0.03)",
+                        borderLeft: i === 0 ? `2px solid ${accentHex}` : "2px solid transparent",
+                      }}
+                    >
+                      <span className="text-[8px] text-white/40 truncate">{sectionLabels[section] || section}</span>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -729,19 +792,23 @@ export default function SettingsPage() {
                   { value: "light", label: "Chiaro" },
                   { value: "auto", label: "Auto" },
                 ] as const
-              ).map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => handleQuickSave("theme", opt.value)}
-                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
-                    (user?.theme ?? "dark") === opt.value
-                      ? "bg-[#3B82F6]/20 border border-[#3B82F6]/40 text-[#3B82F6]"
-                      : "bg-white/5 border border-white/[0.06] text-[#A1A1A1] hover:text-white hover:bg-white/[0.08]"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+              ).map((opt) => {
+                const isSelected = (user?.theme ?? "dark") === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => handleQuickSave("theme", opt.value)}
+                    className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
+                      isSelected
+                        ? "border"
+                        : "bg-white/5 border border-white/[0.06] text-[#A1A1A1] hover:text-white hover:bg-white/[0.08]"
+                    }`}
+                    style={isSelected ? { backgroundColor: `${accentHex}20`, borderColor: `${accentHex}66`, color: accentHex } : undefined}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -754,19 +821,23 @@ export default function SettingsPage() {
                   { value: "it", label: "Italiano" },
                   { value: "en", label: "English" },
                 ] as const
-              ).map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => handleQuickSave("language", opt.value)}
-                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
-                    (user?.language ?? "it") === opt.value
-                      ? "bg-[#3B82F6]/20 border border-[#3B82F6]/40 text-[#3B82F6]"
-                      : "bg-white/5 border border-white/[0.06] text-[#A1A1A1] hover:text-white hover:bg-white/[0.08]"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+              ).map((opt) => {
+                const isSelected = (user?.language ?? "it") === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => handleQuickSave("language", opt.value)}
+                    className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
+                      isSelected
+                        ? "border"
+                        : "bg-white/5 border border-white/[0.06] text-[#A1A1A1] hover:text-white hover:bg-white/[0.08]"
+                    }`}
+                    style={isSelected ? { backgroundColor: `${accentHex}20`, borderColor: `${accentHex}66`, color: accentHex } : undefined}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -779,19 +850,23 @@ export default function SettingsPage() {
                   { value: "metric", label: "Metrico (kg/cm)" },
                   { value: "imperial", label: "Imperiale (lbs/in)" },
                 ] as const
-              ).map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => handleQuickSave("unit_system", opt.value)}
-                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
-                    (user?.unit_system ?? "metric") === opt.value
-                      ? "bg-[#3B82F6]/20 border border-[#3B82F6]/40 text-[#3B82F6]"
-                      : "bg-white/5 border border-white/[0.06] text-[#A1A1A1] hover:text-white hover:bg-white/[0.08]"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+              ).map((opt) => {
+                const isSelected = (user?.unit_system ?? "metric") === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => handleQuickSave("unit_system", opt.value)}
+                    className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
+                      isSelected
+                        ? "border"
+                        : "bg-white/5 border border-white/[0.06] text-[#A1A1A1] hover:text-white hover:bg-white/[0.08]"
+                    }`}
+                    style={isSelected ? { backgroundColor: `${accentHex}20`, borderColor: `${accentHex}66`, color: accentHex } : undefined}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -810,8 +885,9 @@ export default function SettingsPage() {
           <button
             onClick={() => handleQuickSave("notifications_enabled", !user?.notifications_enabled)}
             className={`relative w-12 h-7 rounded-full transition-colors ${
-              user?.notifications_enabled ? "bg-[#3B82F6]" : "bg-white/10"
+              user?.notifications_enabled ? "" : "bg-white/10"
             }`}
+            style={user?.notifications_enabled ? { backgroundColor: accentHex } : undefined}
             aria-label="Toggle notifiche"
           >
             <span

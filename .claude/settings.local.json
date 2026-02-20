@@ -37,7 +37,9 @@
       "Bash(git stash pop:*)",
       "Bash(git stash:*)",
       "Bash(npm run lint:*)",
-      "mcp__claude_ai_Supabase__execute_sql"
+      "mcp__claude_ai_Supabase__execute_sql",
+      "Bash(git push:*)",
+      "WebFetch(domain:vitrack-murex.vercel.app)"
     ]
   }
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { HomeIcon, UtensilsIcon, DumbbellIcon, ChartIcon, SettingsIcon, ChatIcon } from "./icons";
 import { useChat } from "@/lib/chat-context";
+import { usePreferences } from "@/lib/preferences-context";
 import { springs } from "@/lib/animation-config";
 
 interface BottomNavProps {
@@ -20,6 +21,7 @@ const navItems = [
 
 export default function BottomNav({ currentPath }: BottomNavProps) {
   const { toggleChat, isChatOpen } = useChat();
+  const { accentHex } = usePreferences();
 
   return (
     <>
@@ -34,9 +36,10 @@ export default function BottomNav({ currentPath }: BottomNavProps) {
           transition-all duration-200
           ${isChatOpen
             ? "bg-white/10 border border-white/20"
-            : "bg-gradient-to-br from-[#3B82F6] to-[#8B5CF6]"
+            : ""
           }
           pb-[env(safe-area-inset-bottom)]`}
+        style={!isChatOpen ? { background: `linear-gradient(to bottom right, ${accentHex}, #8B5CF6)` } : undefined}
       >
         <ChatIcon className="w-6 h-6 text-white" filled={isChatOpen} />
       </motion.button>
@@ -59,7 +62,8 @@ export default function BottomNav({ currentPath }: BottomNavProps) {
                   {isActive && (
                     <motion.div
                       layoutId="bottomnav-indicator"
-                      className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#3B82F6]"
+                      className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+                      style={{ backgroundColor: accentHex }}
                       transition={springs.smooth}
                     />
                   )}
