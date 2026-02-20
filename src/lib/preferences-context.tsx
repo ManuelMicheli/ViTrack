@@ -48,26 +48,34 @@ export function usePreferences() {
   return useContext(PreferencesContext);
 }
 
+function loadAccentColor(): AccentColor {
+  if (typeof window === "undefined") return "blue";
+  const saved = localStorage.getItem("vitrack_accent_color") as AccentColor | null;
+  return saved && ACCENT_COLORS[saved] ? saved : "blue";
+}
+
+function loadLayoutMode(): LayoutMode {
+  if (typeof window === "undefined") return "expanded";
+  const saved = localStorage.getItem("vitrack_layout_mode") as LayoutMode | null;
+  return saved === "compact" || saved === "expanded" ? saved : "expanded";
+}
+
+function loadSectionOrder(): string[] {
+  if (typeof window === "undefined") return DEFAULT_SECTION_ORDER;
+  const saved = localStorage.getItem("vitrack_dashboard_order");
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) return parsed;
+    } catch { /* ignore */ }
+  }
+  return DEFAULT_SECTION_ORDER;
+}
+
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {
-  const [accentColor, setAccentColorState] = useState<AccentColor>("blue");
-  const [layoutMode, setLayoutModeState] = useState<LayoutMode>("expanded");
-  const [sectionOrder, setSectionOrderState] = useState<string[]>(DEFAULT_SECTION_ORDER);
-
-  useEffect(() => {
-    const savedAccent = localStorage.getItem("vitrack_accent_color") as AccentColor | null;
-    if (savedAccent && ACCENT_COLORS[savedAccent]) setAccentColorState(savedAccent);
-
-    const savedLayout = localStorage.getItem("vitrack_layout_mode") as LayoutMode | null;
-    if (savedLayout === "compact" || savedLayout === "expanded") setLayoutModeState(savedLayout);
-
-    const savedOrder = localStorage.getItem("vitrack_dashboard_order");
-    if (savedOrder) {
-      try {
-        const parsed = JSON.parse(savedOrder);
-        if (Array.isArray(parsed)) setSectionOrderState(parsed);
-      } catch { /* ignore */ }
-    }
-  }, []);
+  const [accentColor, setAccentColorState] = useState<AccentColor>(loadAccentColor);
+  const [layoutMode, setLayoutModeState] = useState<LayoutMode>(loadLayoutMode);
+  const [sectionOrder, setSectionOrderState] = useState<string[]>(loadSectionOrder);
 
   useEffect(() => {
     document.documentElement.style.setProperty("--color-accent-dynamic", ACCENT_COLORS[accentColor]);

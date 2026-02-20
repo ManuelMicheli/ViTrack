@@ -6,7 +6,7 @@ import { motion, Reorder } from "framer-motion";
 import type { User } from "@/lib/types";
 import ConfirmModal from "@/components/ConfirmModal";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
-import { usePreferences, ACCENT_COLORS, type AccentColor, type LayoutMode } from "@/lib/preferences-context";
+import { usePreferences, ACCENT_COLORS, type AccentColor } from "@/lib/preferences-context";
 
 const sectionLabels: Record<string, string> = {
   greeting: "Saluto",

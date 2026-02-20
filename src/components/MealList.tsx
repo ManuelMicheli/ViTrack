@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { Meal } from "@/lib/types";
 import { TrashIcon } from "./icons";
 import ConfirmModal from "./ConfirmModal";
-import { staggerContainer, staggerItem, springs } from "@/lib/animation-config";
+import { staggerContainer, staggerItem } from "@/lib/animation-config";
 
 interface MealListProps {
   meals: Meal[];
