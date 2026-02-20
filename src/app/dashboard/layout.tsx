@@ -10,6 +10,7 @@ import { ChatProvider } from "@/lib/chat-context";
 import { PreferencesProvider } from "@/lib/preferences-context";
 import PageTransition from "@/components/PageTransition";
 import Celebration from "@/components/Celebration";
+import { createSupabaseBrowser } from "@/lib/supabase-browser";
 
 export default function DashboardLayout({
   children,
@@ -22,34 +23,55 @@ export default function DashboardLayout({
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    const userId = localStorage.getItem("vitrack_user_id");
-    const telegramId = localStorage.getItem("vitrack_telegram_id");
+    const checkAuth = async () => {
+      // Try Supabase Auth session first (email-registered users)
+      const supabase = createSupabaseBrowser();
+      const { data: { session } } = await supabase.auth.getSession();
 
-    if (!userId || !telegramId) {
-      router.push("/");
-      return;
-    }
+      if (session?.user) {
+        try {
+          const res = await fetch(`/api/user?id=${session.user.id}`);
+          if (res.ok) {
+            const userData = await res.json();
+            setUser(userData);
+            setAuthChecked(true);
+            return;
+          }
+        } catch {
+          // Fall through to localStorage check
+        }
+      }
 
-    const fetchUser = async () => {
+      // Legacy: check localStorage for Telegram-only users
+      const userId = localStorage.getItem("vitrack_user_id");
+      const telegramId = localStorage.getItem("vitrack_telegram_id");
+
+      if (!userId || !telegramId) {
+        router.push("/");
+        return;
+      }
+
       try {
-        const res = await fetch(
-          `/api/user?telegram_id=${encodeURIComponent(telegramId)}`
-        );
+        const res = await fetch(`/api/user?telegram_id=${encodeURIComponent(telegramId)}`);
         if (res.ok) {
-          const data = await res.json();
-          setUser(data);
+          const userData = await res.json();
+          setUser(userData);
+        } else {
+          router.push("/");
+          return;
         }
       } catch {
-        // User fetch failed, continue with null user
-      } finally {
-        setAuthChecked(true);
+        // User fetch failed
       }
+      setAuthChecked(true);
     };
 
-    fetchUser();
+    checkAuth();
   }, [router]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const supabase = createSupabaseBrowser();
+    await supabase.auth.signOut();
     localStorage.removeItem("vitrack_user_id");
     localStorage.removeItem("vitrack_telegram_id");
     router.push("/");
