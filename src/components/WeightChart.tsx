@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   AreaChart,
   Area,
@@ -10,6 +10,36 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import {
+  motion,
+  AnimatePresence,
+  useMotionValue,
+  useSpring,
+  useTransform,
+} from "framer-motion";
+import { springs, staggerContainer, staggerItem } from "@/lib/animation-config";
+
+/* ── Animated number (inline) ── */
+function AnimatedNum({ value }: { value: number | null }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const mv = useMotionValue(0);
+  const sp = useSpring(mv, springs.number);
+  const display = useTransform(sp, (v) => v.toFixed(1));
+
+  useEffect(() => {
+    if (value !== null) mv.set(value);
+  }, [value, mv]);
+
+  useEffect(() => {
+    const unsub = display.on("change", (v) => {
+      if (ref.current) ref.current.textContent = v;
+    });
+    return unsub;
+  }, [display]);
+
+  if (value === null) return <span>—</span>;
+  return <span ref={ref}>{value.toFixed(1)}</span>;
+}
 
 interface WeightChartProps {
   userId: string;
@@ -172,7 +202,7 @@ export default function WeightChart({
       {/* Header */}
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
-          <span className="text-base">⚖️</span>
+          <span className="text-base">&#9878;&#65039;</span>
           <h3 className="text-sm font-medium">Peso</h3>
         </div>
         <div className="flex items-center gap-2">
@@ -238,16 +268,17 @@ export default function WeightChart({
       {weightGoalKg && goalProgress !== null && (
         <div className="mb-3">
           <div className="w-full h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-700 ${
+            <motion.div
+              className={`h-full rounded-full ${
                 isApproachingGoal ? "bg-gradient-to-r from-[#A78BFA] to-[#8B5CF6]" : "bg-[#EF4444]/50"
               }`}
-              style={{ width: `${goalProgress}%` }}
+              animate={{ width: goalProgress + "%" }}
+              transition={springs.smooth}
             />
           </div>
           <div className="flex justify-between mt-1">
             <span className="text-[10px] text-[#666]">
-              {data.length > 0 ? data[0].weight : "—"} kg
+              {data.length > 0 ? data[0].weight : "\u2014"} kg
             </span>
             <span className="text-[10px] text-[#A78BFA]">{weightGoalKg} kg</span>
           </div>
@@ -262,9 +293,10 @@ export default function WeightChart({
           <div className="flex items-center justify-between mb-2">
             <div className="flex bg-white/[0.04] rounded-lg p-0.5">
               {periods.map((p) => (
-                <button
+                <motion.button
                   key={p.value}
                   onClick={() => setPeriod(p.value)}
+                  whileTap={{ scale: 0.95 }}
                   className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-all ${
                     period === p.value
                       ? "bg-[#A78BFA]/20 text-[#A78BFA]"
@@ -272,7 +304,7 @@ export default function WeightChart({
                   }`}
                 >
                   {p.label}
-                </button>
+                </motion.button>
               ))}
             </div>
 
@@ -316,48 +348,54 @@ export default function WeightChart({
 
           {/* Chart */}
           {data.length > 1 ? (
-            <ResponsiveContainer width="100%" height={100}>
-              <AreaChart data={data}>
-                <defs>
-                  <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#A78BFA" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#A78BFA" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis
-                  dataKey="date"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "#666", fontSize: 9 }}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  domain={["dataMin - 1", "dataMax + 1"]}
-                  hide
-                />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Area
-                  type="monotone"
-                  dataKey="weight"
-                  stroke="#A78BFA"
-                  strokeWidth={2}
-                  fill="url(#weightGradient)"
-                  dot={false}
-                  activeDot={{ r: 3, fill: "#A78BFA", strokeWidth: 0 }}
-                  name="Peso (kg)"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="avg"
-                  stroke="#A78BFA"
-                  strokeWidth={1}
-                  strokeDasharray="4 4"
-                  dot={false}
-                  strokeOpacity={0.4}
-                  name="Media"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+            >
+              <ResponsiveContainer width="100%" height={100}>
+                <AreaChart data={data}>
+                  <defs>
+                    <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#A78BFA" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="#A78BFA" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis
+                    dataKey="date"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "#666", fontSize: 9 }}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    domain={["dataMin - 1", "dataMax + 1"]}
+                    hide
+                  />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Area
+                    type="monotone"
+                    dataKey="weight"
+                    stroke="#A78BFA"
+                    strokeWidth={2}
+                    fill="url(#weightGradient)"
+                    dot={false}
+                    activeDot={{ r: 3, fill: "#A78BFA", strokeWidth: 0 }}
+                    name="Peso (kg)"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="avg"
+                    stroke="#A78BFA"
+                    strokeWidth={1}
+                    strokeDasharray="4 4"
+                    dot={false}
+                    strokeOpacity={0.4}
+                    name="Media"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </motion.div>
           ) : (
             <p className="text-xs text-[#666] text-center py-6">
               Aggiungi il tuo peso per vedere il trend
@@ -366,26 +404,37 @@ export default function WeightChart({
 
           {/* Stats row */}
           {data.length > 1 && (
-            <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-white/[0.06]">
-              <div className="text-center">
-                <p className="text-xs font-bold">{min}</p>
+            <motion.div
+              className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-white/[0.06]"
+              variants={staggerContainer()}
+              initial="initial"
+              animate="animate"
+            >
+              <motion.div className="text-center" variants={staggerItem}>
+                <p className="text-xs font-bold">
+                  <AnimatedNum value={min} />
+                </p>
                 <p className="text-[9px] text-[#666] uppercase tracking-wider">
                   Min
                 </p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs font-bold">{max}</p>
+              </motion.div>
+              <motion.div className="text-center" variants={staggerItem}>
+                <p className="text-xs font-bold">
+                  <AnimatedNum value={max} />
+                </p>
                 <p className="text-[9px] text-[#666] uppercase tracking-wider">
                   Max
                 </p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs font-bold">{avg}</p>
+              </motion.div>
+              <motion.div className="text-center" variants={staggerItem}>
+                <p className="text-xs font-bold">
+                  <AnimatedNum value={avg} />
+                </p>
                 <p className="text-[9px] text-[#666] uppercase tracking-wider">
                   Media
                 </p>
-              </div>
-              <div className="text-center">
+              </motion.div>
+              <motion.div className="text-center" variants={staggerItem}>
                 {weeklyTrend !== null ? (
                   <p
                     className={`text-xs font-bold ${
@@ -397,58 +446,72 @@ export default function WeightChart({
                     }`}
                   >
                     {weeklyTrend > 0 ? "+" : ""}
-                    {weeklyTrend}
+                    <AnimatedNum value={weeklyTrend} />
                   </p>
                 ) : (
-                  <p className="text-xs font-bold text-[#666]">—</p>
+                  <p className="text-xs font-bold text-[#666]">&mdash;</p>
                 )}
                 <p className="text-[9px] text-[#666] uppercase tracking-wider">
                   /sett
                 </p>
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
           )}
 
           {/* Integrated weight input */}
           <div className="mt-3 pt-3 border-t border-white/[0.06]">
-            {showInput ? (
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  step="0.1"
-                  value={weightInput}
-                  onChange={(e) => setWeightInput(e.target.value)}
-                  placeholder="Es: 75.5"
-                  className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#A78BFA]/40"
-                  autoFocus
-                  onKeyDown={(e) => e.key === "Enter" && handleSaveWeight()}
-                />
-                <span className="text-xs text-[#666]">kg</span>
-                <button
-                  onClick={handleSaveWeight}
-                  disabled={saving || !weightInput}
-                  className="px-3 py-2 rounded-lg bg-[#A78BFA]/20 text-[#A78BFA] text-xs font-medium hover:bg-[#A78BFA]/30 transition-colors disabled:opacity-30"
+            <AnimatePresence mode="wait">
+              {showInput ? (
+                <motion.div
+                  key="weight-input"
+                  className="flex items-center gap-2"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={springs.smooth}
                 >
-                  {saving ? "..." : "Salva"}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowInput(false);
-                    setWeightInput("");
-                  }}
-                  className="text-[#666] text-xs hover:text-white transition-colors"
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={weightInput}
+                    onChange={(e) => setWeightInput(e.target.value)}
+                    placeholder="Es: 75.5"
+                    className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#A78BFA]/40"
+                    autoFocus
+                    onKeyDown={(e) => e.key === "Enter" && handleSaveWeight()}
+                  />
+                  <span className="text-xs text-[#666]">kg</span>
+                  <button
+                    onClick={handleSaveWeight}
+                    disabled={saving || !weightInput}
+                    className="px-3 py-2 rounded-lg bg-[#A78BFA]/20 text-[#A78BFA] text-xs font-medium hover:bg-[#A78BFA]/30 transition-colors disabled:opacity-30"
+                  >
+                    {saving ? "..." : "Salva"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowInput(false);
+                      setWeightInput("");
+                    }}
+                    className="text-[#666] text-xs hover:text-white transition-colors"
+                  >
+                    Annulla
+                  </button>
+                </motion.div>
+              ) : (
+                <motion.button
+                  key="weight-toggle"
+                  onClick={() => setShowInput(true)}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={springs.smooth}
+                  className="w-full py-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-xs text-[#666] hover:text-[#A78BFA] hover:border-[#A78BFA]/20 transition-all"
                 >
-                  Annulla
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setShowInput(true)}
-                className="w-full py-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-xs text-[#666] hover:text-[#A78BFA] hover:border-[#A78BFA]/20 transition-all"
-              >
-                + Registra peso
-              </button>
-            )}
+                  + Registra peso
+                </motion.button>
+              )}
+            </AnimatePresence>
           </div>
         </>
       )}
