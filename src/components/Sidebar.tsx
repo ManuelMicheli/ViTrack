@@ -8,7 +8,7 @@ import { springs } from "@/lib/animation-config";
 
 interface SidebarProps {
   currentPath: string;
-  user: { first_name: string | null; username: string | null } | null;
+  user: { first_name: string | null; username: string | null; avatar_url?: string | null } | null;
   onLogout: () => void;
 }
 
@@ -82,9 +82,17 @@ export default function Sidebar({ currentPath, user, onLogout }: SidebarProps) {
       <div className="p-4 border-t border-white/[0.06]">
         {user && (
           <Link href="/dashboard/profile" className="flex items-center gap-3 px-3 py-2 mb-2 rounded-xl hover:bg-white/[0.04] transition-all">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3B82F6] to-[#8B5CF6] flex items-center justify-center text-xs font-bold">
-              {user.first_name?.[0]?.toUpperCase() || "U"}
-            </div>
+            {user.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt={user.first_name || "Avatar"}
+                className="w-8 h-8 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3B82F6] to-[#8B5CF6] flex items-center justify-center text-xs font-bold">
+                {user.first_name?.[0]?.toUpperCase() || "U"}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">
                 {user.first_name || user.username || "Utente"}
