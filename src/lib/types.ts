@@ -1,9 +1,22 @@
 export interface User {
   id: string;
-  telegram_id: number;
+  telegram_id: number | null;
   username: string | null;
   first_name: string | null;
+  email: string | null;
+  date_of_birth: string | null;
+  gender: "male" | "female" | "other" | null;
+  activity_level: "sedentary" | "light" | "moderate" | "active" | "very_active";
+  dietary_preferences: string[];
+  avatar_url: string | null;
+  theme: "dark" | "light" | "auto";
+  unit_system: "metric" | "imperial";
+  language: "it" | "en";
+  notifications_enabled: boolean;
   daily_calorie_goal: number;
+  protein_goal: number | null;
+  carbs_goal: number | null;
+  fat_goal: number | null;
   water_goal_ml: number;
   water_tracking_mode: "glasses" | "ml";
   weight_goal_kg: number | null;
