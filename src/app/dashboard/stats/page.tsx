@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import type { DailySummary } from "@/lib/types";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts";
+import { staggerContainer, staggerItem } from "@/lib/animation-config";
 
 type Period = 7 | 30;
 
@@ -90,10 +92,12 @@ export default function StatsPage() {
   }
 
   return (
-    <div className="px-4 md:px-8 py-6 space-y-4 animate-fade-in">
-      <h2 className="text-xl font-bold">Statistiche</h2>
+    <motion.div className="px-4 md:px-8 py-6 space-y-4" initial="initial" animate="animate" variants={staggerContainer(0.08)}>
+      <motion.div variants={staggerItem}>
+        <h2 className="text-xl font-bold">Statistiche</h2>
+      </motion.div>
 
-      <div className="flex gap-2">
+      <motion.div variants={staggerItem} className="flex gap-2">
         {([7, 30] as Period[]).map((p) => (
           <button
             key={p}
@@ -107,9 +111,9 @@ export default function StatsPage() {
             {p} giorni
           </button>
         ))}
-      </div>
+      </motion.div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <motion.div variants={staggerItem} className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: "Media calorie", value: `${avgCalories}`, unit: "kcal", color: "" },
           { label: "Allenamenti", value: `${totalWorkouts}`, unit: "", color: "" },
@@ -123,9 +127,9 @@ export default function StatsPage() {
             </p>
           </div>
         ))}
-      </div>
+      </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <motion.div variants={staggerItem} className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="glass-card p-4">
           <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium mb-4">Trend calorie</h3>
           <ResponsiveContainer width="100%" height={280}>
@@ -165,7 +169,7 @@ export default function StatsPage() {
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

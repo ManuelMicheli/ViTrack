@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { motion } from "framer-motion";
 import type { Workout } from "@/lib/types";
 import DatePicker from "@/components/DatePicker";
 import { TrashIcon } from "@/components/icons";
 import ConfirmModal from "@/components/ConfirmModal";
+import { staggerContainer, staggerItem } from "@/lib/animation-config";
 
 export default function WorkoutsPage() {
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
@@ -55,15 +57,15 @@ export default function WorkoutsPage() {
   }
 
   return (
-    <div className="px-4 md:px-8 py-6 space-y-4 animate-fade-in">
-      <div className="flex items-center justify-between">
+    <motion.div className="px-4 md:px-8 py-6 space-y-4" initial="initial" animate="animate" variants={staggerContainer(0.08)}>
+      <motion.div variants={staggerItem} className="flex items-center justify-between">
         <h2 className="text-xl font-bold">Allenamenti</h2>
         <DatePicker value={date} onChange={setDate} />
-      </div>
+      </motion.div>
 
       {/* Summary cards */}
       {workouts.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
+        <motion.div variants={staggerItem} className="grid grid-cols-3 gap-2">
           <div className="glass-card p-3 text-center">
             <p className="text-xs text-[#666] uppercase tracking-wider">Sessioni</p>
             <p className="text-lg font-bold mt-1">{workouts.length}</p>
@@ -76,17 +78,17 @@ export default function WorkoutsPage() {
             <p className="text-xs text-[#666] uppercase tracking-wider">Bruciate</p>
             <p className="text-lg font-bold mt-1 text-[#F59E0B]">{totalBurned} <span className="text-xs font-normal">kcal</span></p>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {workouts.length === 0 ? (
-        <div className="glass-card p-8 text-center">
+        <motion.div variants={staggerItem} className="glass-card p-8 text-center">
           <span className="text-4xl mb-3 block">🏋️</span>
           <p className="text-[#A1A1A1] text-sm">Nessun allenamento registrato</p>
           <p className="text-xs text-[#666] mt-1">Usa il bot Telegram per registrare i tuoi allenamenti</p>
-        </div>
+        </motion.div>
       ) : (
-        <div className="space-y-3">
+        <motion.div variants={staggerItem} className="space-y-3">
           {workouts.map((workout) => {
             const isExpanded = expandedId === workout.id;
             return (
@@ -122,7 +124,7 @@ export default function WorkoutsPage() {
                 </button>
 
                 {isExpanded && workout.exercises && workout.exercises.length > 0 && (
-                  <div className="px-4 pb-4 animate-fade-in">
+                  <div className="px-4 pb-4">
                     <div className="rounded-xl bg-white/[0.03] border border-white/[0.04] divide-y divide-white/[0.04]">
                       <div className="px-3 py-2">
                         <p className="text-[10px] text-[#666] uppercase tracking-wider font-medium">Esercizi</p>
@@ -142,7 +144,7 @@ export default function WorkoutsPage() {
               </div>
             );
           })}
-        </div>
+        </motion.div>
       )}
 
       <ConfirmModal
@@ -155,6 +157,6 @@ export default function WorkoutsPage() {
         onConfirm={handleDelete}
         onCancel={() => setDeleteId(null)}
       />
-    </div>
+    </motion.div>
   );
 }

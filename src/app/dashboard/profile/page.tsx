@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import type { User } from "@/lib/types";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
+import { staggerContainer, staggerItem } from "@/lib/animation-config";
 
 const INPUT_CLASS =
   "w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white placeholder-[#444] text-sm focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_12px_rgba(59,130,246,0.1)] transition-all";
@@ -235,11 +237,13 @@ export default function ProfilePage() {
   });
 
   return (
-    <div className="px-4 md:px-8 py-6 space-y-6 animate-fade-in max-w-2xl">
-      <h2 className="text-xl font-bold">Profilo</h2>
+    <motion.div className="px-4 md:px-8 py-6 space-y-6 max-w-2xl" initial="initial" animate="animate" variants={staggerContainer(0.08)}>
+      <motion.div variants={staggerItem}>
+        <h2 className="text-xl font-bold">Profilo</h2>
+      </motion.div>
 
       {/* ─── Header / Avatar ─── */}
-      <div className="flex flex-col items-center space-y-3">
+      <motion.div variants={staggerItem} className="flex flex-col items-center space-y-3">
         <div className="relative">
           {user.avatar_url ? (
             <img
@@ -278,14 +282,14 @@ export default function ProfilePage() {
           <p className="text-lg font-semibold">{user.first_name || "Utente"}</p>
           {user.email && <p className="text-sm text-[#666]">{user.email}</p>}
         </div>
-      </div>
+      </motion.div>
 
       {/* ─── Informazioni Personali ─── */}
-      <div className="glass-card-strong rounded-2xl p-5 space-y-4">
+      <motion.div variants={staggerItem} className="glass-card-strong rounded-2xl p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-white">Informazioni Personali</h3>
           {savedSection === "personal" && (
-            <span className="text-xs text-[#22C55E] font-medium animate-fade-in">Salvato!</span>
+            <span className="text-xs text-[#22C55E] font-medium">Salvato!</span>
           )}
         </div>
 
@@ -373,14 +377,14 @@ export default function ProfilePage() {
         >
           {savingSection === "personal" ? "Salvataggio..." : "Salva"}
         </button>
-      </div>
+      </motion.div>
 
       {/* ─── Obiettivi Nutrizionali ─── */}
-      <div className="glass-card-strong rounded-2xl p-5 space-y-4">
+      <motion.div variants={staggerItem} className="glass-card-strong rounded-2xl p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-white">Obiettivi Nutrizionali</h3>
           {savedSection === "goals" && (
-            <span className="text-xs text-[#22C55E] font-medium animate-fade-in">Salvato!</span>
+            <span className="text-xs text-[#22C55E] font-medium">Salvato!</span>
           )}
         </div>
 
@@ -482,14 +486,14 @@ export default function ProfilePage() {
         >
           {savingSection === "goals" ? "Salvataggio..." : "Salva"}
         </button>
-      </div>
+      </motion.div>
 
       {/* ─── Preferenze Alimentari ─── */}
-      <div className="glass-card-strong rounded-2xl p-5 space-y-4">
+      <motion.div variants={staggerItem} className="glass-card-strong rounded-2xl p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-white">Preferenze Alimentari</h3>
           {savedSection === "dietary" && (
-            <span className="text-xs text-[#22C55E] font-medium animate-fade-in">Salvato!</span>
+            <span className="text-xs text-[#22C55E] font-medium">Salvato!</span>
           )}
         </div>
 
@@ -534,10 +538,10 @@ export default function ProfilePage() {
         >
           {savingSection === "dietary" ? "Salvataggio..." : "Salva"}
         </button>
-      </div>
+      </motion.div>
 
       {/* ─── Statistiche ─── */}
-      <div className="glass-card-strong rounded-2xl p-5 space-y-1">
+      <motion.div variants={staggerItem} className="glass-card-strong rounded-2xl p-5 space-y-1">
         <h3 className="text-lg font-semibold text-white mb-3">Statistiche</h3>
 
         <div className="flex justify-between items-center py-2.5 border-b border-white/[0.06]">
@@ -558,7 +562,7 @@ export default function ProfilePage() {
           <span className="text-sm text-[#A1A1A1]">Piano</span>
           <span className="text-sm font-medium gradient-text">ViTrack</span>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

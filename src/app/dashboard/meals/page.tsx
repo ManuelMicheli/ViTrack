@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { motion } from "framer-motion";
 import type { Meal } from "@/lib/types";
 import DatePicker from "@/components/DatePicker";
 import MacroBar from "@/components/MacroBar";
 import { PlusIcon, TrashIcon } from "@/components/icons";
 import ConfirmModal from "@/components/ConfirmModal";
 import AddMealModal from "@/components/AddMealModal";
+import { staggerContainer, staggerItem } from "@/lib/animation-config";
 
 const mealTypeOrder = ["colazione", "pranzo", "cena", "snack"] as const;
 
@@ -98,15 +100,15 @@ export default function MealsPage() {
   }
 
   return (
-    <div className="px-4 md:px-8 py-6 space-y-4 animate-fade-in">
-      <div className="flex items-center justify-between">
+    <motion.div className="px-4 md:px-8 py-6 space-y-4" initial="initial" animate="animate" variants={staggerContainer(0.08)}>
+      <motion.div variants={staggerItem} className="flex items-center justify-between">
         <h2 className="text-xl font-bold">Pasti</h2>
         <DatePicker value={date} onChange={setDate} />
-      </div>
+      </motion.div>
 
       {/* Grouped meal sections */}
       {grouped.map(({ type, label, meals: sectionMeals, totalCal }) => (
-        <div key={type}>
+        <motion.div key={type} variants={staggerItem}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-medium uppercase tracking-wider text-[#A1A1A1]">{label}</h3>
@@ -169,18 +171,18 @@ export default function MealsPage() {
               ))}
             </div>
           )}
-        </div>
+        </motion.div>
       ))}
 
       {/* Daily total */}
       {meals.length > 0 && (
-        <div className="glass-card-strong p-4">
+        <motion.div variants={staggerItem} className="glass-card-strong p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-[#666] uppercase tracking-wider font-medium">Totale giornata</span>
             <span className="text-sm font-bold">{totalCalories} kcal</span>
           </div>
           <MacroBar protein={totalProtein} carbs={totalCarbs} fat={totalFat} fiber={totalFiber} showLabels />
-        </div>
+        </motion.div>
       )}
 
       <AddMealModal
@@ -200,6 +202,6 @@ export default function MealsPage() {
         onConfirm={handleDelete}
         onCancel={() => setDeleteId(null)}
       />
-    </div>
+    </motion.div>
   );
 }
