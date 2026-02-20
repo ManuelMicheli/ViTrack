@@ -11,6 +11,7 @@ import { ChatProvider } from "@/lib/chat-context";
 import { PreferencesProvider } from "@/lib/preferences-context";
 import PageTransition from "@/components/PageTransition";
 import Celebration from "@/components/Celebration";
+import ViTrackTransition from "@/components/ViTrackTransition";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 
 export default function DashboardLayout({
@@ -101,6 +102,7 @@ export default function DashboardLayout({
             <main className="md:ml-60 pb-20 md:pb-0 min-h-screen">
               <PageTransition>{children}</PageTransition>
             </main>
+            <ViTrackTransition />
             <BottomNav currentPath={pathname} />
             <ChatPanel />
           </div>

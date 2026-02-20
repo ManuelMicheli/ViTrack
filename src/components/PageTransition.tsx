@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
-import { fadeSlideUp } from "@/lib/animation-config";
 
 export default function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -10,9 +9,9 @@ export default function PageTransition({ children }: { children: React.ReactNode
   return (
     <motion.div
       key={pathname}
-      initial={fadeSlideUp.initial}
-      animate={fadeSlideUp.animate}
-      transition={fadeSlideUp.transition}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, delay: 0.05 }}
     >
       {children}
     </motion.div>
