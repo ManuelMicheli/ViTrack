@@ -33,7 +33,11 @@
       "WebFetch(domain:openfoodfacts.github.io)",
       "WebFetch(domain:gist.github.com)",
       "WebFetch(domain:wiki.openfoodfacts.org)",
-      "Bash(npx next dev --turbopack)"
+      "Bash(npx next dev --turbopack)",
+      "Bash(git stash pop:*)",
+      "Bash(git stash:*)",
+      "Bash(npm run lint:*)",
+      "mcp__claude_ai_Supabase__execute_sql"
     ]
   }
 }

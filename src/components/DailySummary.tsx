@@ -14,6 +14,7 @@ interface DailySummaryProps {
     meals_count: number;
     workouts_count: number;
     calories_burned: number;
+    net_calories: number;
   };
   compact?: boolean;
 }
