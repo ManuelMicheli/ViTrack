@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import type { DailySummary, User } from "@/lib/types";
 import CalorieProgress from "@/components/CalorieProgress";
 import DailySummaryCard from "@/components/DailySummary";
@@ -13,6 +14,9 @@ import WaterTracker from "@/components/WaterTracker";
 import StreakCalendar from "@/components/StreakCalendar";
 import WeightChart from "@/components/WeightChart";
 import AddMealModal from "@/components/AddMealModal";
+import { staggerContainer, staggerItem } from "@/lib/animation-config";
+import { getGreeting, getMotivation } from "@/lib/personalization";
+import { useCelebration } from "@/lib/celebration-context";
 
 export default function DashboardPage() {
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
@@ -21,7 +25,17 @@ export default function DashboardPage() {
   const [mealModalOpen, setMealModalOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
 
+  const { celebrate } = useCelebration();
+
   const userId = typeof window !== "undefined" ? localStorage.getItem("vitrack_user_id") : null;
+
+  // Celebration trigger for calorie goal
+  useEffect(() => {
+    if (!summary) return;
+    if (summary.totals.calories >= summary.calorie_goal && summary.calorie_goal > 0) {
+      celebrate("calorie_goal");
+    }
+  }, [summary, celebrate]);
 
   // Fetch user settings
   useEffect(() => {
@@ -103,7 +117,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="px-4 md:px-8 py-6 space-y-4 animate-fade-in">
+      <div className="px-4 md:px-8 py-6 space-y-4">
         <div className="h-8 w-48 shimmer rounded-lg" />
         <div className="h-10 w-64 shimmer rounded-lg" />
         <div className="grid grid-cols-4 gap-2">
@@ -118,33 +132,53 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="px-4 md:px-8 py-6 space-y-4 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">Dashboard</h2>
+    <motion.div
+      className="px-4 md:px-8 py-6 space-y-4"
+      initial="initial"
+      animate="animate"
+      variants={staggerContainer(0.08)}
+    >
+      <motion.div variants={staggerItem} className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold">{getGreeting(user?.first_name ?? null)}</h2>
+          {summary && (
+            <p className="text-sm text-[#A1A1A1] mt-0.5">
+              {getMotivation({
+                calories: summary.totals.calories,
+                calorieGoal: summary.calorie_goal,
+                streak: 0,
+                workoutsToday: summary.totals.workouts_count,
+                mealsToday: summary.totals.meals_count,
+              })}
+            </p>
+          )}
+        </div>
         <DatePicker value={date} onChange={setDate} />
-      </div>
+      </motion.div>
 
       {/* Quick Add Bar - removed weight since it's now in the widget */}
-      <QuickAddBar
-        onAddMeal={() => setMealModalOpen(true)}
-        onAddWater={() => {}}
-        onAddWorkout={() => {}}
-        onAddWeight={() => {}}
-      />
+      <motion.div variants={staggerItem}>
+        <QuickAddBar
+          onAddMeal={() => setMealModalOpen(true)}
+          onAddWater={() => {}}
+          onAddWorkout={() => {}}
+          onAddWeight={() => {}}
+        />
+      </motion.div>
 
       {summary && (
         <>
           {/* Calories + Macros */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <motion.div variants={staggerItem} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <CalorieProgress current={summary.totals.calories} goal={summary.calorie_goal} burned={summary.totals.calories_burned} />
             <div className="lg:col-span-2">
               <DailySummaryCard totals={summary.totals} />
             </div>
-          </div>
+          </motion.div>
 
           {/* Water + Streak */}
           {userId && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <motion.div variants={staggerItem} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <WaterTracker
                 userId={userId}
                 date={date}
@@ -153,21 +187,23 @@ export default function DashboardPage() {
                 onSettingsChange={(settings) => updateUserSettings(settings)}
               />
               <StreakCalendar userId={userId} />
-            </div>
+            </motion.div>
           )}
 
           {/* Weight */}
           {userId && (
-            <WeightChart
-              userId={userId}
-              weightGoalKg={user?.weight_goal_kg}
-              heightCm={user?.height_cm}
-              onGoalChange={(goal) => updateUserSettings({ weight_goal_kg: goal })}
-            />
+            <motion.div variants={staggerItem}>
+              <WeightChart
+                userId={userId}
+                weightGoalKg={user?.weight_goal_kg}
+                heightCm={user?.height_cm}
+                onGoalChange={(goal) => updateUserSettings({ weight_goal_kg: goal })}
+              />
+            </motion.div>
           )}
 
           {/* Meals */}
-          <div>
+          <motion.div variants={staggerItem}>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium">Pasti di oggi</h3>
               <Link href="/dashboard/meals" className="text-xs text-[#666] hover:text-white transition-colors">
@@ -175,10 +211,10 @@ export default function DashboardPage() {
               </Link>
             </div>
             <MealList meals={summary.meals.slice(0, 3)} onDelete={handleDeleteMeal} compact />
-          </div>
+          </motion.div>
 
           {/* Workouts */}
-          <div>
+          <motion.div variants={staggerItem}>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium">Allenamenti di oggi</h3>
               <Link href="/dashboard/workouts" className="text-xs text-[#666] hover:text-white transition-colors">
@@ -186,7 +222,7 @@ export default function DashboardPage() {
               </Link>
             </div>
             <WorkoutList workouts={summary.workouts.slice(0, 3)} onDelete={handleDeleteWorkout} compact />
-          </div>
+          </motion.div>
         </>
       )}
 
@@ -195,6 +231,6 @@ export default function DashboardPage() {
         onClose={() => setMealModalOpen(false)}
         onSave={handleSaveMeal}
       />
-    </div>
+    </motion.div>
   );
 }
