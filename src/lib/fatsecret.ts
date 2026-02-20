@@ -89,7 +89,7 @@ interface FatSecretFood {
 // Extract per-100g nutrients
 // ---------------------------------------------------------------------------
 function extractPer100g(servings: FatSecretServing[]): FatSecretServing | null {
-  let per100g = servings.find(
+  const per100g = servings.find(
     (s) =>
       s.metric_serving_unit === "g" &&
       parseFloat(s.metric_serving_amount ?? "0") === 100

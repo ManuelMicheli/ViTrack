@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { HomeIcon, UtensilsIcon, DumbbellIcon, ChartIcon, SettingsIcon, ChatIcon } from "./icons";
 import { useChat } from "@/lib/chat-context";
@@ -83,9 +84,11 @@ export default function Sidebar({ currentPath, user, onLogout }: SidebarProps) {
         {user && (
           <Link href="/dashboard/profile" className="flex items-center gap-3 px-3 py-2 mb-2 rounded-xl hover:bg-white/[0.04] transition-all">
             {user.avatar_url ? (
-              <img
+              <Image
                 src={user.avatar_url}
                 alt={user.first_name || "Avatar"}
+                width={32}
+                height={32}
                 className="w-8 h-8 rounded-full object-cover"
               />
             ) : (

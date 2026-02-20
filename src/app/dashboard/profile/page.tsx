@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import type { User } from "@/lib/types";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { staggerContainer, staggerItem } from "@/lib/animation-config";
@@ -246,9 +247,11 @@ export default function ProfilePage() {
       <motion.div variants={staggerItem} className="flex flex-col items-center space-y-3">
         <div className="relative">
           {user.avatar_url ? (
-            <img
+            <Image
               src={user.avatar_url}
               alt="Avatar"
+              width={80}
+              height={80}
               className="w-20 h-20 rounded-full object-cover border-2 border-white/10"
             />
           ) : (
