@@ -1,0 +1,157 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import type { Workout } from "@/lib/types";
+import DatePicker from "@/components/DatePicker";
+import { TrashIcon } from "@/components/icons";
+import ConfirmModal from "@/components/ConfirmModal";
+
+export default function WorkoutsPage() {
+  const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const userId = typeof window !== "undefined" ? localStorage.getItem("vitrack_user_id") : null;
+
+  const fetchWorkouts = useCallback(async () => {
+    if (!userId) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/workouts?user_id=${userId}&date=${date}`);
+      if (res.ok) setWorkouts(await res.json());
+    } catch { /* ignore */ } finally {
+      setLoading(false);
+    }
+  }, [userId, date]);
+
+  useEffect(() => { fetchWorkouts(); }, [fetchWorkouts]);
+
+  const handleDelete = async () => {
+    if (!deleteId || !userId) return;
+    setDeleting(true);
+    try {
+      await fetch(`/api/workouts?id=${deleteId}&user_id=${userId}`, { method: "DELETE" });
+      fetchWorkouts();
+    } catch { /* ignore */ } finally {
+      setDeleting(false);
+      setDeleteId(null);
+    }
+  };
+
+  const totalBurned = workouts.reduce((s, w) => s + (w.calories_burned || 0), 0);
+  const totalDuration = workouts.reduce((s, w) => s + (w.duration_min || 0), 0);
+
+  if (loading) {
+    return (
+      <div className="px-4 md:px-8 py-6 space-y-4">
+        <div className="h-8 w-40 shimmer rounded-lg" />
+        <div className="h-10 w-64 shimmer rounded-lg" />
+        {[...Array(3)].map((_, i) => <div key={i} className="h-24 shimmer rounded-2xl" />)}
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-4 md:px-8 py-6 space-y-4 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold">Allenamenti</h2>
+        <DatePicker value={date} onChange={setDate} />
+      </div>
+
+      {/* Summary cards */}
+      {workouts.length > 0 && (
+        <div className="grid grid-cols-3 gap-2">
+          <div className="glass-card p-3 text-center">
+            <p className="text-xs text-[#666] uppercase tracking-wider">Sessioni</p>
+            <p className="text-lg font-bold mt-1">{workouts.length}</p>
+          </div>
+          <div className="glass-card p-3 text-center">
+            <p className="text-xs text-[#666] uppercase tracking-wider">Durata</p>
+            <p className="text-lg font-bold mt-1 text-[#3B82F6]">{totalDuration} <span className="text-xs font-normal">min</span></p>
+          </div>
+          <div className="glass-card p-3 text-center">
+            <p className="text-xs text-[#666] uppercase tracking-wider">Bruciate</p>
+            <p className="text-lg font-bold mt-1 text-[#F59E0B]">{totalBurned} <span className="text-xs font-normal">kcal</span></p>
+          </div>
+        </div>
+      )}
+
+      {workouts.length === 0 ? (
+        <div className="glass-card p-8 text-center">
+          <span className="text-4xl mb-3 block">🏋️</span>
+          <p className="text-[#A1A1A1] text-sm">Nessun allenamento registrato</p>
+          <p className="text-xs text-[#666] mt-1">Usa il bot Telegram per registrare i tuoi allenamenti</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {workouts.map((workout) => {
+            const isExpanded = expandedId === workout.id;
+            return (
+              <div key={workout.id} className="glass-card overflow-hidden transition-all duration-300 group">
+                <button
+                  onClick={() => setExpandedId(isExpanded ? null : workout.id)}
+                  className="w-full p-4 flex items-start justify-between text-left"
+                >
+                  <div className="flex gap-3">
+                    <span className="text-xl">🏋️</span>
+                    <div>
+                      <p className="font-medium text-white text-sm">{workout.description}</p>
+                      <p className="text-xs text-[#666] mt-0.5">
+                        {workout.workout_type}
+                        {workout.duration_min && ` · ${workout.duration_min} min`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {workout.calories_burned && (
+                      <span className="text-sm font-semibold text-[#F59E0B]">-{workout.calories_burned} kcal</span>
+                    )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setDeleteId(workout.id); }}
+                      className="opacity-0 group-hover:opacity-100 text-[#666] hover:text-[#EF4444] transition-all p-1"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                </button>
+
+                {isExpanded && workout.exercises && workout.exercises.length > 0 && (
+                  <div className="px-4 pb-4 animate-fade-in">
+                    <div className="rounded-xl bg-white/[0.03] border border-white/[0.04] divide-y divide-white/[0.04]">
+                      <div className="px-3 py-2">
+                        <p className="text-[10px] text-[#666] uppercase tracking-wider font-medium">Esercizi</p>
+                      </div>
+                      {workout.exercises.map((ex, i) => (
+                        <div key={i} className="flex items-center justify-between px-3 py-2.5 text-sm">
+                          <span className="text-white">{ex.name}</span>
+                          <span className="text-[#A1A1A1] text-xs">
+                            {ex.sets && ex.reps ? `${ex.sets}x${ex.reps}` : ""}
+                            {ex.weight_kg ? ` @ ${ex.weight_kg}kg` : ""}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <ConfirmModal
+        isOpen={!!deleteId}
+        title="Elimina allenamento"
+        message="Vuoi eliminare questo allenamento? L'azione è irreversibile."
+        confirmLabel="Elimina"
+        danger
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteId(null)}
+      />
+    </div>
+  );
+}
