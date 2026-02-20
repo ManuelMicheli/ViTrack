@@ -5,7 +5,19 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useChat } from "@/lib/chat-context";
 import { CloseIcon, SendIcon } from "./icons";
 import { springs } from "@/lib/animation-config";
+import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import type { ChatMessage } from "@/lib/types";
+
+const getUserId = async (): Promise<string | null> => {
+  try {
+    const supabase = createSupabaseBrowser();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.id) return session.user.id;
+  } catch {
+    // Supabase not available
+  }
+  return localStorage.getItem("vitrack_user_id");
+};
 
 const QUICK_COMMANDS = [
   { label: "Oggi", command: "/oggi" },
@@ -20,14 +32,15 @@ export default function ChatPanel() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const userId =
-    typeof window !== "undefined"
-      ? localStorage.getItem("vitrack_user_id")
-      : null;
+  // Resolve userId: Supabase Auth first, then localStorage fallback
+  useEffect(() => {
+    getUserId().then(setUserId);
+  }, []);
 
   // Load message history when panel opens
   useEffect(() => {
