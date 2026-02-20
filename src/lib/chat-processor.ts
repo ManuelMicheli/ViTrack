@@ -58,7 +58,7 @@ export async function enrichWithNutrition(
       totCarbs += result.carbs_g;
       totFat += result.fat_g;
       totFiber += result.fiber_g;
-      descParts.push(`${item.quantity_g}g ${item.name}`);
+      descParts.push(`${item.name}(${item.quantity_g}g)`);
     } else if (typeof item.calories === "number" && !isNaN(item.calories)) {
       const aiP = item.protein_g ?? 0;
       const aiC = item.carbs_g ?? 0;
@@ -75,7 +75,7 @@ export async function enrichWithNutrition(
       totCarbs += aiC;
       totFat += aiF;
       totFiber += aiFib;
-      descParts.push(`${item.quantity_g}g ${item.name}*`);
+      descParts.push(`${item.name}(${item.quantity_g}g)*`);
     } else {
       const aiTotal = meal.items.reduce((s, it) => s + it.quantity_g, 0);
       const ratio = aiTotal > 0 ? item.quantity_g / aiTotal : 0;
@@ -84,7 +84,7 @@ export async function enrichWithNutrition(
       totCarbs += parseFloat((meal.carbs_g * ratio).toFixed(1));
       totFat += parseFloat((meal.fat_g * ratio).toFixed(1));
       totFiber += parseFloat((meal.fiber_g * ratio).toFixed(1));
-      descParts.push(`${item.quantity_g}g ${item.name}*`);
+      descParts.push(`${item.name}(${item.quantity_g}g)*`);
     }
   }
 
@@ -158,11 +158,7 @@ export async function processToday(userId: string): Promise<ProcessResult> {
     totalC += m.carbs_g || 0;
     totalF += m.fat_g || 0;
     totalFib += m.fiber_g || 0;
-    const icon = m.meal_type === "colazione" ? "\u2615"
-      : m.meal_type === "pranzo" ? "\uD83C\uDF5D"
-      : m.meal_type === "cena" ? "\uD83C\uDF7D"
-      : "\uD83C\uDF4E";
-    mealLines.push(`${icon} ${m.description} - ${m.calories} kcal`);
+    mealLines.push(`${m.description} - ${m.calories} kcal`);
   }
 
   const workoutLines: string[] = [];
@@ -434,14 +430,14 @@ export async function processFreeText(
     }
 
     const msg =
-      `\u2705 Pasto registrato!\n\n` +
-      `\uD83C\uDF7D ${enriched.description}\n\n` +
-      `\uD83D\uDD25 Calorie: ${enriched.calories} kcal\n` +
-      `\uD83E\uDD69 Proteine: ${enriched.protein_g}g\n` +
-      `\uD83C\uDF5E Carboidrati: ${enriched.carbs_g}g\n` +
-      `\uD83E\uDDC8 Grassi: ${enriched.fat_g}g\n` +
-      `\uD83E\uDD66 Fibre: ${enriched.fiber_g}g\n\n` +
-      `\uD83C\uDF74 Tipo: ${enriched.meal_type}`;
+      `Pasto registrato!\n\n` +
+      `${enriched.description}\n\n` +
+      `Calorie: ${enriched.calories} kcal\n` +
+      `Proteine: ${enriched.protein_g}g\n` +
+      `Carboidrati: ${enriched.carbs_g}g\n` +
+      `Grassi: ${enriched.fat_g}g\n` +
+      `Fibre: ${enriched.fiber_g}g\n\n` +
+      `Tipo: ${enriched.meal_type}`;
 
     return { kind: "meal_saved", reply: msg, data: enriched };
   }

@@ -258,15 +258,7 @@ async function handleToday(chatId: number, telegramId: number, uid: string | nul
     totalC += m.carbs_g || 0;
     totalF += m.fat_g || 0;
     totalFib += m.fiber_g || 0;
-    const icon =
-      m.meal_type === "colazione"
-        ? "\u2615"
-        : m.meal_type === "pranzo"
-          ? "\uD83C\uDF5D"
-          : m.meal_type === "cena"
-            ? "\uD83C\uDF7D"
-            : "\uD83C\uDF4E";
-    mealLines.push(`${icon} ${m.description} - ${m.calories} kcal`);
+    mealLines.push(`${m.description} - ${m.calories} kcal`);
   }
 
   const workoutLines: string[] = [];
@@ -685,14 +677,14 @@ async function saveMealWithEdit(
   thinkingId: number | null
 ) {
   const msg =
-    `\u2705 <b>Pasto registrato!</b>\n\n` +
-    `\uD83C\uDF7D ${meal.description}\n\n` +
-    `\uD83D\uDD25 Calorie: ${meal.calories} kcal\n` +
-    `\uD83E\uDD69 Proteine: ${meal.protein_g}g\n` +
-    `\uD83C\uDF5E Carboidrati: ${meal.carbs_g}g\n` +
-    `\uD83E\uDDC8 Grassi: ${meal.fat_g}g\n` +
-    `\uD83E\uDD66 Fibre: ${meal.fiber_g}g\n\n` +
-    `\uD83C\uDF74 Tipo: ${meal.meal_type}`;
+    `<b>Pasto registrato!</b>\n\n` +
+    `${meal.description}\n\n` +
+    `Calorie: ${meal.calories} kcal\n` +
+    `Proteine: ${meal.protein_g}g\n` +
+    `Carboidrati: ${meal.carbs_g}g\n` +
+    `Grassi: ${meal.fat_g}g\n` +
+    `Fibre: ${meal.fiber_g}g\n\n` +
+    `Tipo: ${meal.meal_type}`;
 
   // Show result to user AND save to DB in parallel — user sees response instantly
   const [, dbResult] = await Promise.all([
@@ -741,14 +733,14 @@ async function saveMeal(
 
   await sendMessage(
     chatId,
-    `\u2705 <b>Pasto registrato!</b>\n\n` +
-      `\uD83C\uDF7D ${meal.description}\n\n` +
-      `\uD83D\uDD25 Calorie: ${meal.calories} kcal\n` +
-      `\uD83E\uDD69 Proteine: ${meal.protein_g}g\n` +
-      `\uD83C\uDF5E Carboidrati: ${meal.carbs_g}g\n` +
-      `\uD83E\uDDC8 Grassi: ${meal.fat_g}g\n` +
-      `\uD83E\uDD66 Fibre: ${meal.fiber_g}g\n\n` +
-      `\uD83C\uDF74 Tipo: ${meal.meal_type}`
+    `<b>Pasto registrato!</b>\n\n` +
+      `${meal.description}\n\n` +
+      `Calorie: ${meal.calories} kcal\n` +
+      `Proteine: ${meal.protein_g}g\n` +
+      `Carboidrati: ${meal.carbs_g}g\n` +
+      `Grassi: ${meal.fat_g}g\n` +
+      `Fibre: ${meal.fiber_g}g\n\n` +
+      `Tipo: ${meal.meal_type}`
   );
 }
 

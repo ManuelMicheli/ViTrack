@@ -10,11 +10,11 @@ import AddMealModal from "@/components/AddMealModal";
 
 const mealTypeOrder = ["colazione", "pranzo", "cena", "snack"] as const;
 
-const mealTypeConfig: Record<string, { label: string; icon: string }> = {
-  colazione: { label: "Colazione", icon: "☀️" },
-  pranzo: { label: "Pranzo", icon: "🌤️" },
-  cena: { label: "Cena", icon: "🌙" },
-  snack: { label: "Snack", icon: "🍎" },
+const mealTypeConfig: Record<string, { label: string }> = {
+  colazione: { label: "Colazione" },
+  pranzo: { label: "Pranzo" },
+  cena: { label: "Cena" },
+  snack: { label: "Snack" },
 };
 
 export default function MealsPage() {
@@ -105,11 +105,10 @@ export default function MealsPage() {
       </div>
 
       {/* Grouped meal sections */}
-      {grouped.map(({ type, label, icon, meals: sectionMeals, totalCal }) => (
+      {grouped.map(({ type, label, meals: sectionMeals, totalCal }) => (
         <div key={type}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <span>{icon}</span>
               <h3 className="text-sm font-medium uppercase tracking-wider text-[#A1A1A1]">{label}</h3>
               {totalCal > 0 && (
                 <span className="text-xs text-[#666] ml-1">{totalCal} kcal</span>

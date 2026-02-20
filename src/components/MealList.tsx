@@ -11,11 +11,11 @@ interface MealListProps {
   compact?: boolean;
 }
 
-const mealTypeIcons: Record<string, string> = {
-  colazione: "☀️",
-  pranzo: "🌤️",
-  cena: "🌙",
-  snack: "🍎",
+const mealTypeLabels: Record<string, string> = {
+  colazione: "Colazione",
+  pranzo: "Pranzo",
+  cena: "Cena",
+  snack: "Snack",
 };
 
 export default function MealList({ meals, onDelete, compact }: MealListProps) {
@@ -50,7 +50,7 @@ export default function MealList({ meals, onDelete, compact }: MealListProps) {
           {meals.slice(0, compact ? 3 : undefined).map((meal) => (
             <div key={meal.id} className="flex items-start justify-between p-3 rounded-xl bg-white/[0.03] border border-white/[0.04] hover:bg-white/[0.05] transition-colors group">
               <div className="flex gap-3 flex-1 min-w-0">
-                <span className="text-lg">{mealTypeIcons[meal.meal_type] || "🍽️"}</span>
+                <span className="text-[10px] text-[#666] uppercase tracking-wider self-center">{mealTypeLabels[meal.meal_type] || "Pasto"}</span>
                 <div className="min-w-0">
                   <p className="font-medium text-white text-sm truncate">{meal.description}</p>
                   <div className="flex gap-2 mt-1 text-xs">
