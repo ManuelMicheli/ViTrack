@@ -2,12 +2,25 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { motion, Reorder } from "framer-motion";
 import type { User } from "@/lib/types";
 import ConfirmModal from "@/components/ConfirmModal";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
+import { usePreferences, ACCENT_COLORS, type AccentColor, type LayoutMode } from "@/lib/preferences-context";
+
+const sectionLabels: Record<string, string> = {
+  greeting: "Saluto",
+  quickadd: "Azioni rapide",
+  calories: "Calorie e Macro",
+  "water-streak": "Acqua e Streak",
+  weight: "Peso",
+  meals: "Pasti",
+  workouts: "Allenamenti",
+};
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { accentColor, setAccentColor, layoutMode, setLayoutMode, sectionOrder, setSectionOrder } = usePreferences();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -625,6 +638,79 @@ export default function SettingsPage() {
                 {user?.height_cm ? `${user.height_cm} cm` : "Non impostato"}
               </button>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* ──────────── Personalizzazione ──────────── */}
+      <div className="glass-card-strong rounded-2xl p-5">
+        <h3 className="text-lg font-semibold text-white mb-4">Personalizzazione</h3>
+        <div className="space-y-0 divide-y divide-white/[0.06]">
+          {/* Accent color */}
+          <div className="py-3">
+            <span className="text-sm text-[#A1A1A1] block mb-3">Colore accento</span>
+            <div className="flex gap-3">
+              {(Object.entries(ACCENT_COLORS) as [AccentColor, string][]).map(([key, hex]) => (
+                <motion.button
+                  key={key}
+                  onClick={() => setAccentColor(key)}
+                  className={`w-8 h-8 rounded-full border-2 transition-colors ${
+                    accentColor === key ? "border-white" : "border-transparent"
+                  }`}
+                  style={{ backgroundColor: hex }}
+                  whileTap={{ scale: 0.9 }}
+                  animate={accentColor === key ? { scale: 1.1 } : { scale: 1 }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Layout mode */}
+          <div className="py-3 flex justify-between items-center">
+            <div>
+              <span className="text-sm text-[#A1A1A1]">Layout</span>
+              <p className="text-[10px] text-[#666] mt-0.5">Compatto o espanso</p>
+            </div>
+            <div className="flex bg-white/[0.04] rounded-lg p-0.5">
+              <button
+                onClick={() => setLayoutMode("compact")}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  layoutMode === "compact" ? "bg-white/[0.1] text-white" : "text-[#666] hover:text-[#999]"
+                }`}
+              >
+                Compatto
+              </button>
+              <button
+                onClick={() => setLayoutMode("expanded")}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  layoutMode === "expanded" ? "bg-white/[0.1] text-white" : "text-[#666] hover:text-[#999]"
+                }`}
+              >
+                Espanso
+              </button>
+            </div>
+          </div>
+
+          {/* Section order */}
+          <div className="py-3">
+            <span className="text-sm text-[#A1A1A1] block mb-3">Ordine sezioni dashboard</span>
+            <Reorder.Group
+              axis="y"
+              values={sectionOrder}
+              onReorder={setSectionOrder}
+              className="space-y-1.5"
+            >
+              {sectionOrder.map((section) => (
+                <Reorder.Item
+                  key={section}
+                  value={section}
+                  className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] cursor-grab active:cursor-grabbing"
+                >
+                  <span className="text-[#666]">&#x2807;</span>
+                  <span className="text-sm">{sectionLabels[section] || section}</span>
+                </Reorder.Item>
+              ))}
+            </Reorder.Group>
           </div>
         </div>
       </div>
