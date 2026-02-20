@@ -1,0 +1,45 @@
+import { supabase } from "@/lib/supabase";
+import { NextRequest, NextResponse } from "next/server";
+
+export async function GET(request: NextRequest) {
+  const userId = request.nextUrl.searchParams.get("user_id");
+  const limit = request.nextUrl.searchParams.get("limit") || "30";
+
+  if (!userId) {
+    return NextResponse.json({ error: "user_id required" }, { status: 400 });
+  }
+
+  const { data, error } = await supabase
+    .from("weight_logs")
+    .select("*")
+    .eq("user_id", userId)
+    .order("logged_at", { ascending: false })
+    .limit(parseInt(limit));
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json(data);
+}
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+  const { user_id, weight_kg } = body;
+
+  if (!user_id || !weight_kg) {
+    return NextResponse.json({ error: "user_id and weight_kg required" }, { status: 400 });
+  }
+
+  const { data, error } = await supabase
+    .from("weight_logs")
+    .insert({ user_id, weight_kg })
+    .select()
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json(data);
+}
