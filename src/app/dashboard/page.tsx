@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import type { DailySummary, User } from "@/lib/types";
@@ -17,6 +17,7 @@ import AddMealModal from "@/components/AddMealModal";
 import { staggerContainer, staggerItem } from "@/lib/animation-config";
 import { getGreeting, getMotivation } from "@/lib/personalization";
 import { useCelebration } from "@/lib/celebration-context";
+import { usePreferences } from "@/lib/preferences-context";
 
 export default function DashboardPage() {
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
@@ -26,6 +27,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
 
   const { celebrate } = useCelebration();
+  const { sectionOrder } = usePreferences();
 
   const userId = typeof window !== "undefined" ? localStorage.getItem("vitrack_user_id") : null;
 
@@ -131,14 +133,9 @@ export default function DashboardPage() {
     );
   }
 
-  return (
-    <motion.div
-      className="px-4 md:px-8 py-6 space-y-4"
-      initial="initial"
-      animate="animate"
-      variants={staggerContainer(0.08)}
-    >
-      <motion.div variants={staggerItem} className="flex items-center justify-between">
+  const sections: Record<string, React.ReactNode> = {
+    greeting: (
+      <motion.div key="greeting" variants={staggerItem} className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold">{getGreeting(user?.first_name ?? null)}</h2>
           {summary && (
@@ -155,9 +152,9 @@ export default function DashboardPage() {
         </div>
         <DatePicker value={date} onChange={setDate} />
       </motion.div>
-
-      {/* Quick Add Bar - removed weight since it's now in the widget */}
-      <motion.div variants={staggerItem}>
+    ),
+    quickadd: (
+      <motion.div key="quickadd" variants={staggerItem}>
         <QuickAddBar
           onAddMeal={() => setMealModalOpen(true)}
           onAddWater={() => {}}
@@ -165,66 +162,72 @@ export default function DashboardPage() {
           onAddWeight={() => {}}
         />
       </motion.div>
+    ),
+    calories: summary ? (
+      <motion.div key="calories" variants={staggerItem} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <CalorieProgress current={summary.totals.calories} goal={summary.calorie_goal} burned={summary.totals.calories_burned} />
+        <div className="lg:col-span-2">
+          <DailySummaryCard totals={summary.totals} />
+        </div>
+      </motion.div>
+    ) : null,
+    "water-streak": summary && userId ? (
+      <motion.div key="water-streak" variants={staggerItem} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <WaterTracker
+          userId={userId}
+          date={date}
+          waterGoalMl={user?.water_goal_ml ?? 2000}
+          trackingMode={user?.water_tracking_mode ?? "glasses"}
+          onSettingsChange={(settings) => updateUserSettings(settings)}
+        />
+        <StreakCalendar userId={userId} />
+      </motion.div>
+    ) : null,
+    weight: summary && userId ? (
+      <motion.div key="weight" variants={staggerItem}>
+        <WeightChart
+          userId={userId}
+          weightGoalKg={user?.weight_goal_kg}
+          heightCm={user?.height_cm}
+          onGoalChange={(goal) => updateUserSettings({ weight_goal_kg: goal })}
+        />
+      </motion.div>
+    ) : null,
+    meals: summary ? (
+      <motion.div key="meals" variants={staggerItem}>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium">Pasti di oggi</h3>
+          <Link href="/dashboard/meals" className="text-xs text-[#666] hover:text-white transition-colors">
+            Vedi tutti &rarr;
+          </Link>
+        </div>
+        <MealList meals={summary.meals.slice(0, 3)} onDelete={handleDeleteMeal} compact />
+      </motion.div>
+    ) : null,
+    workouts: summary ? (
+      <motion.div key="workouts" variants={staggerItem}>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium">Allenamenti di oggi</h3>
+          <Link href="/dashboard/workouts" className="text-xs text-[#666] hover:text-white transition-colors">
+            Vedi tutti &rarr;
+          </Link>
+        </div>
+        <WorkoutList workouts={summary.workouts.slice(0, 3)} onDelete={handleDeleteWorkout} compact />
+      </motion.div>
+    ) : null,
+  };
 
-      {summary && (
-        <>
-          {/* Calories + Macros */}
-          <motion.div variants={staggerItem} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <CalorieProgress current={summary.totals.calories} goal={summary.calorie_goal} burned={summary.totals.calories_burned} />
-            <div className="lg:col-span-2">
-              <DailySummaryCard totals={summary.totals} />
-            </div>
-          </motion.div>
-
-          {/* Water + Streak */}
-          {userId && (
-            <motion.div variants={staggerItem} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <WaterTracker
-                userId={userId}
-                date={date}
-                waterGoalMl={user?.water_goal_ml ?? 2000}
-                trackingMode={user?.water_tracking_mode ?? "glasses"}
-                onSettingsChange={(settings) => updateUserSettings(settings)}
-              />
-              <StreakCalendar userId={userId} />
-            </motion.div>
-          )}
-
-          {/* Weight */}
-          {userId && (
-            <motion.div variants={staggerItem}>
-              <WeightChart
-                userId={userId}
-                weightGoalKg={user?.weight_goal_kg}
-                heightCm={user?.height_cm}
-                onGoalChange={(goal) => updateUserSettings({ weight_goal_kg: goal })}
-              />
-            </motion.div>
-          )}
-
-          {/* Meals */}
-          <motion.div variants={staggerItem}>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium">Pasti di oggi</h3>
-              <Link href="/dashboard/meals" className="text-xs text-[#666] hover:text-white transition-colors">
-                Vedi tutti →
-              </Link>
-            </div>
-            <MealList meals={summary.meals.slice(0, 3)} onDelete={handleDeleteMeal} compact />
-          </motion.div>
-
-          {/* Workouts */}
-          <motion.div variants={staggerItem}>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium">Allenamenti di oggi</h3>
-              <Link href="/dashboard/workouts" className="text-xs text-[#666] hover:text-white transition-colors">
-                Vedi tutti →
-              </Link>
-            </div>
-            <WorkoutList workouts={summary.workouts.slice(0, 3)} onDelete={handleDeleteWorkout} compact />
-          </motion.div>
-        </>
-      )}
+  return (
+    <motion.div
+      className="px-4 md:px-8 py-6 space-y-4"
+      initial="initial"
+      animate="animate"
+      variants={staggerContainer(0.08)}
+    >
+      {sectionOrder.map((key) => {
+        const node = sections[key];
+        return node ? <React.Fragment key={key}>{node}</React.Fragment> : null;
+      })}
 
       <AddMealModal
         isOpen={mealModalOpen}
