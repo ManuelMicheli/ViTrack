@@ -22,7 +22,7 @@ export default function RootLayout({
     <html lang="it">
       <body className={`${geistSans.variable} font-sans antialiased bg-black text-white`}>
         {/* Inline loading screen — visible immediately before JS hydrates */}
-        <div id="vt-preloader" style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "#000" }}>
+        <div id="vt-preloader" suppressHydrationWarning style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "#000", transition: "opacity 0.2s", pointerEvents: "none" }}>
           <svg width="96" height="48" viewBox="0 0 96 48" fill="none">
             <style>{`
               @keyframes vt-draw-v { from { stroke-dashoffset: 80 } to { stroke-dashoffset: 0 } }
@@ -37,14 +37,14 @@ export default function RootLayout({
             <path id="vt-tstem" d="M 72 8 L 72 40" stroke="#fff" strokeWidth="4" strokeLinecap="round" fill="none" />
           </svg>
         </div>
-        <script dangerouslySetInnerHTML={{ __html: `
+        <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: `
           (function(){
             var done = false;
             function hide() {
               if (done) return;
               done = true;
               var el = document.getElementById('vt-preloader');
-              if (el) { el.style.transition = 'opacity 0.2s'; el.style.opacity = '0'; setTimeout(function(){ el.remove() }, 200); }
+              if (el) { el.style.opacity = '0'; }
             }
             window.addEventListener('load', function(){ setTimeout(hide, 600) });
             setTimeout(hide, 3000);
