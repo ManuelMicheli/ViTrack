@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { HomeIcon, UtensilsIcon, DumbbellIcon, ChartIcon, SettingsIcon, ChatIcon } from "./icons";
+import VTLogoIcon from "./VTLogo";
 import { useChat } from "@/lib/chat-context";
 import { springs } from "@/lib/animation-config";
 
@@ -26,7 +27,8 @@ export default function Sidebar({ currentPath, user, onLogout }: SidebarProps) {
 
   return (
     <aside className="hidden md:flex md:flex-col fixed left-0 top-0 h-full w-60 bg-[#0A0A0A]/80 backdrop-blur-xl border-r border-white/[0.06] z-20">
-      <div className="p-6">
+      <div className="p-6 flex items-center gap-3">
+        <VTLogoIcon className="w-10 h-5" />
         <h1 className="text-xl font-bold tracking-tight text-white">ViTrack</h1>
       </div>
 
