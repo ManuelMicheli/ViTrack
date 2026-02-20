@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import type { User } from "@/lib/types";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
@@ -80,7 +81,13 @@ export default function DashboardLayout({
   if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-[#A1A1A1]">Caricamento...</div>
+        <motion.div
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 1.5, repeat: Infinity }}
+          className="text-[#A1A1A1]"
+        >
+          Caricamento...
+        </motion.div>
       </div>
     );
   }
