@@ -15,6 +15,7 @@ interface DailySummaryProps {
     workouts_count: number;
     calories_burned: number;
   };
+  compact?: boolean;
 }
 
 const macroCards = [
@@ -40,7 +41,7 @@ function AnimatedNum({ value }: { value: number }) {
   return <motion.span>{display}</motion.span>;
 }
 
-export default function DailySummary({ totals }: DailySummaryProps) {
+export default function DailySummary({ totals, compact }: DailySummaryProps) {
   return (
     <motion.div
       className="grid grid-cols-2 sm:grid-cols-4 gap-2"
@@ -52,7 +53,7 @@ export default function DailySummary({ totals }: DailySummaryProps) {
         const value = totals[macro.key];
         const pct = Math.min((value / macro.goal) * 100, 100);
         return (
-          <motion.div key={macro.key} className="glass-card p-3" variants={staggerItem}>
+          <motion.div key={macro.key} className={`glass-card ${compact ? "p-2" : "p-3"}`} variants={staggerItem}>
             <span className="text-[10px] text-[#666] uppercase tracking-wider">{macro.label}</span>
             <p className="text-xl font-bold mt-1">
               <AnimatedNum value={value} />

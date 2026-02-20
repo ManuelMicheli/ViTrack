@@ -8,6 +8,7 @@ interface CalorieProgressProps {
   current: number;
   goal: number;
   burned: number;
+  compact?: boolean;
 }
 
 function AnimatedNum({ value }: { value: number }) {
@@ -28,13 +29,13 @@ function AnimatedNum({ value }: { value: number }) {
   return <motion.span>{display}</motion.span>;
 }
 
-export default function CalorieProgress({ current, goal, burned }: CalorieProgressProps) {
+export default function CalorieProgress({ current, goal, burned, compact }: CalorieProgressProps) {
   const percentage = Math.min((current / goal) * 100, 100);
   const isOver = current > goal;
   const remaining = Math.max(goal - current, 0);
 
-  const size = 180;
-  const strokeWidth = 12;
+  const size = compact ? 140 : 180;
+  const strokeWidth = compact ? 10 : 12;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (percentage / 100) * circumference;
@@ -44,7 +45,7 @@ export default function CalorieProgress({ current, goal, burned }: CalorieProgre
   const progressColorEnd = isOver ? "#DC2626" : percentage >= 80 ? "#F59E0B" : "#8B5CF6";
 
   return (
-    <div className="glass-card p-6">
+    <div className={`glass-card ${compact ? "p-4" : "p-6"}`}>
       <div className="flex flex-col items-center">
         <div className="relative" style={{ width: size, height: size }}>
           <svg width={size} height={size} className="-rotate-90">

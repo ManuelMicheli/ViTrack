@@ -27,7 +27,8 @@ export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
 
   const { celebrate } = useCelebration();
-  const { sectionOrder } = usePreferences();
+  const { sectionOrder, layoutMode } = usePreferences();
+  const isCompact = layoutMode === "compact";
 
   const userId = typeof window !== "undefined" ? localStorage.getItem("vitrack_user_id") : null;
 
@@ -165,9 +166,9 @@ export default function DashboardPage() {
     ),
     calories: summary ? (
       <motion.div key="calories" variants={staggerItem} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <CalorieProgress current={summary.totals.calories} goal={summary.calorie_goal} burned={summary.totals.calories_burned} />
+        <CalorieProgress current={summary.totals.calories} goal={summary.calorie_goal} burned={summary.totals.calories_burned} compact={isCompact} />
         <div className="lg:col-span-2">
-          <DailySummaryCard totals={summary.totals} />
+          <DailySummaryCard totals={summary.totals} compact={isCompact} />
         </div>
       </motion.div>
     ) : null,
@@ -219,7 +220,7 @@ export default function DashboardPage() {
 
   return (
     <motion.div
-      className="px-4 md:px-8 py-6 space-y-4"
+      className={`px-4 md:px-8 ${isCompact ? "py-3 space-y-2" : "py-6 space-y-4"}`}
       initial="initial"
       animate="animate"
       variants={staggerContainer(0.08)}
