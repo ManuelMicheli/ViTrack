@@ -1,19 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { User } from "@/lib/types";
 import ConfirmModal from "@/components/ConfirmModal";
+import { createSupabaseBrowser } from "@/lib/supabase-browser";
 
 export default function SettingsPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Profile editing states
   const [editGoal, setEditGoal] = useState(false);
   const [goalValue, setGoalValue] = useState("");
   const [savingGoal, setSavingGoal] = useState(false);
-
-  // Goals states
   const [editWaterGoal, setEditWaterGoal] = useState(false);
   const [waterGoalValue, setWaterGoalValue] = useState("");
   const [editWeightGoal, setEditWeightGoal] = useState(false);
@@ -21,6 +22,18 @@ export default function SettingsPage() {
   const [editHeight, setEditHeight] = useState(false);
   const [heightValue, setHeightValue] = useState("");
   const [savingField, setSavingField] = useState("");
+
+  // Password change states
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Telegram link states
+  const [telegramInput, setTelegramInput] = useState("");
+  const [telegramSaving, setTelegramSaving] = useState(false);
+  const [telegramMsg, setTelegramMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Reset data states
   const [resetType, setResetType] = useState<"meals" | "workouts" | "all" | null>(null);
@@ -31,21 +44,46 @@ export default function SettingsPage() {
 
   const userId = typeof window !== "undefined" ? localStorage.getItem("vitrack_user_id") : null;
 
-  useEffect(() => {
-    const telegramId = localStorage.getItem("vitrack_telegram_id");
-    if (!telegramId) { router.push("/"); return; }
-    const fetchUser = async () => {
-      try {
-        const res = await fetch(`/api/user?telegram_id=${encodeURIComponent(telegramId)}`);
+  const fetchUser = useCallback(async () => {
+    try {
+      // Try Supabase Auth session first
+      const supabase = createSupabaseBrowser();
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData?.session?.user?.id) {
+        const res = await fetch(`/api/user?id=${encodeURIComponent(sessionData.session.user.id)}`);
         if (res.ok) {
           const data = await res.json();
           setUser(data);
           setGoalValue(String(data.daily_calorie_goal));
+          setLoading(false);
+          return;
         }
-      } catch { /* ignore */ } finally { setLoading(false); }
-    };
-    fetchUser();
+      }
+
+      // Fallback to localStorage telegram_id
+      const telegramId = localStorage.getItem("vitrack_telegram_id");
+      if (!telegramId) {
+        router.push("/");
+        return;
+      }
+      const res = await fetch(`/api/user?telegram_id=${encodeURIComponent(telegramId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data);
+        setGoalValue(String(data.daily_calorie_goal));
+      } else {
+        router.push("/");
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
   }, [router]);
+
+  useEffect(() => {
+    fetchUser();
+  }, [fetchUser]);
 
   const handleSaveGoal = async () => {
     if (!user || !goalValue) return;
@@ -61,7 +99,11 @@ export default function SettingsPage() {
         setUser(updated);
         setEditGoal(false);
       }
-    } catch { /* ignore */ } finally { setSavingGoal(false); }
+    } catch {
+      /* ignore */
+    } finally {
+      setSavingGoal(false);
+    }
   };
 
   const handleSaveField = async (field: string, value: unknown) => {
@@ -77,8 +119,117 @@ export default function SettingsPage() {
         const updated = await res.json();
         setUser(updated);
       }
-    } catch { /* ignore */ } finally {
+    } catch {
+      /* ignore */
+    } finally {
       setSavingField("");
+    }
+  };
+
+  const handleQuickSave = async (field: string, value: unknown) => {
+    if (!user) return;
+    try {
+      const res = await fetch(`/api/user?id=${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setUser(updated);
+      }
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (!newPassword || !confirmPassword) return;
+    if (newPassword !== confirmPassword) {
+      setPasswordMsg({ type: "error", text: "Le password non corrispondono" });
+      setTimeout(() => setPasswordMsg(null), 4000);
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordMsg({ type: "error", text: "La password deve essere di almeno 6 caratteri" });
+      setTimeout(() => setPasswordMsg(null), 4000);
+      return;
+    }
+    setPasswordSaving(true);
+    try {
+      const supabase = createSupabaseBrowser();
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        setPasswordMsg({ type: "error", text: error.message });
+      } else {
+        setPasswordMsg({ type: "success", text: "Password aggiornata con successo" });
+        setNewPassword("");
+        setConfirmPassword("");
+        setShowPasswordForm(false);
+      }
+      setTimeout(() => setPasswordMsg(null), 4000);
+    } catch {
+      setPasswordMsg({ type: "error", text: "Errore durante l'aggiornamento" });
+      setTimeout(() => setPasswordMsg(null), 4000);
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
+
+  const handleLinkTelegram = async () => {
+    if (!user || !telegramInput.trim()) return;
+    const parsed = parseInt(telegramInput.trim());
+    if (isNaN(parsed)) {
+      setTelegramMsg({ type: "error", text: "ID Telegram non valido" });
+      setTimeout(() => setTelegramMsg(null), 4000);
+      return;
+    }
+    setTelegramSaving(true);
+    try {
+      const res = await fetch(`/api/user?id=${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telegram_id: parsed }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setUser(updated);
+        setTelegramInput("");
+        setTelegramMsg({ type: "success", text: "Telegram collegato con successo" });
+      } else {
+        setTelegramMsg({ type: "error", text: "Errore durante il collegamento" });
+      }
+      setTimeout(() => setTelegramMsg(null), 4000);
+    } catch {
+      setTelegramMsg({ type: "error", text: "Errore di connessione" });
+      setTimeout(() => setTelegramMsg(null), 4000);
+    } finally {
+      setTelegramSaving(false);
+    }
+  };
+
+  const handleUnlinkTelegram = async () => {
+    if (!user) return;
+    setTelegramSaving(true);
+    try {
+      const res = await fetch(`/api/user?id=${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telegram_id: null }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setUser(updated);
+        setTelegramMsg({ type: "success", text: "Telegram scollegato" });
+      } else {
+        setTelegramMsg({ type: "error", text: "Errore durante lo scollegamento" });
+      }
+      setTimeout(() => setTelegramMsg(null), 4000);
+    } catch {
+      setTelegramMsg({ type: "error", text: "Errore di connessione" });
+      setTimeout(() => setTelegramMsg(null), 4000);
+    } finally {
+      setTelegramSaving(false);
     }
   };
 
@@ -92,9 +243,11 @@ export default function SettingsPage() {
       const data = await res.json();
       if (res.ok) {
         setResetSuccess(
-          resetType === "meals" ? `Dati dieta azzerati (${data.deleted} record)` :
-          resetType === "workouts" ? `Dati allenamento azzerati (${data.deleted} record)` :
-          `Tutti i dati azzerati (${data.deleted} record)`
+          resetType === "meals"
+            ? `Dati dieta azzerati (${data.deleted} record)`
+            : resetType === "workouts"
+            ? `Dati allenamento azzerati (${data.deleted} record)`
+            : `Tutti i dati azzerati (${data.deleted} record)`
         );
         setTimeout(() => setResetSuccess(""), 4000);
       } else {
@@ -111,7 +264,14 @@ export default function SettingsPage() {
     }
   };
 
-  const handleLogout = () => {
+  const handleExportData = () => {
+    if (!user) return;
+    window.open(`/api/user/export?user_id=${user.id}`, "_blank");
+  };
+
+  const handleLogout = async () => {
+    const supabase = createSupabaseBrowser();
+    await supabase.auth.signOut();
     localStorage.removeItem("vitrack_user_id");
     localStorage.removeItem("vitrack_telegram_id");
     router.push("/");
@@ -121,7 +281,9 @@ export default function SettingsPage() {
     return (
       <div className="px-4 md:px-8 py-6 space-y-4">
         <div className="h-8 w-40 shimmer rounded-lg" />
-        {[...Array(3)].map((_, i) => <div key={i} className="h-24 shimmer rounded-2xl" />)}
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-24 shimmer rounded-2xl" />
+        ))}
       </div>
     );
   }
@@ -130,37 +292,144 @@ export default function SettingsPage() {
     <div className="px-4 md:px-8 py-6 space-y-6 animate-fade-in max-w-2xl">
       <h2 className="text-xl font-bold">Impostazioni</h2>
 
-      {/* Success toast */}
+      {/* Global toasts */}
       {resetSuccess && (
         <div className="p-3 rounded-xl bg-[#22C55E]/10 border border-[#22C55E]/20 text-[#22C55E] text-sm text-center animate-slide-up">
           {resetSuccess}
         </div>
       )}
-
-      {/* Error toast */}
       {resetError && (
         <div className="p-3 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#EF4444] text-sm text-center animate-slide-up">
           {resetError}
         </div>
       )}
+      {/* ──────────── 1. Account Section ──────────── */}
+      <div className="glass-card-strong rounded-2xl p-5">
+        <h3 className="text-lg font-semibold text-white mb-4">Account</h3>
+        <div className="space-y-4">
+          {/* Email */}
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-[#A1A1A1]">Email</span>
+            <span className="text-sm font-medium text-white/70">
+              {user?.email || "Non impostata"}
+            </span>
+          </div>
 
-      {/* Profile section */}
-      <div>
-        <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium mb-3">Profilo</h3>
-        <div className="glass-card divide-y divide-white/[0.06]">
-          <div className="p-4 flex justify-between items-center">
+          {/* Password change */}
+          <div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-[#A1A1A1]">Password</span>
+              <button
+                onClick={() => setShowPasswordForm(!showPasswordForm)}
+                className="text-xs text-[#3B82F6] font-medium hover:text-[#3B82F6]/80 transition-colors"
+              >
+                {showPasswordForm ? "Annulla" : "Cambio Password"}
+              </button>
+            </div>
+            {showPasswordForm && (
+              <div className="mt-3 space-y-3">
+                <input
+                  type="password"
+                  placeholder="Nuova password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-[#3B82F6]/30"
+                />
+                <input
+                  type="password"
+                  placeholder="Conferma password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-[#3B82F6]/30"
+                />
+                {passwordMsg && (
+                  <p
+                    className={`text-xs ${
+                      passwordMsg.type === "success" ? "text-[#22C55E]" : "text-[#EF4444]"
+                    }`}
+                  >
+                    {passwordMsg.text}
+                  </p>
+                )}
+                <button
+                  onClick={handlePasswordChange}
+                  disabled={passwordSaving || !newPassword || !confirmPassword}
+                  className="w-full py-2.5 rounded-xl bg-[#3B82F6]/20 text-[#3B82F6] text-sm font-medium hover:bg-[#3B82F6]/30 transition-colors disabled:opacity-40"
+                >
+                  {passwordSaving ? "Aggiornamento..." : "Aggiorna Password"}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Telegram link/unlink */}
+          <div className="border-t border-white/[0.06] pt-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-[#A1A1A1]">Telegram</span>
+              {user?.telegram_id ? (
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-white/70">{user.telegram_id}</span>
+                  <button
+                    onClick={handleUnlinkTelegram}
+                    disabled={telegramSaving}
+                    className="text-xs text-[#EF4444] font-medium hover:text-[#EF4444]/80 transition-colors"
+                  >
+                    {telegramSaving ? "..." : "Scollega"}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Telegram ID"
+                    value={telegramInput}
+                    onChange={(e) => setTelegramInput(e.target.value)}
+                    className="w-32 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-[#3B82F6]/30"
+                  />
+                  <button
+                    onClick={handleLinkTelegram}
+                    disabled={telegramSaving || !telegramInput.trim()}
+                    className="text-xs text-[#3B82F6] font-medium hover:text-[#3B82F6]/80 transition-colors disabled:opacity-40"
+                  >
+                    {telegramSaving ? "..." : "Collega"}
+                  </button>
+                </div>
+              )}
+            </div>
+            {telegramMsg && (
+              <p
+                className={`text-xs mt-2 ${
+                  telegramMsg.type === "success" ? "text-[#22C55E]" : "text-[#EF4444]"
+                }`}
+              >
+                {telegramMsg.text}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ──────────── Profile Section (kept from original) ──────────── */}
+      <div className="glass-card-strong rounded-2xl p-5">
+        <h3 className="text-lg font-semibold text-white mb-4">Profilo</h3>
+        <div className="space-y-0 divide-y divide-white/[0.06]">
+          <div className="py-3 flex justify-between items-center">
             <span className="text-sm text-[#A1A1A1]">Nome</span>
-            <span className="text-sm font-medium">{user?.first_name || "—"}</span>
+            <span className="text-sm font-medium">{user?.first_name || "\u2014"}</span>
           </div>
-          <div className="p-4 flex justify-between items-center">
+          <div className="py-3 flex justify-between items-center">
             <span className="text-sm text-[#A1A1A1]">Username</span>
-            <span className="text-sm font-medium">{user?.username ? `@${user.username}` : "—"}</span>
+            <span className="text-sm font-medium">{user?.username ? `@${user.username}` : "\u2014"}</span>
           </div>
-          <div className="p-4 flex justify-between items-center">
-            <span className="text-sm text-[#A1A1A1]">Telegram ID</span>
-            <span className="text-sm font-medium text-[#666]">{user?.telegram_id}</span>
-          </div>
-          <div className="p-4 flex justify-between items-center">
+        </div>
+      </div>
+
+      {/* ──────────── Obiettivi Section (kept from original) ──────────── */}
+      <div className="glass-card-strong rounded-2xl p-5">
+        <h3 className="text-lg font-semibold text-white mb-4">Obiettivi</h3>
+        <div className="space-y-0 divide-y divide-white/[0.06]">
+          {/* Calorie goal */}
+          <div className="py-3 flex justify-between items-center">
             <span className="text-sm text-[#A1A1A1]">Obiettivo calorie</span>
             {editGoal ? (
               <div className="flex items-center gap-2">
@@ -175,23 +444,22 @@ export default function SettingsPage() {
                 <button onClick={handleSaveGoal} disabled={savingGoal} className="text-xs text-[#3B82F6] font-medium">
                   {savingGoal ? "..." : "Salva"}
                 </button>
-                <button onClick={() => setEditGoal(false)} className="text-xs text-[#666]">Annulla</button>
+                <button onClick={() => setEditGoal(false)} className="text-xs text-[#666]">
+                  Annulla
+                </button>
               </div>
             ) : (
-              <button onClick={() => setEditGoal(true)} className="text-sm font-medium hover:text-[#3B82F6] transition-colors">
+              <button
+                onClick={() => setEditGoal(true)}
+                className="text-sm font-medium hover:text-[#3B82F6] transition-colors"
+              >
                 {user?.daily_calorie_goal} kcal
               </button>
             )}
           </div>
-        </div>
-      </div>
 
-      {/* Obiettivi section */}
-      <div>
-        <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium mb-3">Obiettivi</h3>
-        <div className="glass-card divide-y divide-white/[0.06]">
           {/* Water goal */}
-          <div className="p-4 flex justify-between items-center">
+          <div className="py-3 flex justify-between items-center">
             <div>
               <span className="text-sm text-[#A1A1A1]">Obiettivo acqua</span>
               <p className="text-[10px] text-[#666] mt-0.5">Consumo giornaliero target</p>
@@ -219,11 +487,16 @@ export default function SettingsPage() {
                 >
                   {savingField === "water_goal_ml" ? "..." : "Salva"}
                 </button>
-                <button onClick={() => setEditWaterGoal(false)} className="text-xs text-[#666]">Annulla</button>
+                <button onClick={() => setEditWaterGoal(false)} className="text-xs text-[#666]">
+                  Annulla
+                </button>
               </div>
             ) : (
               <button
-                onClick={() => { setEditWaterGoal(true); setWaterGoalValue(String(user?.water_goal_ml ?? 2000)); }}
+                onClick={() => {
+                  setEditWaterGoal(true);
+                  setWaterGoalValue(String(user?.water_goal_ml ?? 2000));
+                }}
                 className="text-sm font-medium text-[#06B6D4] hover:text-[#06B6D4]/80 transition-colors"
               >
                 {user?.water_goal_ml ?? 2000} ml
@@ -232,7 +505,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Water tracking mode */}
-          <div className="p-4 flex justify-between items-center">
+          <div className="py-3 flex justify-between items-center">
             <div>
               <span className="text-sm text-[#A1A1A1]">Modalita tracciamento</span>
               <p className="text-[10px] text-[#666] mt-0.5">Bicchieri o millilitri</p>
@@ -262,7 +535,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Weight goal */}
-          <div className="p-4 flex justify-between items-center">
+          <div className="py-3 flex justify-between items-center">
             <div>
               <span className="text-sm text-[#A1A1A1]">Peso obiettivo</span>
               <p className="text-[10px] text-[#666] mt-0.5">Il tuo peso target</p>
@@ -291,11 +564,16 @@ export default function SettingsPage() {
                 >
                   {savingField === "weight_goal_kg" ? "..." : "Salva"}
                 </button>
-                <button onClick={() => setEditWeightGoal(false)} className="text-xs text-[#666]">Annulla</button>
+                <button onClick={() => setEditWeightGoal(false)} className="text-xs text-[#666]">
+                  Annulla
+                </button>
               </div>
             ) : (
               <button
-                onClick={() => { setEditWeightGoal(true); setWeightGoalValue(user?.weight_goal_kg ? String(user.weight_goal_kg) : ""); }}
+                onClick={() => {
+                  setEditWeightGoal(true);
+                  setWeightGoalValue(user?.weight_goal_kg ? String(user.weight_goal_kg) : "");
+                }}
                 className="text-sm font-medium text-[#A78BFA] hover:text-[#A78BFA]/80 transition-colors"
               >
                 {user?.weight_goal_kg ? `${user.weight_goal_kg} kg` : "Non impostato"}
@@ -304,7 +582,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Height */}
-          <div className="p-4 flex justify-between items-center">
+          <div className="py-3 flex justify-between items-center">
             <div>
               <span className="text-sm text-[#A1A1A1]">Altezza</span>
               <p className="text-[10px] text-[#666] mt-0.5">Per il calcolo del BMI</p>
@@ -332,11 +610,16 @@ export default function SettingsPage() {
                 >
                   {savingField === "height_cm" ? "..." : "Salva"}
                 </button>
-                <button onClick={() => setEditHeight(false)} className="text-xs text-[#666]">Annulla</button>
+                <button onClick={() => setEditHeight(false)} className="text-xs text-[#666]">
+                  Annulla
+                </button>
               </div>
             ) : (
               <button
-                onClick={() => { setEditHeight(true); setHeightValue(user?.height_cm ? String(user.height_cm) : ""); }}
+                onClick={() => {
+                  setEditHeight(true);
+                  setHeightValue(user?.height_cm ? String(user.height_cm) : "");
+                }}
                 className="text-sm font-medium hover:text-[#22C55E] transition-colors"
               >
                 {user?.height_cm ? `${user.height_cm} cm` : "Non impostato"}
@@ -346,66 +629,191 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Data Management */}
-      <div>
-        <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium mb-3">Gestione dati</h3>
-        <div className="space-y-3">
-          <div className="glass-card p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Azzera dati dieta</p>
-                <p className="text-xs text-[#666] mt-0.5">Elimina tutti i pasti registrati</p>
-              </div>
-              <button
-                onClick={() => setResetType("meals")}
-                className="px-4 py-2 rounded-xl text-xs font-medium bg-[#EF4444]/10 text-[#EF4444] hover:bg-[#EF4444]/20 transition-colors"
-              >
-                Azzera
-              </button>
+      {/* ──────────── 2. Aspetto Section ──────────── */}
+      <div className="glass-card-strong rounded-2xl p-5">
+        <h3 className="text-lg font-semibold text-white mb-4">Aspetto</h3>
+        <div className="space-y-5">
+          {/* Theme */}
+          <div>
+            <p className="text-sm text-[#A1A1A1] mb-2">Tema</p>
+            <div className="flex gap-2">
+              {(
+                [
+                  { value: "dark", label: "Scuro" },
+                  { value: "light", label: "Chiaro" },
+                  { value: "auto", label: "Auto" },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleQuickSave("theme", opt.value)}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
+                    (user?.theme ?? "dark") === opt.value
+                      ? "bg-[#3B82F6]/20 border border-[#3B82F6]/40 text-[#3B82F6]"
+                      : "bg-white/5 border border-white/[0.06] text-[#A1A1A1] hover:text-white hover:bg-white/[0.08]"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="glass-card p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Azzera dati allenamento</p>
-                <p className="text-xs text-[#666] mt-0.5">Elimina tutti gli allenamenti registrati</p>
-              </div>
-              <button
-                onClick={() => setResetType("workouts")}
-                className="px-4 py-2 rounded-xl text-xs font-medium bg-[#EF4444]/10 text-[#EF4444] hover:bg-[#EF4444]/20 transition-colors"
-              >
-                Azzera
-              </button>
+          {/* Language */}
+          <div>
+            <p className="text-sm text-[#A1A1A1] mb-2">Lingua</p>
+            <div className="flex gap-2">
+              {(
+                [
+                  { value: "it", label: "Italiano" },
+                  { value: "en", label: "English" },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleQuickSave("language", opt.value)}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
+                    (user?.language ?? "it") === opt.value
+                      ? "bg-[#3B82F6]/20 border border-[#3B82F6]/40 text-[#3B82F6]"
+                      : "bg-white/5 border border-white/[0.06] text-[#A1A1A1] hover:text-white hover:bg-white/[0.08]"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="glass-card p-4 border-[#EF4444]/10">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-[#EF4444]">Azzera tutti i dati</p>
-                <p className="text-xs text-[#666] mt-0.5">Elimina TUTTI i dati (pasti, allenamenti, acqua, peso)</p>
-              </div>
-              <button
-                onClick={() => setResetType("all")}
-                className="px-4 py-2 rounded-xl text-xs font-medium bg-[#EF4444]/20 text-[#EF4444] hover:bg-[#EF4444]/30 transition-colors"
-              >
-                Azzera tutto
-              </button>
+          {/* Unit system */}
+          <div>
+            <p className="text-sm text-[#A1A1A1] mb-2">Unita di misura</p>
+            <div className="flex gap-2">
+              {(
+                [
+                  { value: "metric", label: "Metrico (kg/cm)" },
+                  { value: "imperial", label: "Imperiale (lbs/in)" },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleQuickSave("unit_system", opt.value)}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
+                    (user?.unit_system ?? "metric") === opt.value
+                      ? "bg-[#3B82F6]/20 border border-[#3B82F6]/40 text-[#3B82F6]"
+                      : "bg-white/5 border border-white/[0.06] text-[#A1A1A1] hover:text-white hover:bg-white/[0.08]"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Logout */}
+      {/* ──────────── 3. Notifiche Section ──────────── */}
+      <div className="glass-card-strong rounded-2xl p-5">
+        <h3 className="text-lg font-semibold text-white mb-4">Notifiche</h3>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-white">
+              {user?.notifications_enabled ? "Notifiche attive" : "Notifiche disattivate"}
+            </p>
+            <p className="text-[10px] text-[#666] mt-0.5">Ricevi promemoria e aggiornamenti</p>
+          </div>
+          <button
+            onClick={() => handleQuickSave("notifications_enabled", !user?.notifications_enabled)}
+            className={`relative w-12 h-7 rounded-full transition-colors ${
+              user?.notifications_enabled ? "bg-[#3B82F6]" : "bg-white/10"
+            }`}
+            aria-label="Toggle notifiche"
+          >
+            <span
+              className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                user?.notifications_enabled ? "left-6" : "left-1"
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      {/* ──────────── 4. Gestione Dati Section ──────────── */}
+      <div className="glass-card-strong rounded-2xl p-5">
+        <h3 className="text-lg font-semibold text-white mb-4">Gestione Dati</h3>
+        <div className="space-y-3">
+          {/* Reset meals */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Azzera dati dieta</p>
+              <p className="text-xs text-[#666] mt-0.5">Elimina tutti i pasti registrati</p>
+            </div>
+            <button
+              onClick={() => setResetType("meals")}
+              className="px-4 py-2 rounded-xl text-xs font-medium bg-[#EF4444]/10 text-[#EF4444] hover:bg-[#EF4444]/20 transition-colors"
+            >
+              Azzera
+            </button>
+          </div>
+
+          <div className="border-t border-white/[0.06]" />
+
+          {/* Reset workouts */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Azzera dati allenamento</p>
+              <p className="text-xs text-[#666] mt-0.5">Elimina tutti gli allenamenti registrati</p>
+            </div>
+            <button
+              onClick={() => setResetType("workouts")}
+              className="px-4 py-2 rounded-xl text-xs font-medium bg-[#EF4444]/10 text-[#EF4444] hover:bg-[#EF4444]/20 transition-colors"
+            >
+              Azzera
+            </button>
+          </div>
+
+          <div className="border-t border-white/[0.06]" />
+
+          {/* Reset all */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-[#EF4444]">Azzera tutti i dati</p>
+              <p className="text-xs text-[#666] mt-0.5">Elimina TUTTI i dati (pasti, allenamenti, acqua, peso)</p>
+            </div>
+            <button
+              onClick={() => setResetType("all")}
+              className="px-4 py-2 rounded-xl text-xs font-medium bg-[#EF4444]/20 text-[#EF4444] hover:bg-[#EF4444]/30 transition-colors"
+            >
+              Azzera tutto
+            </button>
+          </div>
+
+          <div className="border-t border-white/[0.06]" />
+
+          {/* Export data */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Esporta Dati</p>
+              <p className="text-xs text-[#666] mt-0.5">Scarica tutti i tuoi dati</p>
+            </div>
+            <button
+              onClick={handleExportData}
+              className="px-4 py-2 rounded-xl text-xs font-medium bg-[#3B82F6]/10 text-[#3B82F6] hover:bg-[#3B82F6]/20 transition-colors"
+            >
+              Esporta
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ──────────── 5. Logout ──────────── */}
       <button
         onClick={handleLogout}
-        className="w-full py-3 glass-card text-[#EF4444] text-sm font-medium hover:bg-white/[0.04] transition-colors"
+        className="w-full py-3 rounded-2xl bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#EF4444] text-sm font-medium hover:bg-[#EF4444]/20 transition-colors"
       >
         Esci dall&apos;account
       </button>
 
-      {/* Reset confirmation modals */}
+      {/* ──────────── Reset Confirmation Modals ──────────── */}
       <ConfirmModal
         isOpen={resetType === "meals"}
         title="Azzera dati dieta"
@@ -430,13 +838,22 @@ export default function SettingsPage() {
       {/* Double confirm for "all" */}
       {resetType === "all" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => { setResetType(null); setResetConfirmText(""); }} />
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => {
+              setResetType(null);
+              setResetConfirmText("");
+            }}
+          />
           <div className="relative glass-card-strong p-6 w-full max-w-sm animate-scale-in">
             <h3 className="text-lg font-bold text-[#EF4444] mb-2">Azzera tutti i dati</h3>
             <p className="text-sm text-[#A1A1A1] mb-4">
-              Questa azione eliminerà TUTTI i tuoi dati: pasti, allenamenti, acqua e peso. Non sarà possibile recuperarli.
+              Questa azione eliminera TUTTI i tuoi dati: pasti, allenamenti, acqua e peso. Non sara possibile
+              recuperarli.
             </p>
-            <p className="text-sm text-white mb-3">Digita <span className="font-bold text-[#EF4444]">CONFERMA</span> per procedere:</p>
+            <p className="text-sm text-white mb-3">
+              Digita <span className="font-bold text-[#EF4444]">CONFERMA</span> per procedere:
+            </p>
             <input
               type="text"
               value={resetConfirmText}
@@ -445,8 +862,13 @@ export default function SettingsPage() {
               className="w-full px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-[#EF4444]/30 mb-4"
             />
             <div className="flex gap-3">
-              <button onClick={() => { setResetType(null); setResetConfirmText(""); }}
-                className="flex-1 py-2.5 rounded-xl bg-[#111111] text-[#A1A1A1] text-sm font-medium">
+              <button
+                onClick={() => {
+                  setResetType(null);
+                  setResetConfirmText("");
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-[#111111] text-[#A1A1A1] text-sm font-medium"
+              >
                 Annulla
               </button>
               <button
