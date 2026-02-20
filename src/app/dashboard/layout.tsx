@@ -9,6 +9,7 @@ import ChatPanel from "@/components/ChatPanel";
 import { ChatProvider } from "@/lib/chat-context";
 import { PreferencesProvider } from "@/lib/preferences-context";
 import PageTransition from "@/components/PageTransition";
+import Celebration from "@/components/Celebration";
 
 export default function DashboardLayout({
   children,
@@ -64,16 +65,18 @@ export default function DashboardLayout({
 
   return (
     <PreferencesProvider>
-      <ChatProvider>
-        <div className="min-h-screen">
-          <Sidebar currentPath={pathname} user={user} onLogout={handleLogout} />
-          <main className="md:ml-60 pb-20 md:pb-0 min-h-screen">
-            <PageTransition>{children}</PageTransition>
-          </main>
-          <BottomNav currentPath={pathname} />
-          <ChatPanel />
-        </div>
-      </ChatProvider>
+      <Celebration>
+        <ChatProvider>
+          <div className="min-h-screen">
+            <Sidebar currentPath={pathname} user={user} onLogout={handleLogout} />
+            <main className="md:ml-60 pb-20 md:pb-0 min-h-screen">
+              <PageTransition>{children}</PageTransition>
+            </main>
+            <BottomNav currentPath={pathname} />
+            <ChatPanel />
+          </div>
+        </ChatProvider>
+      </Celebration>
     </PreferencesProvider>
   );
 }
