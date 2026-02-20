@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import type { User } from "@/lib/types";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
@@ -11,7 +10,7 @@ import { ChatProvider } from "@/lib/chat-context";
 import { PreferencesProvider } from "@/lib/preferences-context";
 import PageTransition from "@/components/PageTransition";
 import Celebration from "@/components/Celebration";
-import ViTrackTransition from "@/components/ViTrackTransition";
+import ViTrackTransition, { VTLogo } from "@/components/ViTrackTransition";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 
 export default function DashboardLayout({
@@ -81,14 +80,8 @@ export default function DashboardLayout({
 
   if (!authChecked) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <motion.div
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-          className="text-[#A1A1A1]"
-        >
-          Caricamento...
-        </motion.div>
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <VTLogo />
       </div>
     );
   }

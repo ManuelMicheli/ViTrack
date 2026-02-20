@@ -55,7 +55,7 @@ const strokeProps = {
   fill: "none",
 };
 
-function VTLogo() {
+export function VTLogo() {
   return (
     <motion.svg
       width="96"
