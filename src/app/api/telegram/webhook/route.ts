@@ -14,7 +14,7 @@ import { buildUserContext } from "@/lib/user-context";
 import { warmupCache, type NutrientResult } from "@/lib/nutrition";
 import { enrichWithNutrition } from "@/lib/chat-processor";
 import { analyzePhoto, lookupByBarcode, labelToNutrients } from "@/lib/vision";
-import { generateRecipe } from "@/lib/openai";
+import { generateRecipe, classifyMessage } from "@/lib/openai";
 import {
   saveRecipe,
   getRecipeByName,
@@ -180,6 +180,8 @@ export async function POST(request: Request) {
         await handleToday(chatId, telegramId, uid);
       } else if (text.startsWith("/obiettivo")) {
         await handleGoal(chatId, telegramId, text, uid);
+      } else if (text.startsWith("/crearicetta")) {
+        await handleCreateRecipe(chatId, telegramId, text, uid);
       } else if (text.startsWith("/ricetta")) {
         await handleRecipe(chatId, telegramId, text, uid);
       } else if (text === "/ricette") {
@@ -497,6 +499,160 @@ async function handleFreeText(
       else await sendMessage(chatId, reply);
       saveChatMsg(userId, "assistant", reply, msgType);
     }
+  } catch (err) {
+    anim?.stop();
+    throw err;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// /crearicetta — User-defined recipe with explicit ingredients
+// ---------------------------------------------------------------------------
+async function handleCreateRecipe(
+  chatId: number,
+  telegramId: number,
+  text: string,
+  uid: string | null
+) {
+  const userId = uid ?? await getUserId(telegramId);
+  if (!userId) {
+    await sendMessage(chatId, "Invia prima /start per registrarti.");
+    return;
+  }
+
+  // Parse: /crearicetta <name>: <ingredients>
+  const rest = text.replace(/^\/crearicetta\s*/i, "").trim();
+  const colonIdx = rest.indexOf(":");
+  if (!rest || colonIdx === -1) {
+    await sendAndSave(
+      chatId,
+      "Formato: <code>/crearicetta &lt;nome&gt;: &lt;ingredienti&gt;</code>\n" +
+        "Esempio: <code>/crearicetta pancake: farina 50g, uova 60g, latte 100ml</code>",
+      userId,
+      "error"
+    );
+    return;
+  }
+
+  const name = rest.slice(0, colonIdx).trim();
+  const ingredientsText = rest.slice(colonIdx + 1).trim();
+
+  if (!name || !ingredientsText) {
+    await sendAndSave(
+      chatId,
+      "Formato: <code>/crearicetta &lt;nome&gt;: &lt;ingredienti&gt;</code>\n" +
+        "Esempio: <code>/crearicetta pancake: farina 50g, uova 60g, latte 100ml</code>",
+      userId,
+      "error"
+    );
+    return;
+  }
+
+  // Check if recipe with this name already exists
+  const existing = await getRecipeByName(userId, name);
+  if (existing) {
+    await sendAndSave(
+      chatId,
+      `Esiste già una ricetta "<b>${name}</b>".\n` +
+        `Usa <code>/ricetta elimina ${name}</code> per eliminarla prima di ricrearla.`,
+      userId,
+      "error"
+    );
+    return;
+  }
+
+  // Send placeholder + hourglass animation
+  const [thinkingId] = await Promise.all([
+    sendMessage(chatId, "\u23F3 Creo la ricetta..."),
+    sendTyping(chatId),
+  ]);
+  const anim = thinkingId ? startHourglassAnimation(chatId, thinkingId) : null;
+
+  try {
+    // Use AI to parse the ingredients string into structured ParsedMeal
+    const parsed = await classifyMessage(ingredientsText);
+
+    if (parsed.type !== "meal") {
+      anim?.stop();
+      const reply =
+        "Non sono riuscito a interpretare gli ingredienti.\n" +
+        "Formato: <code>/crearicetta &lt;nome&gt;: &lt;ingredienti&gt;</code>\n" +
+        "Esempio: <code>/crearicetta pancake: farina 50g, uova 60g, latte 100ml</code>";
+      if (thinkingId) await editMessage(chatId, thinkingId, reply);
+      else await sendMessage(chatId, reply);
+      saveChatMsg(userId, "assistant", reply, "error");
+      return;
+    }
+
+    const isParsedMeal = !("calories" in parsed);
+    if (!isParsedMeal) {
+      anim?.stop();
+      const reply = "Errore nell'elaborazione degli ingredienti.";
+      if (thinkingId) await editMessage(chatId, thinkingId, reply);
+      else await sendMessage(chatId, reply);
+      saveChatMsg(userId, "assistant", reply, "error");
+      return;
+    }
+
+    const parsedMeal = parsed as ParsedMeal;
+
+    if (thinkingId) await editMessage(chatId, thinkingId, "\uD83D\uDD0D Cerco i valori nutrizionali...");
+    anim?.stop();
+
+    // Enrich with real nutrition data
+    const enrichResult = await enrichWithNutrition(parsedMeal);
+
+    if (!enrichResult.meal) {
+      const reply = "Non sono riuscito a trovare i valori nutrizionali per gli ingredienti.";
+      if (thinkingId) await editMessage(chatId, thinkingId, reply);
+      else await sendMessage(chatId, reply);
+      saveChatMsg(userId, "assistant", reply, "error");
+      return;
+    }
+
+    // Save recipe
+    const recipeItems = parsedMeal.items.map((item) => ({
+      name: item.name,
+      name_en: item.name_en,
+      quantity_g: item.quantity_g,
+      brand: item.brand,
+      is_branded: item.is_branded,
+    }));
+
+    const recipe = await saveRecipe(userId, name, recipeItems, {
+      calories: enrichResult.meal.calories,
+      protein_g: enrichResult.meal.protein_g,
+      carbs_g: enrichResult.meal.carbs_g,
+      fat_g: enrichResult.meal.fat_g,
+      fiber_g: enrichResult.meal.fiber_g,
+    }, enrichResult.meal.meal_type);
+
+    if (!recipe) {
+      const reply = "Errore nel salvataggio della ricetta.";
+      if (thinkingId) await editMessage(chatId, thinkingId, reply);
+      else await sendMessage(chatId, reply);
+      saveChatMsg(userId, "assistant", reply, "error");
+      return;
+    }
+
+    const itemsList = recipe.items
+      .map((item) => `  \u2022 ${item.name} ${item.quantity_g}g`)
+      .join("\n");
+
+    let msg =
+      `\u2705 Ricetta "<b>${recipe.name}</b>" salvata!\n\n` +
+      `<b>Ingredienti:</b>\n${itemsList}\n\n` +
+      `\uD83D\uDD25 ${recipe.total_calories} kcal | P ${recipe.total_protein_g}g | C ${recipe.total_carbs_g}g | G ${recipe.total_fat_g}g | F ${recipe.total_fiber_g}g`;
+
+    if (enrichResult.failedItems.length > 0) {
+      msg += `\n\n\u26A0 Non ho trovato i valori per: ${enrichResult.failedItems.join(", ")}`;
+    }
+
+    msg += `\n\nOra scrivi "<b>${name}</b>" per loggare il pasto istantaneamente!`;
+
+    if (thinkingId) await editMessage(chatId, thinkingId, msg);
+    else await sendMessage(chatId, msg);
+    saveChatMsg(userId, "assistant", msg, "command_result");
   } catch (err) {
     anim?.stop();
     throw err;

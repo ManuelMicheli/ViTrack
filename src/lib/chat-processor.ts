@@ -125,6 +125,124 @@ async function getUserId(userId: string): Promise<string | null> {
 }
 
 // ---------------------------------------------------------------------------
+// /crearicetta — User-defined recipe with explicit ingredients
+// ---------------------------------------------------------------------------
+export async function processCreateRecipe(
+  userId: string,
+  text: string
+): Promise<ProcessResult> {
+  const valid = await getUserId(userId);
+  if (!valid) return { kind: "error", reply: "Utente non trovato." };
+
+  // Parse: /crearicetta <name>: <ingredients>
+  const rest = text.replace(/^\/crearicetta\s*/i, "").trim();
+  const colonIdx = rest.indexOf(":");
+  if (!rest || colonIdx === -1) {
+    return {
+      kind: "error",
+      reply:
+        "Formato: /crearicetta <nome>: <ingredienti>\n" +
+        "Esempio: /crearicetta pancake: farina 50g, uova 60g, latte 100ml",
+    };
+  }
+
+  const name = rest.slice(0, colonIdx).trim();
+  const ingredientsText = rest.slice(colonIdx + 1).trim();
+
+  if (!name || !ingredientsText) {
+    return {
+      kind: "error",
+      reply:
+        "Formato: /crearicetta <nome>: <ingredienti>\n" +
+        "Esempio: /crearicetta pancake: farina 50g, uova 60g, latte 100ml",
+    };
+  }
+
+  // Check if recipe with this name already exists
+  const existing = await getRecipeByName(userId, name);
+  if (existing) {
+    return {
+      kind: "error",
+      reply:
+        `Esiste già una ricetta "${name}".\n` +
+        `Usa /ricetta elimina ${name} per eliminarla prima di ricrearla.`,
+    };
+  }
+
+  // Use AI to parse the ingredients string into structured ParsedMeal
+  const parsed = await classifyMessage(ingredientsText);
+
+  if (parsed.type !== "meal") {
+    return {
+      kind: "error",
+      reply:
+        "Non sono riuscito a interpretare gli ingredienti.\n" +
+        "Formato: /crearicetta <nome>: <ingredienti>\n" +
+        "Esempio: /crearicetta pancake: farina 50g, uova 60g, latte 100ml",
+    };
+  }
+
+  const isParsedMeal = !("calories" in parsed);
+  if (!isParsedMeal) {
+    return { kind: "error", reply: "Errore nell'elaborazione degli ingredienti." };
+  }
+
+  const parsedMeal = parsed as ParsedMeal;
+
+  // Enrich with real nutrition data
+  const enrichResult = await enrichWithNutrition(parsedMeal);
+
+  if (!enrichResult.meal) {
+    return {
+      kind: "error",
+      reply: "Non sono riuscito a trovare i valori nutrizionali per gli ingredienti.",
+    };
+  }
+
+  // Save recipe
+  const recipeItems = parsedMeal.items.map((item) => ({
+    name: item.name,
+    name_en: item.name_en,
+    quantity_g: item.quantity_g,
+    brand: item.brand,
+    is_branded: item.is_branded,
+  }));
+
+  const recipe = await saveRecipe(userId, name, recipeItems, {
+    calories: enrichResult.meal.calories,
+    protein_g: enrichResult.meal.protein_g,
+    carbs_g: enrichResult.meal.carbs_g,
+    fat_g: enrichResult.meal.fat_g,
+    fiber_g: enrichResult.meal.fiber_g,
+  }, enrichResult.meal.meal_type);
+
+  if (!recipe) {
+    return { kind: "error", reply: "Errore nel salvataggio della ricetta." };
+  }
+
+  const itemsList = recipe.items
+    .map((item) => `  - ${item.name} ${item.quantity_g}g`)
+    .join("\n");
+
+  let msg =
+    `\u2705 Ricetta "${recipe.name}" salvata!\n\n` +
+    `Ingredienti:\n${itemsList}\n\n` +
+    `\uD83D\uDD25 ${recipe.total_calories} kcal | ` +
+    `P ${recipe.total_protein_g}g | ` +
+    `C ${recipe.total_carbs_g}g | ` +
+    `G ${recipe.total_fat_g}g | ` +
+    `F ${recipe.total_fiber_g}g`;
+
+  if (enrichResult.failedItems.length > 0) {
+    msg += `\n\nAttenzione: non ho trovato i valori per ${enrichResult.failedItems.join(", ")}`;
+  }
+
+  msg += `\n\nOra scrivi "${name}" per loggare il pasto istantaneamente!`;
+
+  return { kind: "recipe_saved", reply: msg, data: recipe };
+}
+
+// ---------------------------------------------------------------------------
 // /ricetta — Create, show, or delete a recipe
 // ---------------------------------------------------------------------------
 export async function processRecipe(
