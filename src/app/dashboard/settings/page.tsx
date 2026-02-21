@@ -99,7 +99,10 @@ export default function SettingsPage() {
         if (res.ok) {
           const data = await res.json();
           setUser(data);
-          setGoalValue(String(data.daily_calorie_goal));
+          setGoalValue(String(data.daily_calorie_goal ?? 2000));
+          setWaterGoalValue(String(data.water_goal_ml ?? 2000));
+          setWeightGoalValue(data.weight_goal_kg ? String(data.weight_goal_kg) : "");
+          setHeightValue(data.height_cm ? String(data.height_cm) : "");
           setLoading(false);
           return;
         }
@@ -115,7 +118,10 @@ export default function SettingsPage() {
       if (res.ok) {
         const data = await res.json();
         setUser(data);
-        setGoalValue(String(data.daily_calorie_goal));
+        setGoalValue(String(data.daily_calorie_goal ?? 2000));
+        setWaterGoalValue(String(data.water_goal_ml ?? 2000));
+        setWeightGoalValue(data.weight_goal_kg ? String(data.weight_goal_kg) : "");
+        setHeightValue(data.height_cm ? String(data.height_cm) : "");
       } else {
         router.push("/");
       }
@@ -131,7 +137,10 @@ export default function SettingsPage() {
   }, [fetchUser]);
 
   const handleSaveGoal = async () => {
-    if (!user) return;
+    if (!user) {
+      showSaveToast("error", t("error.connection"));
+      return;
+    }
     const parsed = parseInt(goalValue);
     if (isNaN(parsed) || parsed <= 0) {
       showSaveToast("error", t("error.saveGoal"));
@@ -159,8 +168,11 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSaveField = async (field: string, value: unknown) => {
-    if (!user) return;
+  const handleSaveField = async (field: string, value: unknown): Promise<boolean> => {
+    if (!user) {
+      showSaveToast("error", t("error.connection"));
+      return false;
+    }
     setSavingField(field);
     try {
       const res = await fetch(`/api/user?id=${user.id}`, {
@@ -172,11 +184,14 @@ export default function SettingsPage() {
         const updated = await res.json();
         setUser(updated);
         showSaveToast("success", t("settings.saved"));
+        return true;
       } else {
         showSaveToast("error", t("error.saveSetting"));
+        return false;
       }
     } catch {
       showSaveToast("error", t("error.connection"));
+      return false;
     } finally {
       setSavingField("");
     }
@@ -649,8 +664,8 @@ export default function SettingsPage() {
                   onClick={async () => {
                     const val = parseInt(waterGoalValue);
                     if (val > 0 && val <= 10000) {
-                      await handleSaveField("water_goal_ml", val);
-                      setEditWaterGoal(false);
+                      const ok = await handleSaveField("water_goal_ml", val);
+                      if (ok) setEditWaterGoal(false);
                     } else {
                       showSaveToast("error", t("error.saveSetting"));
                     }
@@ -733,8 +748,8 @@ export default function SettingsPage() {
                   onClick={async () => {
                     const val = parseFloat(weightGoalValue);
                     if (val > 0 && val < 500) {
-                      await handleSaveField("weight_goal_kg", val);
-                      setEditWeightGoal(false);
+                      const ok = await handleSaveField("weight_goal_kg", val);
+                      if (ok) setEditWeightGoal(false);
                     } else {
                       showSaveToast("error", t("error.saveSetting"));
                     }
@@ -784,8 +799,8 @@ export default function SettingsPage() {
                   onClick={async () => {
                     const val = parseInt(heightValue);
                     if (val > 50 && val < 300) {
-                      await handleSaveField("height_cm", val);
-                      setEditHeight(false);
+                      const ok = await handleSaveField("height_cm", val);
+                      if (ok) setEditHeight(false);
                     } else {
                       showSaveToast("error", t("error.saveSetting"));
                     }
