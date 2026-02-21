@@ -3,13 +3,14 @@ import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
 import { sendMessage, editMessage, sendTyping, downloadFile } from "@/lib/telegram";
 import {
   classifyStream,
-  parseExercise,
+  buildSystemPrompt,
   transcribeAudio,
   type MealClassification,
   type ParsedMeal,
   type WorkoutClassification,
-  type ParsedExercise,
 } from "@/lib/openai";
+import { parseExerciseLocal, type ParsedExercise } from "@/lib/exercise-parser";
+import { buildUserContext } from "@/lib/user-context";
 import { warmupCache, type NutrientResult } from "@/lib/nutrition";
 import { enrichWithNutrition } from "@/lib/chat-processor";
 import { analyzePhoto, lookupByBarcode, labelToNutrients } from "@/lib/vision";
@@ -368,11 +369,19 @@ async function handleFreeText(
 
   const t0 = performance.now();
 
-  // Send placeholder and typing in parallel
-  const [thinkingId] = await Promise.all([
+  // Send placeholder, typing, and load user context in parallel — zero added latency
+  const [thinkingId, , ctx] = await Promise.all([
     sendMessage(chatId, "\u23F3 Sto elaborando..."),
     sendTyping(chatId),
+    buildUserContext(userId, { messageLimit: 15 }),
   ]);
+
+  // Build conversation history from recent messages + current message
+  const history: { role: string; content: string }[] = [
+    ...(ctx?.recentMessages ?? []),
+    { role: "user", content: text },
+  ];
+  const systemPrompt = buildSystemPrompt(ctx);
 
   // Progressive editing state for chat streaming
   let lastEditTime = 0;
@@ -380,7 +389,7 @@ async function handleFreeText(
   let isChat = false;
   const anim = thinkingId ? startHourglassAnimation(chatId, thinkingId) : null;
 
-  const result = await classifyStream(text, {
+  const result = await classifyStream(history, {
     onTypeDetected: (type) => {
       console.log(`[Perf] Type "${type}" detected: ${(performance.now() - t0).toFixed(0)}ms`);
       if (type === "chat") {
@@ -397,7 +406,7 @@ async function handleFreeText(
         editMessage(chatId, thinkingId, partial + " \u258D").catch(() => {});
       }
     },
-  });
+  }, systemPrompt);
 
   if (!isChat) anim?.stop();
   console.log(`[Perf] AI complete: ${(performance.now() - t0).toFixed(0)}ms`);
@@ -539,10 +548,12 @@ async function handlePendingMealResponse(
 
   pending.history.push({ role: "user", content: text });
 
-  const [thinkingId] = await Promise.all([
+  const [thinkingId, , pendingCtx] = await Promise.all([
     sendMessage(chatId, "\u23F3 Sto elaborando..."),
     sendTyping(chatId),
+    buildUserContext(userId, { messageLimit: 5 }),
   ]);
+  const pendingSystemPrompt = buildSystemPrompt(pendingCtx);
 
   // Progressive editing state for chat streaming
   let lastEditTime = 0;
@@ -566,7 +577,7 @@ async function handlePendingMealResponse(
         editMessage(chatId, thinkingId, partial + " \u258D").catch(() => {});
       }
     },
-  });
+  }, pendingSystemPrompt);
 
   if (!isChat) anim?.stop();
 
@@ -780,7 +791,7 @@ async function handleSessionExercise(
   uid: string | null
 ) {
   const session = activeSessions.get(telegramId)!;
-  const result = await parseExercise(text);
+  const result = parseExerciseLocal(text);
 
   if ("error" in result) {
     await sendAndSave(chatId, result.error, uid, "error");

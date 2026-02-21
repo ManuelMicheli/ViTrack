@@ -2,12 +2,11 @@ import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
 import {
   classifyMessage,
   classifyWithContext,
-  parseExercise,
   type MealClassification,
   type ParsedMeal,
-  type ParsedExercise,
   type WorkoutClassification,
 } from "@/lib/openai";
+import { parseExerciseLocal, type ParsedExercise } from "@/lib/exercise-parser";
 import { lookupNutrients, type NutrientResult } from "@/lib/nutrition";
 
 // ---------------------------------------------------------------------------
@@ -46,7 +45,7 @@ export async function enrichWithNutrition(
 
   const results: (NutrientResult | null)[] = await Promise.all(
     parsed.items.map((item) =>
-      lookupNutrients(item.name, item.name_en, item.quantity_g, item.brand)
+      lookupNutrients(item.name, item.name_en, item.quantity_g, item.brand, item.is_cooked)
     )
   );
 
@@ -376,7 +375,7 @@ export async function processSessionExercise(
     return { kind: "error", reply: "Nessuna sessione attiva." };
   }
 
-  const result = await parseExercise(text);
+  const result = parseExerciseLocal(text);
   if ("error" in result) {
     return { kind: "error", reply: result.error };
   }

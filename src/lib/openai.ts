@@ -1,6 +1,8 @@
+import type { UserContext } from "./user-context";
+
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
 
-const SYSTEM_PROMPT = `Sei ViTrack, un assistente personale per nutrizione e fitness integrato in Telegram. Sei amichevole, motivante e competente. Parli in modo naturale e conciso — questa è una chat, non un manuale. Rispondi nella lingua dell'utente.
+const BASE_SYSTEM_PROMPT = `Sei ViTrack, un assistente personale per nutrizione e fitness integrato in Telegram. Sei amichevole, motivante e competente. Parli in modo naturale e conciso — questa è una chat, non un manuale. Rispondi nella lingua dell'utente.
 
 Rispondi SEMPRE con JSON valido, senza markdown, senza commenti fuori dal JSON.
 
@@ -20,6 +22,7 @@ REGOLE PASTI:
 
 PESO CRUDO/COTTO:
 - Il peso indicato dall'utente si intende SEMPRE da CRUDO, salvo che l'utente specifichi esplicitamente "cotto" o "da cotto".
+- Se l'utente specifica "cotto", "da cotto", "cotta", "da cotta", imposta "is_cooked": true nell'item. Default: false (ometti il campo se crudo).
 
 CONDIMENTI:
 - NON chiedere mai informazioni su condimenti (olio, burro, sale, spezie, salse, ecc.).
@@ -32,8 +35,13 @@ PRODOTTI CONFEZIONATI/BRANDED:
 - Per prodotti non di marca (es: "petto di pollo", "riso"), imposta is_branded: false e brand: null.
 
 PIATTI COMPOSTI:
-- Scomponi in ingredienti singoli. "pasta al pomodoro 200g" → items: [{"name": "pasta", ...}] con quantity_g del piatto.
+- Scomponi in ingredienti singoli con grammature realistiche.
 - Chiedi SOLO la grammatura dell'ingrediente principale se mancante.
+- Esempi di decomposizione:
+  - "carbonara 200g" → pasta 200g + guanciale 40g + uovo 50g + pecorino 20g
+  - "pasta al pomodoro 200g" → pasta 200g + sugo 80g
+  - "risotto funghi 300g" → riso 100g + funghi 100g + parmigiano 15g + olio 5g
+  - "insalata di pollo" → petto di pollo 150g + insalata 100g + pomodori 50g
 
 Se hai TUTTI i dati (alimento + quantità):
 {"type":"meal","items":[{"name":"petto di pollo","name_en":"chicken breast meat raw","brand":null,"quantity_g":200,"is_branded":false}],"meal_type":"colazione|pranzo|cena|snack"}
@@ -44,6 +52,7 @@ CAMPO ITEMS (obbligatorio per type "meal"):
 - "brand": nome della marca se menzionata (es: "Müller", "Kinder", "Barilla"), null se generico
 - "quantity_g": grammatura specificata dall'utente
 - "is_branded": true se è un prodotto di marca, false se è un alimento generico
+- "is_cooked": true SOLO se l'utente specifica esplicitamente "cotto"/"da cotto"/"cotta"/"da cotta". Ometti o false se crudo.
 
 Se MANCANO informazioni (quantità, dettagli):
 {"type":"need_info","message":"...domanda concisa...","context":"...breve riassunto..."}
@@ -70,12 +79,18 @@ Se il messaggio NON è un pasto né un allenamento, rispondi come assistente esp
 QUANDO USARE type "chat":
 - Saluti, domande su nutrizione/fitness, ringraziamenti, richieste di aiuto
 - Qualsiasi cosa che non sia un pasto/allenamento da registrare
+- "come sto andando?", "come va la mia giornata?" → usa il contesto utente per dare dati reali
+- "cosa dovrei mangiare?" → suggerisci in base ai macro mancanti
 
 STILE CONVERSAZIONE:
-- Sii conciso — 1-3 frasi, questa è una chat Telegram
-- Sii amichevole e motivante, mai freddo o robotico
+- Sii conciso — 2-5 frasi, questa è una chat Telegram
+- Sii amichevole, motivante e proattivo — dai consigli concreti
 - Usa il "tu" informale
 - Puoi usare emoji con moderazione
+- Se hai il contesto utente, usa i dati reali nelle risposte (calorie consumate, macro, obiettivi)
+- Se l'utente chiede come sta andando, rispondi con numeri reali dal contesto
+- Se mancano macro specifici, suggerisci cosa mangiare
+- Ricorda la conversazione precedente e fai riferimento a cose dette prima
 
 ATTENZIONE — DISTINGUI BENE:
 - "ho mangiato pollo" → type "need_info" (manca la quantità)
@@ -99,6 +114,7 @@ export interface ParsedMealItem {
   brand: string | null;
   quantity_g: number;
   is_branded: boolean;
+  is_cooked?: boolean;
 }
 
 export interface ParsedMeal {
@@ -161,7 +177,39 @@ export type Classification =
   | ChatClassification
   | ErrorClassification;
 
-export async function classifyMessage(text: string): Promise<Classification> {
+// ---------------------------------------------------------------------------
+// Dynamic system prompt — enriches base prompt with user context
+// ---------------------------------------------------------------------------
+export function buildSystemPrompt(ctx?: UserContext | null): string {
+  if (!ctx) return BASE_SYSTEM_PROMPT;
+
+  const remaining = ctx.dailyCalorieGoal - ctx.todayIntake.calories;
+  const macroGoals = [
+    ctx.proteinGoal ? `${ctx.proteinGoal}g P` : null,
+    ctx.carbsGoal ? `${ctx.carbsGoal}g C` : null,
+    ctx.fatGoal ? `${ctx.fatGoal}g G` : null,
+  ].filter(Boolean).join(" | ");
+
+  const goalLine = macroGoals
+    ? `Obiettivo: ${ctx.dailyCalorieGoal} kcal | ${macroGoals}`
+    : `Obiettivo: ${ctx.dailyCalorieGoal} kcal`;
+
+  const workoutLine = ctx.todayWorkouts.count > 0
+    ? `Allenamenti: ${ctx.todayWorkouts.descriptions.join(", ")} (${ctx.todayWorkouts.totalBurned} kcal bruciate)`
+    : "Allenamenti: nessuno oggi";
+
+  const contextBlock = `
+
+=== CONTESTO UTENTE ===
+Nome: ${ctx.firstName || "utente"}
+${goalLine}
+Oggi: ${ctx.todayIntake.calories} kcal (${Math.round(ctx.todayIntake.protein_g)}g P, ${Math.round(ctx.todayIntake.carbs_g)}g C, ${Math.round(ctx.todayIntake.fat_g)}g G) — ${remaining > 0 ? `Restano ${remaining} kcal` : `Superato di ${Math.abs(remaining)} kcal`}
+Pasti: ${ctx.todayIntake.mealCount} | ${workoutLine}`;
+
+  return BASE_SYSTEM_PROMPT + contextBlock;
+}
+
+export async function classifyMessage(text: string, systemPrompt?: string): Promise<Classification> {
   try {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -173,7 +221,7 @@ export async function classifyMessage(text: string): Promise<Classification> {
         model: "gpt-5-mini",
         max_completion_tokens: 4096,
         messages: [
-          { role: "developer", content: SYSTEM_PROMPT },
+          { role: "developer", content: systemPrompt ?? BASE_SYSTEM_PROMPT },
           { role: "user", content: text },
         ],
       }),
@@ -207,7 +255,8 @@ export async function classifyMessage(text: string): Promise<Classification> {
 }
 
 export async function classifyWithContext(
-  conversationHistory: { role: string; content: string }[]
+  conversationHistory: { role: string; content: string }[],
+  systemPrompt?: string
 ): Promise<Classification> {
   try {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -220,7 +269,7 @@ export async function classifyWithContext(
         model: "gpt-5-mini",
         max_completion_tokens: 4096,
         messages: [
-          { role: "developer", content: SYSTEM_PROMPT },
+          { role: "developer", content: systemPrompt ?? BASE_SYSTEM_PROMPT },
           ...conversationHistory,
         ],
       }),
@@ -265,7 +314,8 @@ export interface StreamCallbacks {
 
 export async function classifyStream(
   input: string | Array<{ role: string; content: string }>,
-  callbacks?: StreamCallbacks
+  callbacks?: StreamCallbacks,
+  systemPrompt?: string
 ): Promise<Classification> {
   const userMessages =
     typeof input === "string"
@@ -284,7 +334,7 @@ export async function classifyStream(
         max_completion_tokens: 4096,
         stream: true,
         messages: [
-          { role: "developer", content: SYSTEM_PROMPT },
+          { role: "developer", content: systemPrompt ?? BASE_SYSTEM_PROMPT },
           ...userMessages,
         ],
       }),
@@ -380,65 +430,6 @@ export async function classifyStream(
       type: "error",
       message: "Non sono riuscito a capire. Puoi riformulare?",
     };
-  }
-}
-
-export interface ParsedExercise {
-  name: string;
-  sets: number;
-  reps: number;
-  weight_kg: number | null;
-}
-
-const PARSE_EXERCISE_PROMPT = `Sei un parser di esercizi da palestra. L'utente ti manda la descrizione di UN singolo esercizio. Rispondi SOLO con JSON valido, senza markdown.
-
-Parsa il testo e restituisci:
-{"name":"Nome Esercizio","sets":N,"reps":N,"weight_kg":N}
-
-REGOLE:
-- Normalizza il nome (prima lettera maiuscola): "panca piana" → "Panca piana"
-- "4x8" o "4 x 8" significa sets=4, reps=8
-- "80kg" o "80 kg" significa weight_kg=80
-- Se non specifica peso, usa weight_kg: null
-- Se non specifica set/rep, stima per un intermedio (es: 3x10 o 4x8)
-- Per corpo libero (dip, trazioni, plank), weight_kg: null
-- Se il testo non è un esercizio, rispondi: {"error":"Non sembra un esercizio. Invia qualcosa come: panca piana 4x8 80kg"}`;
-
-export async function parseExercise(text: string): Promise<ParsedExercise | { error: string }> {
-  try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-5-mini",
-        max_completion_tokens: 2048,
-        messages: [
-          { role: "developer", content: PARSE_EXERCISE_PROMPT },
-          { role: "user", content: text },
-        ],
-      }),
-    });
-
-    if (!res.ok) {
-      return { error: "Errore nella classificazione AI." };
-    }
-
-    const data = await res.json();
-    const content = data.choices?.[0]?.message?.content ?? "";
-    if (!content) {
-      return { error: "Non sono riuscito a elaborare l'esercizio. Riprova." };
-    }
-    const cleaned = content
-      .replace(/```json\n?/g, "")
-      .replace(/```\n?/g, "")
-      .trim();
-
-    return JSON.parse(cleaned);
-  } catch {
-    return { error: "Non sono riuscito a capire l'esercizio. Prova con: nome sets x reps peso" };
   }
 }
 

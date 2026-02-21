@@ -1,6 +1,8 @@
 import { lookupUSDA } from "./usda";
 import { lookupOFF, lookupOFFBranded } from "./openfoodfacts";
 import { lookupFood } from "./fatsecret";
+import { lookupItalianFood } from "./italian-foods";
+import { adjustForCooking } from "./cooking-factors";
 
 // ---------------------------------------------------------------------------
 // Shared type used by all nutrition clients
@@ -11,7 +13,7 @@ export interface NutrientResult {
   carbs_g: number;
   fat_g: number;
   fiber_g: number;
-  source: "usda" | "openfoodfacts" | "fatsecret" | "ai";
+  source: "usda" | "openfoodfacts" | "fatsecret" | "ai" | "crea";
 }
 
 // ---------------------------------------------------------------------------
@@ -146,17 +148,36 @@ export async function lookupNutrients(
   name: string,
   nameEn: string,
   grams: number,
-  brand?: string | null
+  brand?: string | null,
+  isCooked?: boolean
 ): Promise<NutrientResult | null> {
+  // Cooking adjustment — convert cooked grams to raw equivalent
+  let lookupGrams = grams;
+  if (isCooked) {
+    const { adjustedGrams } = adjustForCooking(name, grams, true);
+    lookupGrams = adjustedGrams;
+  }
+
+  // Try CREA local database first (instant, no API calls) — skip for branded items
+  if (!brand) {
+    const creaResult = lookupItalianFood(name, lookupGrams);
+    if (creaResult) {
+      console.log(
+        `[Nutrition] CREA: "${name}" → ${creaResult.calories} kcal (${lookupGrams}g${isCooked ? `, from ${grams}g cooked` : ""})`
+      );
+      return creaResult;
+    }
+  }
+
   const key = makeKey(name, nameEn);
 
   // 1. Cache hit — instant
   const cached = cache.get(key);
   if (cached && Date.now() - cached.ts < CACHE_TTL) {
     if (cached.per100g) {
-      const r = scaleResult(cached.per100g, grams);
+      const r = scaleResult(cached.per100g, lookupGrams);
       console.log(
-        `[Nutrition] CACHE: "${name}" → ${r.source} | ${r.calories} kcal (${grams}g)`
+        `[Nutrition] CACHE: "${name}" → ${r.source} | ${r.calories} kcal (${lookupGrams}g)`
       );
       return r;
     }
@@ -181,9 +202,9 @@ export async function lookupNutrients(
     cache.set(key, { per100g, ts: Date.now() });
 
     if (per100g) {
-      const r = scaleResult(per100g, grams);
+      const r = scaleResult(per100g, lookupGrams);
       console.log(
-        `[Nutrition] "${name}" → ${r.source} | ${r.calories} kcal (${grams}g)`
+        `[Nutrition] "${name}" → ${r.source} | ${r.calories} kcal (${lookupGrams}g)`
       );
       return r;
     }
