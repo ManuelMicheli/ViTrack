@@ -7,20 +7,26 @@ import type { User } from "@/lib/types";
 import ConfirmModal from "@/components/ConfirmModal";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { usePreferences, ACCENT_COLORS, type AccentColor } from "@/lib/preferences-context";
+import { useTheme, type Theme } from "@/lib/theme-context";
+import { useLanguage } from "@/lib/language-context";
 
-const sectionLabels: Record<string, string> = {
-  greeting: "Saluto",
-  quickadd: "Azioni rapide",
-  calories: "Calorie e Macro",
-  "water-streak": "Acqua e Streak",
-  weight: "Peso",
-  meals: "Pasti",
-  workouts: "Allenamenti",
+const SECTION_KEYS = ["greeting", "quickadd", "calories", "water-streak", "weight", "meals", "workouts"] as const;
+
+const sectionTranslationKeys: Record<string, string> = {
+  greeting: "section.greeting",
+  quickadd: "section.quickadd",
+  calories: "section.calories",
+  "water-streak": "section.waterStreak",
+  weight: "section.weight",
+  meals: "section.meals",
+  workouts: "section.workouts",
 };
 
 export default function SettingsPage() {
   const router = useRouter();
   const { accentColor, accentHex, setAccentColor, layoutMode, setLayoutMode, sectionOrder, setSectionOrder, saveError: prefSaveError } = usePreferences();
+  const { theme, setTheme } = useTheme();
+  const { language, setLanguage, t } = useLanguage();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -119,23 +125,29 @@ export default function SettingsPage() {
   }, [fetchUser]);
 
   const handleSaveGoal = async () => {
-    if (!user || !goalValue) return;
+    if (!user) return;
+    const parsed = parseInt(goalValue);
+    if (isNaN(parsed) || parsed <= 0) {
+      showSaveToast("error", t("error.saveGoal"));
+      return;
+    }
     setSavingGoal(true);
     try {
       const res = await fetch(`/api/user?id=${user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ daily_calorie_goal: parseInt(goalValue) }),
+        body: JSON.stringify({ daily_calorie_goal: parsed }),
       });
       if (res.ok) {
         const updated = await res.json();
         setUser(updated);
         setEditGoal(false);
+        showSaveToast("success", t("settings.saved"));
       } else {
-        showSaveToast("error", "Errore nel salvare l'obiettivo calorie");
+        showSaveToast("error", t("error.saveGoal"));
       }
     } catch {
-      showSaveToast("error", "Errore di connessione. Riprova.");
+      showSaveToast("error", t("error.connection"));
     } finally {
       setSavingGoal(false);
     }
@@ -153,11 +165,12 @@ export default function SettingsPage() {
       if (res.ok) {
         const updated = await res.json();
         setUser(updated);
+        showSaveToast("success", t("settings.saved"));
       } else {
-        showSaveToast("error", "Errore nel salvare l'impostazione");
+        showSaveToast("error", t("error.saveSetting"));
       }
     } catch {
-      showSaveToast("error", "Errore di connessione. Riprova.");
+      showSaveToast("error", t("error.connection"));
     } finally {
       setSavingField("");
     }
@@ -165,6 +178,13 @@ export default function SettingsPage() {
 
   const handleQuickSave = async (field: string, value: unknown) => {
     if (!user) return;
+    // Apply theme/language changes immediately to context
+    if (field === "theme") {
+      setTheme(value as Theme);
+    }
+    if (field === "language") {
+      setLanguage(value as "it" | "en");
+    }
     try {
       const res = await fetch(`/api/user?id=${user.id}`, {
         method: "PATCH",
@@ -174,23 +194,24 @@ export default function SettingsPage() {
       if (res.ok) {
         const updated = await res.json();
         setUser(updated);
+        showSaveToast("success", t("settings.saved"));
       } else {
-        showSaveToast("error", "Errore nel salvare l'impostazione");
+        showSaveToast("error", t("error.saveSetting"));
       }
     } catch {
-      showSaveToast("error", "Errore di connessione. Riprova.");
+      showSaveToast("error", t("error.connection"));
     }
   };
 
   const handlePasswordChange = async () => {
     if (!newPassword || !confirmPassword) return;
     if (newPassword !== confirmPassword) {
-      setPasswordMsg({ type: "error", text: "Le password non corrispondono" });
+      setPasswordMsg({ type: "error", text: t("settings.passwordMismatch") });
       setTimeout(() => setPasswordMsg(null), 4000);
       return;
     }
     if (newPassword.length < 6) {
-      setPasswordMsg({ type: "error", text: "La password deve essere di almeno 6 caratteri" });
+      setPasswordMsg({ type: "error", text: t("settings.passwordTooShort") });
       setTimeout(() => setPasswordMsg(null), 4000);
       return;
     }
@@ -201,14 +222,14 @@ export default function SettingsPage() {
       if (error) {
         setPasswordMsg({ type: "error", text: error.message });
       } else {
-        setPasswordMsg({ type: "success", text: "Password aggiornata con successo" });
+        setPasswordMsg({ type: "success", text: t("settings.passwordUpdated") });
         setNewPassword("");
         setConfirmPassword("");
         setShowPasswordForm(false);
       }
       setTimeout(() => setPasswordMsg(null), 4000);
     } catch {
-      setPasswordMsg({ type: "error", text: "Errore durante l'aggiornamento" });
+      setPasswordMsg({ type: "error", text: t("settings.passwordError") });
       setTimeout(() => setPasswordMsg(null), 4000);
     } finally {
       setPasswordSaving(false);
@@ -219,7 +240,7 @@ export default function SettingsPage() {
     if (!user || !telegramInput.trim()) return;
     const parsed = parseInt(telegramInput.trim());
     if (isNaN(parsed)) {
-      setTelegramMsg({ type: "error", text: "ID Telegram non valido" });
+      setTelegramMsg({ type: "error", text: t("settings.telegramInvalid") });
       setTimeout(() => setTelegramMsg(null), 4000);
       return;
     }
@@ -234,13 +255,13 @@ export default function SettingsPage() {
         const updated = await res.json();
         setUser(updated);
         setTelegramInput("");
-        setTelegramMsg({ type: "success", text: "Telegram collegato con successo" });
+        setTelegramMsg({ type: "success", text: t("settings.telegramLinked") });
       } else {
-        setTelegramMsg({ type: "error", text: "Errore durante il collegamento" });
+        setTelegramMsg({ type: "error", text: t("settings.telegramLinkError") });
       }
       setTimeout(() => setTelegramMsg(null), 4000);
     } catch {
-      setTelegramMsg({ type: "error", text: "Errore di connessione" });
+      setTelegramMsg({ type: "error", text: t("error.connection") });
       setTimeout(() => setTelegramMsg(null), 4000);
     } finally {
       setTelegramSaving(false);
@@ -259,13 +280,13 @@ export default function SettingsPage() {
       if (res.ok) {
         const updated = await res.json();
         setUser(updated);
-        setTelegramMsg({ type: "success", text: "Telegram scollegato" });
+        setTelegramMsg({ type: "success", text: t("settings.telegramUnlinked") });
       } else {
-        setTelegramMsg({ type: "error", text: "Errore durante lo scollegamento" });
+        setTelegramMsg({ type: "error", text: t("settings.telegramUnlinkError") });
       }
       setTimeout(() => setTelegramMsg(null), 4000);
     } catch {
-      setTelegramMsg({ type: "error", text: "Errore di connessione" });
+      setTelegramMsg({ type: "error", text: t("error.connection") });
       setTimeout(() => setTelegramMsg(null), 4000);
     } finally {
       setTelegramSaving(false);
@@ -283,18 +304,18 @@ export default function SettingsPage() {
       if (res.ok) {
         setResetSuccess(
           resetType === "meals"
-            ? `Dati dieta azzerati (${data.deleted} record)`
+            ? `${t("settings.resetSuccessMeals")} (${data.deleted} record)`
             : resetType === "workouts"
-            ? `Dati allenamento azzerati (${data.deleted} record)`
-            : `Tutti i dati azzerati (${data.deleted} record)`
+            ? `${t("settings.resetSuccessWorkouts")} (${data.deleted} record)`
+            : `${t("settings.resetSuccessAll")} (${data.deleted} record)`
         );
         setTimeout(() => setResetSuccess(""), 4000);
       } else {
-        setResetError(data.error || "Errore durante l'eliminazione");
+        setResetError(data.error || t("settings.resetError"));
         setTimeout(() => setResetError(""), 5000);
       }
     } catch {
-      setResetError("Errore di connessione. Riprova.");
+      setResetError(t("error.connection"));
       setTimeout(() => setResetError(""), 5000);
     } finally {
       setResetting(false);
@@ -316,6 +337,13 @@ export default function SettingsPage() {
     router.push("/");
   };
 
+  // Helper to get section label with i18n
+  const getSectionLabel = (key: string) => {
+    const tKey = sectionTranslationKeys[key];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return tKey ? t(tKey as any) : key;
+  };
+
   if (loading) {
     return (
       <div className="px-4 md:px-8 py-6 space-y-4">
@@ -329,7 +357,7 @@ export default function SettingsPage() {
 
   return (
     <div className="px-4 md:px-8 py-6 space-y-6 animate-fade-in max-w-2xl">
-      <h2 className="text-xl font-bold">Impostazioni</h2>
+      <h2 className="text-xl font-bold">{t("settings.title")}</h2>
 
       {/* Global toasts */}
       {resetSuccess && (
@@ -360,42 +388,42 @@ export default function SettingsPage() {
       )}
       {/* ──────────── 1. Account Section ──────────── */}
       <div className="glass-card-strong rounded-2xl p-5">
-        <h3 className="text-lg font-semibold text-white mb-4">Account</h3>
+        <h3 className="text-lg font-semibold mb-4">{t("settings.account")}</h3>
         <div className="space-y-4">
           {/* Email */}
           <div className="flex justify-between items-center">
-            <span className="text-sm text-[#A1A1A1]">Email</span>
-            <span className="text-sm font-medium text-white/70">
-              {user?.email || "Non impostata"}
+            <span className="text-sm text-text-secondary">{t("settings.email")}</span>
+            <span className="text-sm font-medium opacity-70">
+              {user?.email || t("settings.emailNotSet")}
             </span>
           </div>
 
           {/* Password change */}
           <div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-[#A1A1A1]">Password</span>
+              <span className="text-sm text-text-secondary">{t("settings.password")}</span>
               <button
                 onClick={() => setShowPasswordForm(!showPasswordForm)}
                 className="text-xs text-[#3B82F6] font-medium hover:text-[#3B82F6]/80 transition-colors"
               >
-                {showPasswordForm ? "Annulla" : "Cambio Password"}
+                {showPasswordForm ? t("settings.cancel") : t("settings.changePassword")}
               </button>
             </div>
             {showPasswordForm && (
               <div className="mt-3 space-y-3">
                 <input
                   type="password"
-                  placeholder="Nuova password"
+                  placeholder={t("settings.newPassword")}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-[#3B82F6]/30"
+                  className="w-full px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-sm focus:outline-none focus:border-[#3B82F6]/30"
                 />
                 <input
                   type="password"
-                  placeholder="Conferma password"
+                  placeholder={t("settings.confirmPassword")}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-[#3B82F6]/30"
+                  className="w-full px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-sm focus:outline-none focus:border-[#3B82F6]/30"
                 />
                 {passwordMsg && (
                   <p
@@ -411,25 +439,25 @@ export default function SettingsPage() {
                   disabled={passwordSaving || !newPassword || !confirmPassword}
                   className="w-full py-2.5 rounded-xl bg-[#3B82F6]/20 text-[#3B82F6] text-sm font-medium hover:bg-[#3B82F6]/30 transition-colors disabled:opacity-40"
                 >
-                  {passwordSaving ? "Aggiornamento..." : "Aggiorna Password"}
+                  {passwordSaving ? t("settings.updating") : t("settings.updatePassword")}
                 </button>
               </div>
             )}
           </div>
 
           {/* Telegram link/unlink */}
-          <div className="border-t border-white/[0.06] pt-4">
+          <div className="border-t border-border pt-4">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-[#A1A1A1]">Telegram</span>
+              <span className="text-sm text-text-secondary">{t("settings.telegram")}</span>
               {user?.telegram_id ? (
                 <div className="flex items-center gap-3">
-                  <span className="text-sm text-white/70">{user.telegram_id}</span>
+                  <span className="text-sm opacity-70">{user.telegram_id}</span>
                   <button
                     onClick={handleUnlinkTelegram}
                     disabled={telegramSaving}
                     className="text-xs text-[#EF4444] font-medium hover:text-[#EF4444]/80 transition-colors"
                   >
-                    {telegramSaving ? "..." : "Scollega"}
+                    {telegramSaving ? "..." : t("settings.unlink")}
                   </button>
                 </div>
               ) : (
@@ -439,14 +467,14 @@ export default function SettingsPage() {
                     placeholder="Telegram ID"
                     value={telegramInput}
                     onChange={(e) => setTelegramInput(e.target.value)}
-                    className="w-32 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-[#3B82F6]/30"
+                    className="w-32 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-sm focus:outline-none focus:border-[#3B82F6]/30"
                   />
                   <button
                     onClick={handleLinkTelegram}
                     disabled={telegramSaving || !telegramInput.trim()}
                     className="text-xs text-[#3B82F6] font-medium hover:text-[#3B82F6]/80 transition-colors disabled:opacity-40"
                   >
-                    {telegramSaving ? "..." : "Collega"}
+                    {telegramSaving ? "..." : t("settings.link")}
                   </button>
                 </div>
               )}
@@ -464,43 +492,43 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* ──────────── Profile Section (kept from original) ──────────── */}
+      {/* ──────────── Profile Section ──────────── */}
       <div className="glass-card-strong rounded-2xl p-5">
-        <h3 className="text-lg font-semibold text-white mb-4">Profilo</h3>
-        <div className="space-y-0 divide-y divide-white/[0.06]">
+        <h3 className="text-lg font-semibold mb-4">{t("settings.profile")}</h3>
+        <div className="space-y-0 divide-y divide-border">
           <div className="py-3 flex justify-between items-center">
-            <span className="text-sm text-[#A1A1A1]">Nome</span>
+            <span className="text-sm text-text-secondary">{t("settings.name")}</span>
             <span className="text-sm font-medium">{user?.first_name || "\u2014"}</span>
           </div>
           <div className="py-3 flex justify-between items-center">
-            <span className="text-sm text-[#A1A1A1]">Username</span>
+            <span className="text-sm text-text-secondary">{t("settings.username")}</span>
             <span className="text-sm font-medium">{user?.username ? `@${user.username}` : "\u2014"}</span>
           </div>
         </div>
       </div>
 
-      {/* ──────────── Obiettivi Section (kept from original) ──────────── */}
+      {/* ──────────── Obiettivi Section ──────────── */}
       <div className="glass-card-strong rounded-2xl p-5">
-        <h3 className="text-lg font-semibold text-white mb-4">Obiettivi</h3>
-        <div className="space-y-0 divide-y divide-white/[0.06]">
+        <h3 className="text-lg font-semibold mb-4">{t("settings.goals")}</h3>
+        <div className="space-y-0 divide-y divide-border">
           {/* Calorie goal */}
           <div className="py-3 flex justify-between items-center">
-            <span className="text-sm text-[#A1A1A1]">Obiettivo calorie</span>
+            <span className="text-sm text-text-secondary">{t("settings.calorieGoal")}</span>
             {editGoal ? (
               <div className="flex items-center gap-2">
                 <input
                   type="number"
                   value={goalValue}
                   onChange={(e) => setGoalValue(e.target.value)}
-                  className="w-20 bg-transparent border-b border-white/10 text-sm text-right py-0.5 focus:outline-none focus:border-[#3B82F6]/50"
+                  className="w-20 bg-transparent border-b border-border text-sm text-right py-0.5 focus:outline-none focus:border-[#3B82F6]/50"
                   autoFocus
                 />
-                <span className="text-xs text-[#666]">kcal</span>
+                <span className="text-xs text-text-tertiary">kcal</span>
                 <button onClick={handleSaveGoal} disabled={savingGoal} className="text-xs text-[#3B82F6] font-medium">
-                  {savingGoal ? "..." : "Salva"}
+                  {savingGoal ? t("settings.saving") : t("settings.save")}
                 </button>
-                <button onClick={() => setEditGoal(false)} className="text-xs text-[#666]">
-                  Annulla
+                <button onClick={() => setEditGoal(false)} className="text-xs text-text-tertiary">
+                  {t("settings.cancel")}
                 </button>
               </div>
             ) : (
@@ -516,8 +544,8 @@ export default function SettingsPage() {
           {/* Water goal */}
           <div className="py-3 flex justify-between items-center">
             <div>
-              <span className="text-sm text-[#A1A1A1]">Obiettivo acqua</span>
-              <p className="text-[10px] text-[#666] mt-0.5">Consumo giornaliero target</p>
+              <span className="text-sm text-text-secondary">{t("settings.waterGoal")}</span>
+              <p className="text-[10px] text-text-tertiary mt-0.5">{t("settings.waterGoalDesc")}</p>
             </div>
             {editWaterGoal ? (
               <div className="flex items-center gap-2">
@@ -525,25 +553,27 @@ export default function SettingsPage() {
                   type="number"
                   value={waterGoalValue}
                   onChange={(e) => setWaterGoalValue(e.target.value)}
-                  className="w-20 bg-transparent border-b border-white/10 text-sm text-right py-0.5 focus:outline-none focus:border-[#06B6D4]/50"
+                  className="w-20 bg-transparent border-b border-border text-sm text-right py-0.5 focus:outline-none focus:border-[#06B6D4]/50"
                   autoFocus
                 />
-                <span className="text-xs text-[#666]">ml</span>
+                <span className="text-xs text-text-tertiary">ml</span>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     const val = parseInt(waterGoalValue);
                     if (val > 0 && val <= 10000) {
-                      handleSaveField("water_goal_ml", val);
+                      await handleSaveField("water_goal_ml", val);
                       setEditWaterGoal(false);
+                    } else {
+                      showSaveToast("error", t("error.saveSetting"));
                     }
                   }}
                   disabled={savingField === "water_goal_ml"}
                   className="text-xs text-[#06B6D4] font-medium"
                 >
-                  {savingField === "water_goal_ml" ? "..." : "Salva"}
+                  {savingField === "water_goal_ml" ? t("settings.saving") : t("settings.save")}
                 </button>
-                <button onClick={() => setEditWaterGoal(false)} className="text-xs text-[#666]">
-                  Annulla
+                <button onClick={() => setEditWaterGoal(false)} className="text-xs text-text-tertiary">
+                  {t("settings.cancel")}
                 </button>
               </div>
             ) : (
@@ -562,8 +592,8 @@ export default function SettingsPage() {
           {/* Water tracking mode */}
           <div className="py-3 flex justify-between items-center">
             <div>
-              <span className="text-sm text-[#A1A1A1]">Modalita tracciamento</span>
-              <p className="text-[10px] text-[#666] mt-0.5">Bicchieri o millilitri</p>
+              <span className="text-sm text-text-secondary">{t("settings.trackingMode")}</span>
+              <p className="text-[10px] text-text-tertiary mt-0.5">{t("settings.trackingModeDesc")}</p>
             </div>
             <div className="flex bg-white/[0.04] rounded-lg p-0.5">
               <button
@@ -571,17 +601,17 @@ export default function SettingsPage() {
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                   (user?.water_tracking_mode ?? "glasses") === "glasses"
                     ? "bg-[#06B6D4]/20 text-[#06B6D4]"
-                    : "text-[#666] hover:text-[#999]"
+                    : "text-text-tertiary hover:text-text-secondary"
                 }`}
               >
-                Bicchieri
+                {t("settings.glasses")}
               </button>
               <button
                 onClick={() => handleSaveField("water_tracking_mode", "ml")}
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                   user?.water_tracking_mode === "ml"
                     ? "bg-[#06B6D4]/20 text-[#06B6D4]"
-                    : "text-[#666] hover:text-[#999]"
+                    : "text-text-tertiary hover:text-text-secondary"
                 }`}
               >
                 ML
@@ -592,8 +622,8 @@ export default function SettingsPage() {
           {/* Weight goal */}
           <div className="py-3 flex justify-between items-center">
             <div>
-              <span className="text-sm text-[#A1A1A1]">Peso obiettivo</span>
-              <p className="text-[10px] text-[#666] mt-0.5">Il tuo peso target</p>
+              <span className="text-sm text-text-secondary">{t("settings.weightGoal")}</span>
+              <p className="text-[10px] text-text-tertiary mt-0.5">{t("settings.weightGoalDesc")}</p>
             </div>
             {editWeightGoal ? (
               <div className="flex items-center gap-2">
@@ -602,25 +632,27 @@ export default function SettingsPage() {
                   step="0.1"
                   value={weightGoalValue}
                   onChange={(e) => setWeightGoalValue(e.target.value)}
-                  className="w-20 bg-transparent border-b border-white/10 text-sm text-right py-0.5 focus:outline-none focus:border-[#A78BFA]/50"
+                  className="w-20 bg-transparent border-b border-border text-sm text-right py-0.5 focus:outline-none focus:border-[#A78BFA]/50"
                   autoFocus
                 />
-                <span className="text-xs text-[#666]">kg</span>
+                <span className="text-xs text-text-tertiary">kg</span>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     const val = parseFloat(weightGoalValue);
                     if (val > 0 && val < 500) {
-                      handleSaveField("weight_goal_kg", val);
+                      await handleSaveField("weight_goal_kg", val);
                       setEditWeightGoal(false);
+                    } else {
+                      showSaveToast("error", t("error.saveSetting"));
                     }
                   }}
                   disabled={savingField === "weight_goal_kg"}
                   className="text-xs text-[#A78BFA] font-medium"
                 >
-                  {savingField === "weight_goal_kg" ? "..." : "Salva"}
+                  {savingField === "weight_goal_kg" ? t("settings.saving") : t("settings.save")}
                 </button>
-                <button onClick={() => setEditWeightGoal(false)} className="text-xs text-[#666]">
-                  Annulla
+                <button onClick={() => setEditWeightGoal(false)} className="text-xs text-text-tertiary">
+                  {t("settings.cancel")}
                 </button>
               </div>
             ) : (
@@ -631,7 +663,7 @@ export default function SettingsPage() {
                 }}
                 className="text-sm font-medium text-[#A78BFA] hover:text-[#A78BFA]/80 transition-colors"
               >
-                {user?.weight_goal_kg ? `${user.weight_goal_kg} kg` : "Non impostato"}
+                {user?.weight_goal_kg ? `${user.weight_goal_kg} kg` : t("settings.notSet")}
               </button>
             )}
           </div>
@@ -639,8 +671,8 @@ export default function SettingsPage() {
           {/* Height */}
           <div className="py-3 flex justify-between items-center">
             <div>
-              <span className="text-sm text-[#A1A1A1]">Altezza</span>
-              <p className="text-[10px] text-[#666] mt-0.5">Per il calcolo del BMI</p>
+              <span className="text-sm text-text-secondary">{t("settings.height")}</span>
+              <p className="text-[10px] text-text-tertiary mt-0.5">{t("settings.heightDesc")}</p>
             </div>
             {editHeight ? (
               <div className="flex items-center gap-2">
@@ -648,25 +680,27 @@ export default function SettingsPage() {
                   type="number"
                   value={heightValue}
                   onChange={(e) => setHeightValue(e.target.value)}
-                  className="w-20 bg-transparent border-b border-white/10 text-sm text-right py-0.5 focus:outline-none focus:border-[#22C55E]/50"
+                  className="w-20 bg-transparent border-b border-border text-sm text-right py-0.5 focus:outline-none focus:border-[#22C55E]/50"
                   autoFocus
                 />
-                <span className="text-xs text-[#666]">cm</span>
+                <span className="text-xs text-text-tertiary">cm</span>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     const val = parseInt(heightValue);
                     if (val > 50 && val < 300) {
-                      handleSaveField("height_cm", val);
+                      await handleSaveField("height_cm", val);
                       setEditHeight(false);
+                    } else {
+                      showSaveToast("error", t("error.saveSetting"));
                     }
                   }}
                   disabled={savingField === "height_cm"}
                   className="text-xs text-[#22C55E] font-medium"
                 >
-                  {savingField === "height_cm" ? "..." : "Salva"}
+                  {savingField === "height_cm" ? t("settings.saving") : t("settings.save")}
                 </button>
-                <button onClick={() => setEditHeight(false)} className="text-xs text-[#666]">
-                  Annulla
+                <button onClick={() => setEditHeight(false)} className="text-xs text-text-tertiary">
+                  {t("settings.cancel")}
                 </button>
               </div>
             ) : (
@@ -677,7 +711,7 @@ export default function SettingsPage() {
                 }}
                 className="text-sm font-medium hover:text-[#22C55E] transition-colors"
               >
-                {user?.height_cm ? `${user.height_cm} cm` : "Non impostato"}
+                {user?.height_cm ? `${user.height_cm} cm` : t("settings.notSet")}
               </button>
             )}
           </div>
@@ -687,7 +721,7 @@ export default function SettingsPage() {
       {/* ──────────── Personalizzazione ──────────── */}
       <div className="glass-card-strong rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-white">Personalizzazione</h3>
+          <h3 className="text-lg font-semibold">{t("settings.personalization")}</h3>
           <AnimatePresence>
             {prefSaved && (
               <motion.span
@@ -697,22 +731,22 @@ export default function SettingsPage() {
                 className="text-xs font-medium px-2.5 py-1 rounded-full"
                 style={{ backgroundColor: `${accentHex}20`, color: accentHex }}
               >
-                Salvato
+                {t("settings.saved")}
               </motion.span>
             )}
           </AnimatePresence>
         </div>
-        <div className="space-y-0 divide-y divide-white/[0.06]">
+        <div className="space-y-0 divide-y divide-border">
           {/* Accent color */}
           <div className="py-3">
-            <span className="text-sm text-[#A1A1A1] block mb-3">Colore accento</span>
+            <span className="text-sm text-text-secondary block mb-3">{t("settings.accentColor")}</span>
             <div className="flex gap-3">
               {(Object.entries(ACCENT_COLORS) as [AccentColor, string][]).map(([key, hex]) => (
                 <motion.button
                   key={key}
                   onClick={() => { setAccentColor(key); showPrefSaved(); }}
                   className={`w-8 h-8 rounded-full border-2 transition-colors ${
-                    accentColor === key ? "border-white" : "border-transparent"
+                    accentColor === key ? "border-current" : "border-transparent"
                   }`}
                   style={{ backgroundColor: hex }}
                   whileTap={{ scale: 0.9 }}
@@ -725,30 +759,30 @@ export default function SettingsPage() {
           {/* Layout mode */}
           <div className="py-3 flex justify-between items-center">
             <div>
-              <span className="text-sm text-[#A1A1A1]">Layout</span>
-              <p className="text-[10px] text-[#666] mt-0.5">Compatto o espanso</p>
+              <span className="text-sm text-text-secondary">{t("settings.layout")}</span>
+              <p className="text-[10px] text-text-tertiary mt-0.5">{t("settings.layoutDesc")}</p>
             </div>
             <div className="flex bg-white/[0.04] rounded-lg p-0.5">
               <button
                 onClick={() => { setLayoutMode("compact"); showPrefSaved(); }}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all`}
-                style={layoutMode === "compact" ? { backgroundColor: `${accentHex}20`, color: accentHex } : { color: "#666" }}
+                className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+                style={layoutMode === "compact" ? { backgroundColor: `${accentHex}20`, color: accentHex } : { color: "var(--color-text-tertiary)" }}
               >
-                Compatto
+                {t("settings.compact")}
               </button>
               <button
                 onClick={() => { setLayoutMode("expanded"); showPrefSaved(); }}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all`}
-                style={layoutMode === "expanded" ? { backgroundColor: `${accentHex}20`, color: accentHex } : { color: "#666" }}
+                className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+                style={layoutMode === "expanded" ? { backgroundColor: `${accentHex}20`, color: accentHex } : { color: "var(--color-text-tertiary)" }}
               >
-                Espanso
+                {t("settings.expanded")}
               </button>
             </div>
           </div>
 
           {/* Section order */}
           <div className="py-3">
-            <span className="text-sm text-[#A1A1A1] block mb-3">Ordine sezioni dashboard</span>
+            <span className="text-sm text-text-secondary block mb-3">{t("settings.sectionOrder")}</span>
             <Reorder.Group
               axis="y"
               values={sectionOrder}
@@ -759,11 +793,11 @@ export default function SettingsPage() {
                 <Reorder.Item
                   key={section}
                   value={section}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] cursor-grab active:cursor-grabbing"
+                  className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-border cursor-grab active:cursor-grabbing"
                 >
-                  <span className="text-[#666]">&#x2807;</span>
-                  <span className="text-sm flex-1">{sectionLabels[section] || section}</span>
-                  <span className="text-[10px] text-[#444] tabular-nums">{i + 1}</span>
+                  <span className="text-text-tertiary">&#x2807;</span>
+                  <span className="text-sm flex-1">{getSectionLabel(section)}</span>
+                  <span className="text-[10px] text-text-tertiary tabular-nums">{i + 1}</span>
                 </Reorder.Item>
               ))}
             </Reorder.Group>
@@ -771,11 +805,9 @@ export default function SettingsPage() {
 
           {/* Live preview */}
           <div className="py-3">
-            <span className="text-sm text-[#A1A1A1] block mb-3">Anteprima</span>
-            <div className="rounded-xl bg-black/40 border border-white/[0.06] p-3 overflow-hidden">
-              {/* Mini sidebar + content preview */}
+            <span className="text-sm text-text-secondary block mb-3">{t("settings.preview")}</span>
+            <div className="rounded-xl bg-black/40 border border-border p-3 overflow-hidden">
               <div className="flex gap-2">
-                {/* Mini sidebar */}
                 <div className="hidden sm:flex flex-col gap-1 w-10 shrink-0">
                   {[0,1,2,3,4].map((i) => (
                     <div
@@ -785,7 +817,6 @@ export default function SettingsPage() {
                     />
                   ))}
                 </div>
-                {/* Mini dashboard sections */}
                 <div className={`flex-1 ${layoutMode === "compact" ? "space-y-1" : "space-y-2"} transition-all duration-300`}>
                   {sectionOrder.slice(0, 5).map((section, i) => (
                     <motion.div
@@ -800,7 +831,7 @@ export default function SettingsPage() {
                         borderLeft: i === 0 ? `2px solid ${accentHex}` : "2px solid transparent",
                       }}
                     >
-                      <span className="text-[8px] text-white/40 truncate">{sectionLabels[section] || section}</span>
+                      <span className="text-[8px] text-white/40 truncate">{getSectionLabel(section)}</span>
                     </motion.div>
                   ))}
                 </div>
@@ -812,20 +843,20 @@ export default function SettingsPage() {
 
       {/* ──────────── 2. Aspetto Section ──────────── */}
       <div className="glass-card-strong rounded-2xl p-5">
-        <h3 className="text-lg font-semibold text-white mb-4">Aspetto</h3>
+        <h3 className="text-lg font-semibold mb-4">{t("settings.appearance")}</h3>
         <div className="space-y-5">
           {/* Theme */}
           <div>
-            <p className="text-sm text-[#A1A1A1] mb-2">Tema</p>
+            <p className="text-sm text-text-secondary mb-2">{t("settings.theme")}</p>
             <div className="flex gap-2">
               {(
                 [
-                  { value: "dark", label: "Scuro" },
-                  { value: "light", label: "Chiaro" },
-                  { value: "auto", label: "Auto" },
+                  { value: "dark", labelKey: "settings.themeDark" },
+                  { value: "light", labelKey: "settings.themeLight" },
+                  { value: "auto", labelKey: "settings.themeAuto" },
                 ] as const
               ).map((opt) => {
-                const isSelected = (user?.theme ?? "dark") === opt.value;
+                const isSelected = theme === opt.value;
                 return (
                   <button
                     key={opt.value}
@@ -833,11 +864,12 @@ export default function SettingsPage() {
                     className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
                       isSelected
                         ? "border"
-                        : "bg-white/5 border border-white/[0.06] text-[#A1A1A1] hover:text-white hover:bg-white/[0.08]"
+                        : "bg-white/5 border border-border text-text-secondary hover:text-text-primary hover:bg-white/[0.08]"
                     }`}
                     style={isSelected ? { backgroundColor: `${accentHex}20`, borderColor: `${accentHex}66`, color: accentHex } : undefined}
                   >
-                    {opt.label}
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {t(opt.labelKey as any)}
                   </button>
                 );
               })}
@@ -846,15 +878,15 @@ export default function SettingsPage() {
 
           {/* Language */}
           <div>
-            <p className="text-sm text-[#A1A1A1] mb-2">Lingua</p>
+            <p className="text-sm text-text-secondary mb-2">{t("settings.language")}</p>
             <div className="flex gap-2">
               {(
                 [
-                  { value: "it", label: "Italiano" },
-                  { value: "en", label: "English" },
+                  { value: "it", labelKey: "settings.langIt" },
+                  { value: "en", labelKey: "settings.langEn" },
                 ] as const
               ).map((opt) => {
-                const isSelected = (user?.language ?? "it") === opt.value;
+                const isSelected = language === opt.value;
                 return (
                   <button
                     key={opt.value}
@@ -862,11 +894,12 @@ export default function SettingsPage() {
                     className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
                       isSelected
                         ? "border"
-                        : "bg-white/5 border border-white/[0.06] text-[#A1A1A1] hover:text-white hover:bg-white/[0.08]"
+                        : "bg-white/5 border border-border text-text-secondary hover:text-text-primary hover:bg-white/[0.08]"
                     }`}
                     style={isSelected ? { backgroundColor: `${accentHex}20`, borderColor: `${accentHex}66`, color: accentHex } : undefined}
                   >
-                    {opt.label}
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {t(opt.labelKey as any)}
                   </button>
                 );
               })}
@@ -875,12 +908,12 @@ export default function SettingsPage() {
 
           {/* Unit system */}
           <div>
-            <p className="text-sm text-[#A1A1A1] mb-2">Unita di misura</p>
+            <p className="text-sm text-text-secondary mb-2">{t("settings.units")}</p>
             <div className="flex gap-2">
               {(
                 [
-                  { value: "metric", label: "Metrico (kg/cm)" },
-                  { value: "imperial", label: "Imperiale (lbs/in)" },
+                  { value: "metric", labelKey: "settings.metric" },
+                  { value: "imperial", labelKey: "settings.imperial" },
                 ] as const
               ).map((opt) => {
                 const isSelected = (user?.unit_system ?? "metric") === opt.value;
@@ -891,11 +924,12 @@ export default function SettingsPage() {
                     className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
                       isSelected
                         ? "border"
-                        : "bg-white/5 border border-white/[0.06] text-[#A1A1A1] hover:text-white hover:bg-white/[0.08]"
+                        : "bg-white/5 border border-border text-text-secondary hover:text-text-primary hover:bg-white/[0.08]"
                     }`}
                     style={isSelected ? { backgroundColor: `${accentHex}20`, borderColor: `${accentHex}66`, color: accentHex } : undefined}
                   >
-                    {opt.label}
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {t(opt.labelKey as any)}
                   </button>
                 );
               })}
@@ -906,13 +940,13 @@ export default function SettingsPage() {
 
       {/* ──────────── 3. Notifiche Section ──────────── */}
       <div className="glass-card-strong rounded-2xl p-5">
-        <h3 className="text-lg font-semibold text-white mb-4">Notifiche</h3>
+        <h3 className="text-lg font-semibold mb-4">{t("settings.notifications")}</h3>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-white">
-              {user?.notifications_enabled ? "Notifiche attive" : "Notifiche disattivate"}
+            <p className="text-sm">
+              {user?.notifications_enabled ? t("settings.notificationsActive") : t("settings.notificationsOff")}
             </p>
-            <p className="text-[10px] text-[#666] mt-0.5">Ricevi promemoria e aggiornamenti</p>
+            <p className="text-[10px] text-text-tertiary mt-0.5">{t("settings.notificationsDesc")}</p>
           </div>
           <button
             onClick={() => handleQuickSave("notifications_enabled", !user?.notifications_enabled)}
@@ -933,67 +967,67 @@ export default function SettingsPage() {
 
       {/* ──────────── 4. Gestione Dati Section ──────────── */}
       <div className="glass-card-strong rounded-2xl p-5">
-        <h3 className="text-lg font-semibold text-white mb-4">Gestione Dati</h3>
+        <h3 className="text-lg font-semibold mb-4">{t("settings.dataManagement")}</h3>
         <div className="space-y-3">
           {/* Reset meals */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium">Azzera dati dieta</p>
-              <p className="text-xs text-[#666] mt-0.5">Elimina tutti i pasti registrati</p>
+              <p className="text-sm font-medium">{t("settings.resetMeals")}</p>
+              <p className="text-xs text-text-tertiary mt-0.5">{t("settings.resetMealsDesc")}</p>
             </div>
             <button
               onClick={() => setResetType("meals")}
               className="px-4 py-2 rounded-xl text-xs font-medium bg-[#EF4444]/10 text-[#EF4444] hover:bg-[#EF4444]/20 transition-colors"
             >
-              Azzera
+              {t("settings.reset")}
             </button>
           </div>
 
-          <div className="border-t border-white/[0.06]" />
+          <div className="border-t border-border" />
 
           {/* Reset workouts */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium">Azzera dati allenamento</p>
-              <p className="text-xs text-[#666] mt-0.5">Elimina tutti gli allenamenti registrati</p>
+              <p className="text-sm font-medium">{t("settings.resetWorkouts")}</p>
+              <p className="text-xs text-text-tertiary mt-0.5">{t("settings.resetWorkoutsDesc")}</p>
             </div>
             <button
               onClick={() => setResetType("workouts")}
               className="px-4 py-2 rounded-xl text-xs font-medium bg-[#EF4444]/10 text-[#EF4444] hover:bg-[#EF4444]/20 transition-colors"
             >
-              Azzera
+              {t("settings.reset")}
             </button>
           </div>
 
-          <div className="border-t border-white/[0.06]" />
+          <div className="border-t border-border" />
 
           {/* Reset all */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-[#EF4444]">Azzera tutti i dati</p>
-              <p className="text-xs text-[#666] mt-0.5">Elimina TUTTI i dati (pasti, allenamenti, acqua, peso)</p>
+              <p className="text-sm font-medium text-[#EF4444]">{t("settings.resetAll")}</p>
+              <p className="text-xs text-text-tertiary mt-0.5">{t("settings.resetAllDesc")}</p>
             </div>
             <button
               onClick={() => setResetType("all")}
               className="px-4 py-2 rounded-xl text-xs font-medium bg-[#EF4444]/20 text-[#EF4444] hover:bg-[#EF4444]/30 transition-colors"
             >
-              Azzera tutto
+              {t("settings.resetAllBtn")}
             </button>
           </div>
 
-          <div className="border-t border-white/[0.06]" />
+          <div className="border-t border-border" />
 
           {/* Export data */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium">Esporta Dati</p>
-              <p className="text-xs text-[#666] mt-0.5">Scarica tutti i tuoi dati</p>
+              <p className="text-sm font-medium">{t("settings.exportData")}</p>
+              <p className="text-xs text-text-tertiary mt-0.5">{t("settings.exportDataDesc")}</p>
             </div>
             <button
               onClick={handleExportData}
               className="px-4 py-2 rounded-xl text-xs font-medium bg-[#3B82F6]/10 text-[#3B82F6] hover:bg-[#3B82F6]/20 transition-colors"
             >
-              Esporta
+              {t("settings.export")}
             </button>
           </div>
         </div>
@@ -1004,15 +1038,15 @@ export default function SettingsPage() {
         onClick={handleLogout}
         className="w-full py-3 rounded-2xl bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#EF4444] text-sm font-medium hover:bg-[#EF4444]/20 transition-colors"
       >
-        Esci dall&apos;account
+        {t("settings.logoutBtn")}
       </button>
 
       {/* ──────────── Reset Confirmation Modals ──────────── */}
       <ConfirmModal
         isOpen={resetType === "meals"}
-        title="Azzera dati dieta"
-        message="Tutti i pasti registrati verranno eliminati. Questa azione è irreversibile."
-        confirmLabel="Azzera dieta"
+        title={t("settings.resetMealsTitle")}
+        message={t("settings.resetMealsMsg")}
+        confirmLabel={t("settings.resetMealsConfirm")}
         danger
         loading={resetting}
         onConfirm={handleReset}
@@ -1020,9 +1054,9 @@ export default function SettingsPage() {
       />
       <ConfirmModal
         isOpen={resetType === "workouts"}
-        title="Azzera dati allenamento"
-        message="Tutti gli allenamenti registrati verranno eliminati. Questa azione è irreversibile."
-        confirmLabel="Azzera allenamenti"
+        title={t("settings.resetWorkoutsTitle")}
+        message={t("settings.resetWorkoutsMsg")}
+        confirmLabel={t("settings.resetWorkoutsConfirm")}
         danger
         loading={resetting}
         onConfirm={handleReset}
@@ -1040,20 +1074,19 @@ export default function SettingsPage() {
             }}
           />
           <div className="relative glass-card-strong p-6 w-full max-w-sm animate-scale-in">
-            <h3 className="text-lg font-bold text-[#EF4444] mb-2">Azzera tutti i dati</h3>
-            <p className="text-sm text-[#A1A1A1] mb-4">
-              Questa azione eliminera TUTTI i tuoi dati: pasti, allenamenti, acqua e peso. Non sara possibile
-              recuperarli.
+            <h3 className="text-lg font-bold text-[#EF4444] mb-2">{t("settings.resetAllTitle")}</h3>
+            <p className="text-sm text-text-secondary mb-4">
+              {t("settings.resetAllMsg")}
             </p>
-            <p className="text-sm text-white mb-3">
-              Digita <span className="font-bold text-[#EF4444]">CONFERMA</span> per procedere:
+            <p className="text-sm mb-3">
+              {t("settings.resetAllType")} <span className="font-bold text-[#EF4444]">CONFERMA</span> {t("settings.resetAllToProceed")}
             </p>
             <input
               type="text"
               value={resetConfirmText}
               onChange={(e) => setResetConfirmText(e.target.value)}
               placeholder="CONFERMA"
-              className="w-full px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-[#EF4444]/30 mb-4"
+              className="w-full px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-sm focus:outline-none focus:border-[#EF4444]/30 mb-4"
             />
             <div className="flex gap-3">
               <button
@@ -1061,16 +1094,16 @@ export default function SettingsPage() {
                   setResetType(null);
                   setResetConfirmText("");
                 }}
-                className="flex-1 py-2.5 rounded-xl bg-[#111111] text-[#A1A1A1] text-sm font-medium"
+                className="flex-1 py-2.5 rounded-xl bg-card text-text-secondary text-sm font-medium"
               >
-                Annulla
+                {t("settings.cancel")}
               </button>
               <button
                 onClick={handleReset}
                 disabled={resetConfirmText !== "CONFERMA" || resetting}
                 className="flex-1 py-2.5 rounded-xl bg-[#EF4444]/20 text-[#EF4444] text-sm font-medium disabled:opacity-30 transition-colors"
               >
-                {resetting ? "..." : "Elimina tutto"}
+                {resetting ? "..." : t("settings.deleteAll")}
               </button>
             </div>
           </div>

@@ -19,8 +19,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="it">
-      <body className={`${geistSans.variable} font-sans antialiased bg-black text-white`}>
+    <html lang="it" data-theme="dark">
+      <body className={`${geistSans.variable} font-sans antialiased bg-background text-text-primary`}>
         {/* Inline loading screen — visible immediately before JS hydrates */}
         <div id="vt-preloader" suppressHydrationWarning style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "#000", transition: "opacity 0.2s", pointerEvents: "none" }}>
           <svg width="96" height="48" viewBox="0 0 96 48" fill="none">

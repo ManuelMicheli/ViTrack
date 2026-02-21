@@ -6,6 +6,7 @@ import { useChat } from "@/lib/chat-context";
 import { CloseIcon, SendIcon } from "./icons";
 import { springs } from "@/lib/animation-config";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
+import { useLanguage } from "@/lib/language-context";
 import type { ChatMessage } from "@/lib/types";
 
 const getUserId = async (): Promise<string | null> => {
@@ -28,6 +29,7 @@ const QUICK_COMMANDS = [
 
 export default function ChatPanel() {
   const { isChatOpen, closeChat } = useChat();
+  const { t } = useLanguage();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -126,7 +128,7 @@ export default function ChatPanel() {
               id: `err-${Date.now()}`,
               user_id: userId,
               role: "assistant",
-              content: "Errore nella comunicazione. Riprova.",
+              content: t("chat.error"),
               message_type: "error",
               source: "web",
               metadata: {},
@@ -141,7 +143,7 @@ export default function ChatPanel() {
             id: `err-${Date.now()}`,
             user_id: userId,
             role: "assistant",
-            content: "Errore di rete. Controlla la connessione.",
+            content: t("chat.networkError"),
             message_type: "error",
             source: "web",
             metadata: {},
@@ -199,10 +201,10 @@ export default function ChatPanel() {
                 </div>
                 <div>
                   <h2 className="text-sm font-semibold text-white">
-                    Assistente ViTrack
+                    {t("chat.title")}
                   </h2>
                   <p className="text-[10px] text-white/40">
-                    Stessa chat di Telegram
+                    {t("chat.subtitle")}
                   </p>
                 </div>
               </div>
@@ -239,10 +241,10 @@ export default function ChatPanel() {
                     <span className="text-2xl">...</span>
                   </div>
                   <p className="text-sm text-white/40">
-                    Scrivi cosa hai mangiato o il tuo allenamento
+                    {t("chat.emptyTitle")}
                   </p>
                   <p className="text-xs text-white/25 mt-1">
-                    I messaggi da Telegram appariranno qui
+                    {t("chat.emptySubtitle")}
                   </p>
                 </div>
               )}
@@ -286,7 +288,7 @@ export default function ChatPanel() {
                   value={input}
                   onChange={handleTextareaChange}
                   onKeyDown={handleKeyDown}
-                  placeholder="Scrivi un messaggio..."
+                  placeholder={t("chat.placeholder")}
                   rows={1}
                   className="flex-1 bg-transparent text-sm text-white placeholder-white/30
                     resize-none outline-none max-h-[120px] leading-5 py-1"
@@ -319,6 +321,7 @@ function MessageBubble({
   message: ChatMessage;
   stripHtml: (s: string) => string;
 }) {
+  const { t } = useLanguage();
   const isUser = message.role === "user";
   const content = stripHtml(message.content);
 
@@ -334,7 +337,7 @@ function MessageBubble({
           </div>
           {fromTelegram && (
             <p className="text-[10px] text-white/25 mt-0.5 text-right">
-              via Telegram
+              {t("chat.viaTelegram")}
             </p>
           )}
         </div>
@@ -366,7 +369,7 @@ function MessageBubble({
           </p>
         </div>
         {fromTelegram && (
-          <p className="text-[10px] text-white/25 mt-0.5">via Telegram</p>
+          <p className="text-[10px] text-white/25 mt-0.5">{t("chat.viaTelegram")}</p>
         )}
       </div>
     </div>

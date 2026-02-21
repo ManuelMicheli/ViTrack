@@ -8,6 +8,8 @@ import BottomNav from "@/components/BottomNav";
 import ChatPanel from "@/components/ChatPanel";
 import { ChatProvider } from "@/lib/chat-context";
 import { PreferencesProvider } from "@/lib/preferences-context";
+import { ThemeProvider } from "@/lib/theme-context";
+import { LanguageProvider } from "@/lib/language-context";
 import PageTransition from "@/components/PageTransition";
 import Celebration from "@/components/Celebration";
 import { VTLogo } from "@/components/ViTrackTransition";
@@ -80,33 +82,37 @@ export default function DashboardLayout({
 
   if (!authChecked) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <VTLogo />
       </div>
     );
   }
 
   return (
-    <PreferencesProvider
-      userId={user?.id}
-      initialPreferences={user ? {
-        accent_color: user.accent_color,
-        layout_mode: user.layout_mode,
-        section_order: user.section_order,
-      } : undefined}
-    >
-      <Celebration>
-        <ChatProvider>
-          <div className="min-h-screen">
-            <Sidebar currentPath={pathname} user={user} onLogout={handleLogout} />
-            <main className="md:ml-60 pb-20 md:pb-0 min-h-screen">
-              <PageTransition>{children}</PageTransition>
-            </main>
-            <BottomNav currentPath={pathname} />
-            <ChatPanel />
-          </div>
-        </ChatProvider>
-      </Celebration>
-    </PreferencesProvider>
+    <ThemeProvider initialTheme={user?.theme ?? "dark"}>
+      <LanguageProvider initialLanguage={user?.language ?? "it"}>
+        <PreferencesProvider
+          userId={user?.id}
+          initialPreferences={user ? {
+            accent_color: user.accent_color,
+            layout_mode: user.layout_mode,
+            section_order: user.section_order,
+          } : undefined}
+        >
+          <Celebration>
+            <ChatProvider>
+              <div className="min-h-screen">
+                <Sidebar currentPath={pathname} user={user} onLogout={handleLogout} />
+                <main className="md:ml-60 pb-20 md:pb-0 min-h-screen">
+                  <PageTransition>{children}</PageTransition>
+                </main>
+                <BottomNav currentPath={pathname} />
+                <ChatPanel />
+              </div>
+            </ChatProvider>
+          </Celebration>
+        </PreferencesProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }

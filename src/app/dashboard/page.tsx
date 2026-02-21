@@ -18,6 +18,7 @@ import { staggerContainer, staggerItem } from "@/lib/animation-config";
 import { getGreeting, getMotivation } from "@/lib/personalization";
 import { useCelebration } from "@/lib/celebration-context";
 import { usePreferences } from "@/lib/preferences-context";
+import { useLanguage } from "@/lib/language-context";
 
 export default function DashboardPage() {
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
@@ -28,6 +29,7 @@ export default function DashboardPage() {
 
   const { celebrate } = useCelebration();
   const { sectionOrder, layoutMode } = usePreferences();
+  const { t } = useLanguage();
   const isCompact = layoutMode === "compact";
 
   const localUserId = typeof window !== "undefined" ? localStorage.getItem("vitrack_user_id") : null;
@@ -213,9 +215,9 @@ export default function DashboardPage() {
     meals: summary ? (
       <motion.div key="meals" variants={staggerItem}>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium">Pasti di oggi</h3>
+          <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium">{t("dashboard.todaysMeals")}</h3>
           <Link href="/dashboard/meals" className="text-xs text-[#666] hover:text-white transition-colors">
-            Vedi tutti &rarr;
+            {t("dashboard.viewAll")} &rarr;
           </Link>
         </div>
         <MealList meals={summary.meals.slice(0, 3)} onDelete={handleDeleteMeal} compact />
@@ -224,9 +226,9 @@ export default function DashboardPage() {
     workouts: summary ? (
       <motion.div key="workouts" variants={staggerItem}>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium">Allenamenti di oggi</h3>
+          <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium">{t("dashboard.todaysWorkouts")}</h3>
           <Link href="/dashboard/workouts" className="text-xs text-[#666] hover:text-white transition-colors">
-            Vedi tutti &rarr;
+            {t("dashboard.viewAll")} &rarr;
           </Link>
         </div>
         <WorkoutList workouts={summary.workouts.slice(0, 3)} onDelete={handleDeleteWorkout} compact />
