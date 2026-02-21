@@ -59,6 +59,7 @@ export default function SettingsPage() {
   const [telegramInput, setTelegramInput] = useState("");
   const [telegramSaving, setTelegramSaving] = useState(false);
   const [telegramMsg, setTelegramMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [showTelegramGuide, setShowTelegramGuide] = useState(false);
 
   // Reset data states
   const [resetType, setResetType] = useState<"meals" | "workouts" | "all" | null>(null);
@@ -454,38 +455,106 @@ export default function SettingsPage() {
 
           {/* Telegram link/unlink */}
           <div className="border-t border-border pt-4">
-            <div className="flex justify-between items-center">
-              <span className="font-body text-sm text-text-secondary">{t("settings.telegram")}</span>
-              {user?.telegram_id ? (
-                <div className="flex items-center gap-3">
-                  <span className="font-body text-sm text-text-tertiary">{user.telegram_id}</span>
+            {user?.telegram_id ? (
+              /* ── Connected state ── */
+              <div>
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-success" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <span className="font-body text-sm text-text-secondary">{t("settings.telegramConnected")}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono-label text-xs text-text-tertiary">ID: {user.telegram_id}</span>
+                    <button
+                      onClick={handleUnlinkTelegram}
+                      disabled={telegramSaving}
+                      className="font-mono-label text-xs text-danger hover:opacity-80 transition-colors"
+                    >
+                      {telegramSaving ? "..." : t("settings.unlink")}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* ── Unconnected state with tutorial ── */
+              <div>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className="font-body text-sm text-text-secondary">{t("settings.telegram")}</span>
+                    <p className="font-body text-xs text-text-tertiary mt-0.5">{t("settings.telegramSetupDesc")}</p>
+                  </div>
                   <button
-                    onClick={handleUnlinkTelegram}
-                    disabled={telegramSaving}
-                    className="font-mono-label text-danger hover:opacity-80 transition-colors"
+                    onClick={() => setShowTelegramGuide(!showTelegramGuide)}
+                    className="font-mono-label text-sm text-[var(--color-accent-dynamic)] hover:opacity-80 transition-colors shrink-0 ml-4"
                   >
-                    {telegramSaving ? "..." : t("settings.unlink")}
+                    {showTelegramGuide ? t("settings.telegramHide") : t("settings.telegramSetup")}
                   </button>
                 </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder="Telegram ID"
-                    value={telegramInput}
-                    onChange={(e) => setTelegramInput(e.target.value)}
-                    className="w-32 px-3 py-2 rounded-lg bg-transparent border border-border text-sm text-text-primary placeholder-text-tertiary focus:outline-none focus:border-[var(--color-accent-dynamic)] font-body transition-all"
-                  />
-                  <button
-                    onClick={handleLinkTelegram}
-                    disabled={telegramSaving || !telegramInput.trim()}
-                    className="font-mono-label text-[var(--color-accent-dynamic)] hover:opacity-80 transition-colors disabled:opacity-40"
-                  >
-                    {telegramSaving ? "..." : t("settings.link")}
-                  </button>
-                </div>
-              )}
-            </div>
+
+                <AnimatePresence>
+                  {showTelegramGuide && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-4 space-y-4">
+                        {/* Steps */}
+                        <div className="space-y-3">
+                          {/* Step 1 */}
+                          <div className="flex gap-3 items-start">
+                            <span className="shrink-0 w-6 h-6 rounded-full bg-[var(--color-accent-dynamic)]/15 text-[var(--color-accent-dynamic)] flex items-center justify-center font-mono-label text-xs">1</span>
+                            <div>
+                              <p className="font-body text-sm text-text-primary">{t("settings.telegramStep1")} <span className="font-mono-label text-[var(--color-accent-dynamic)]">@userinfobot</span></p>
+                            </div>
+                          </div>
+                          {/* Step 2 */}
+                          <div className="flex gap-3 items-start">
+                            <span className="shrink-0 w-6 h-6 rounded-full bg-[var(--color-accent-dynamic)]/15 text-[var(--color-accent-dynamic)] flex items-center justify-center font-mono-label text-xs">2</span>
+                            <p className="font-body text-sm text-text-primary">{t("settings.telegramStep2")}</p>
+                          </div>
+                          {/* Step 3 */}
+                          <div className="flex gap-3 items-start">
+                            <span className="shrink-0 w-6 h-6 rounded-full bg-[var(--color-accent-dynamic)]/15 text-[var(--color-accent-dynamic)] flex items-center justify-center font-mono-label text-xs">3</span>
+                            <p className="font-body text-sm text-text-primary">{t("settings.telegramStep3")}</p>
+                          </div>
+                        </div>
+
+                        {/* Input field */}
+                        <div className="space-y-2">
+                          <label className="font-mono-label text-xs text-text-tertiary">{t("settings.telegramIdLabel")}</label>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              placeholder={t("settings.telegramIdPlaceholder")}
+                              value={telegramInput}
+                              onChange={(e) => setTelegramInput(e.target.value.replace(/\D/g, ""))}
+                              className="flex-1 px-4 py-3 rounded-lg bg-transparent border border-border text-sm text-text-primary placeholder-text-tertiary focus:outline-none focus:border-[var(--color-accent-dynamic)] font-body transition-all"
+                            />
+                            <button
+                              onClick={handleLinkTelegram}
+                              disabled={telegramSaving || !telegramInput.trim()}
+                              className="px-5 py-3 bg-[var(--color-accent-dynamic)] text-black rounded-lg font-mono-label text-sm tracking-wider transition-all hover:opacity-90 disabled:opacity-40 shrink-0"
+                            >
+                              {telegramSaving ? "..." : t("settings.link")}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Step 4 - after linking */}
+                        <div className="flex gap-3 items-start pt-1 border-t border-border/50">
+                          <span className="shrink-0 w-6 h-6 rounded-full bg-[var(--color-accent-dynamic)]/15 text-[var(--color-accent-dynamic)] flex items-center justify-center font-mono-label text-xs">4</span>
+                          <p className="font-body text-sm text-text-tertiary">{t("settings.telegramStep4")}</p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
             {telegramMsg && (
               <p
                 className={`text-xs mt-2 ${
