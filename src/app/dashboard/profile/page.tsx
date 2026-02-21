@@ -10,10 +10,10 @@ import { staggerContainer, staggerItem } from "@/lib/animation-config";
 import { useLanguage } from "@/lib/language-context";
 
 const INPUT_CLASS =
-  "w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white placeholder-[#444] text-sm focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_12px_rgba(59,130,246,0.1)] transition-all";
+  "w-full px-4 py-3 rounded-lg bg-transparent border border-border text-text-primary placeholder-text-tertiary text-sm font-body focus:outline-none focus:border-[var(--color-accent-dynamic)] transition-all";
 
 const SELECT_CLASS =
-  "w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_12px_rgba(59,130,246,0.1)] transition-all appearance-none";
+  "w-full px-4 py-3 rounded-lg bg-transparent border border-border text-text-primary text-sm font-body focus:outline-none focus:border-[var(--color-accent-dynamic)] transition-all appearance-none";
 
 export default function ProfilePage() {
   const { t, language } = useLanguage();
@@ -217,7 +217,7 @@ export default function ProfilePage() {
           <div className="h-4 w-28 shimmer rounded-lg" />
         </div>
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-48 shimmer rounded-2xl" />
+          <div key={i} className="h-48 shimmer rounded-lg" />
         ))}
       </div>
     );
@@ -241,9 +241,9 @@ export default function ProfilePage() {
   });
 
   return (
-    <motion.div className="px-4 md:px-8 py-6 space-y-6 max-w-2xl" initial="initial" animate="animate" variants={staggerContainer(0.08)}>
+    <motion.div className="px-4 md:px-8 py-6 space-y-10 max-w-2xl" initial="initial" animate="animate" variants={staggerContainer(0.08)}>
       <motion.div variants={staggerItem}>
-        <h2 className="text-xl font-bold">{t("profile.title")}</h2>
+        <h1 className="font-display text-2xl font-bold text-text-primary">{t("profile.title")}</h1>
       </motion.div>
 
       {/* --- Header / Avatar --- */}
@@ -255,16 +255,16 @@ export default function ProfilePage() {
               alt="Avatar"
               width={80}
               height={80}
-              className="w-20 h-20 rounded-full object-cover border-2 border-white/10"
+              className="w-20 h-20 rounded-full object-cover border-2 border-border"
             />
           ) : (
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#3B82F6] to-[#8B5CF6] flex items-center justify-center">
-              <span className="text-2xl font-bold">{initials}</span>
+            <div className="w-20 h-20 rounded-full bg-surface border border-border flex items-center justify-center">
+              <span className="font-display text-2xl font-bold text-text-primary">{initials}</span>
             </div>
           )}
           {uploadingAvatar && (
             <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center">
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-border border-t-text-primary rounded-full animate-spin" />
             </div>
           )}
         </div>
@@ -279,29 +279,29 @@ export default function ProfilePage() {
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={uploadingAvatar}
-          className="text-xs text-[#3B82F6] font-medium hover:text-[#3B82F6]/80 transition-colors disabled:opacity-50"
+          className="font-mono-label text-[var(--color-accent-dynamic)] hover:opacity-80 transition-colors disabled:opacity-50"
         >
           {uploadingAvatar ? t("profile.uploading") : t("profile.changePhoto")}
         </button>
 
         <div className="text-center">
-          <p className="text-lg font-semibold">{user.first_name || t("common.user")}</p>
-          {user.email && <p className="text-sm text-[#666]">{user.email}</p>}
+          <p className="font-display text-lg font-bold text-text-primary">{user.first_name || t("common.user")}</p>
+          {user.email && <p className="font-body text-sm text-text-secondary">{user.email}</p>}
         </div>
       </motion.div>
 
       {/* --- Informazioni Personali --- */}
-      <motion.div variants={staggerItem} className="glass-card-strong rounded-2xl p-5 space-y-4">
+      <motion.div variants={staggerItem} className="data-card space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-white">{t("profile.personalInfo")}</h3>
+          <span className="font-mono-label text-text-tertiary">{t("profile.personalInfo")}</span>
           {savedSection === "personal" && (
-            <span className="text-xs text-[#22C55E] font-medium">{t("common.saved")}</span>
+            <span className="font-mono-label text-success">{t("common.saved")}</span>
           )}
         </div>
 
         {/* Nome */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("profile.name")}</label>
+          <label className="font-mono-label text-text-tertiary mb-2 block">{t("profile.name")}</label>
           <input
             type="text"
             value={firstName}
@@ -313,15 +313,15 @@ export default function ProfilePage() {
 
         {/* Email (read-only) */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("profile.email")}</label>
-          <div className="w-full px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.05] text-[#666] text-sm">
+          <label className="font-mono-label text-text-tertiary mb-2 block">{t("profile.email")}</label>
+          <div className="w-full px-4 py-3 rounded-lg bg-surface border border-border-subtle text-text-tertiary text-sm font-body">
             {user.email || t("profile.emailNotSet")}
           </div>
         </div>
 
         {/* Data di nascita */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("profile.dateOfBirth")}</label>
+          <label className="font-mono-label text-text-tertiary mb-2 block">{t("profile.dateOfBirth")}</label>
           <input
             type="date"
             value={dateOfBirth}
@@ -332,7 +332,7 @@ export default function ProfilePage() {
 
         {/* Sesso */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("profile.gender")}</label>
+          <label className="font-mono-label text-text-tertiary mb-2 block">{t("profile.gender")}</label>
           <select
             value={gender}
             onChange={(e) => setGender(e.target.value)}
@@ -347,7 +347,7 @@ export default function ProfilePage() {
 
         {/* Altezza */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("profile.height")}</label>
+          <label className="font-mono-label text-text-tertiary mb-2 block">{t("profile.height")}</label>
           <div className="relative">
             <input
               type="number"
@@ -356,13 +356,13 @@ export default function ProfilePage() {
               placeholder="175"
               className={INPUT_CLASS + " pr-12"}
             />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-[#666]">cm</span>
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-mono-label text-text-tertiary">cm</span>
           </div>
         </div>
 
         {/* Livello di attivita */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("profile.activityLevel")}</label>
+          <label className="font-mono-label text-text-tertiary mb-2 block">{t("profile.activityLevel")}</label>
           <select
             value={activityLevel}
             onChange={(e) => setActivityLevel(e.target.value)}
@@ -379,24 +379,24 @@ export default function ProfilePage() {
         <button
           onClick={handleSavePersonal}
           disabled={savingSection === "personal"}
-          className="w-full py-3 rounded-xl bg-gradient-to-r from-[#3B82F6] to-[#8B5CF6] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="w-full py-3 rounded-lg bg-[var(--color-accent-dynamic)] text-black text-sm font-mono-label hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {savingSection === "personal" ? t("common.saving") : t("common.save")}
         </button>
       </motion.div>
 
       {/* --- Obiettivi Nutrizionali --- */}
-      <motion.div variants={staggerItem} className="glass-card-strong rounded-2xl p-5 space-y-4">
+      <motion.div variants={staggerItem} className="data-card space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-white">{t("profile.nutritionalGoals")}</h3>
+          <span className="font-mono-label text-text-tertiary">{t("profile.nutritionalGoals")}</span>
           {savedSection === "goals" && (
-            <span className="text-xs text-[#22C55E] font-medium">{t("common.saved")}</span>
+            <span className="font-mono-label text-success">{t("common.saved")}</span>
           )}
         </div>
 
         {/* Calorie giornaliere */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("profile.dailyCalories")}</label>
+          <label className="font-mono-label text-text-tertiary mb-2 block">{t("profile.dailyCalories")}</label>
           <div className="relative">
             <input
               type="number"
@@ -405,13 +405,13 @@ export default function ProfilePage() {
               placeholder="2000"
               className={INPUT_CLASS + " pr-14"}
             />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-[#666]">kcal</span>
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-mono-label text-text-tertiary">kcal</span>
           </div>
         </div>
 
         {/* Proteine */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("macro.protein")}</label>
+          <label className="font-mono-label text-text-tertiary mb-2 block">{t("macro.protein")}</label>
           <div className="relative">
             <input
               type="number"
@@ -420,13 +420,13 @@ export default function ProfilePage() {
               placeholder="150"
               className={INPUT_CLASS + " pr-10"}
             />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-[#666]">g</span>
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-mono-label text-text-tertiary">g</span>
           </div>
         </div>
 
         {/* Carboidrati */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("macro.carbs")}</label>
+          <label className="font-mono-label text-text-tertiary mb-2 block">{t("macro.carbs")}</label>
           <div className="relative">
             <input
               type="number"
@@ -435,13 +435,13 @@ export default function ProfilePage() {
               placeholder="250"
               className={INPUT_CLASS + " pr-10"}
             />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-[#666]">g</span>
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-mono-label text-text-tertiary">g</span>
           </div>
         </div>
 
         {/* Grassi */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("macro.fat")}</label>
+          <label className="font-mono-label text-text-tertiary mb-2 block">{t("macro.fat")}</label>
           <div className="relative">
             <input
               type="number"
@@ -450,13 +450,13 @@ export default function ProfilePage() {
               placeholder="65"
               className={INPUT_CLASS + " pr-10"}
             />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-[#666]">g</span>
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-mono-label text-text-tertiary">g</span>
           </div>
         </div>
 
         {/* Obiettivo peso */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("profile.weightGoal")}</label>
+          <label className="font-mono-label text-text-tertiary mb-2 block">{t("profile.weightGoal")}</label>
           <div className="relative">
             <input
               type="number"
@@ -466,13 +466,13 @@ export default function ProfilePage() {
               placeholder="75"
               className={INPUT_CLASS + " pr-12"}
             />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-[#666]">kg</span>
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-mono-label text-text-tertiary">kg</span>
           </div>
         </div>
 
         {/* Obiettivo acqua */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("profile.waterGoal")}</label>
+          <label className="font-mono-label text-text-tertiary mb-2 block">{t("profile.waterGoal")}</label>
           <div className="relative">
             <input
               type="number"
@@ -481,25 +481,25 @@ export default function ProfilePage() {
               placeholder="2000"
               className={INPUT_CLASS + " pr-12"}
             />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-[#666]">ml</span>
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-mono-label text-text-tertiary">ml</span>
           </div>
         </div>
 
         <button
           onClick={handleSaveGoals}
           disabled={savingSection === "goals"}
-          className="w-full py-3 rounded-xl bg-gradient-to-r from-[#3B82F6] to-[#8B5CF6] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="w-full py-3 rounded-lg bg-[var(--color-accent-dynamic)] text-black text-sm font-mono-label hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {savingSection === "goals" ? t("common.saving") : t("common.save")}
         </button>
       </motion.div>
 
       {/* --- Preferenze Alimentari --- */}
-      <motion.div variants={staggerItem} className="glass-card-strong rounded-2xl p-5 space-y-4">
+      <motion.div variants={staggerItem} className="data-card space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-white">{t("profile.dietaryPrefs")}</h3>
+          <span className="font-mono-label text-text-tertiary">{t("profile.dietaryPrefs")}</span>
           {savedSection === "dietary" && (
-            <span className="text-xs text-[#22C55E] font-medium">{t("common.saved")}</span>
+            <span className="font-mono-label text-success">{t("common.saved")}</span>
           )}
         </div>
 
@@ -507,10 +507,10 @@ export default function ProfilePage() {
           {dietaryOptions.map((opt) => (
             <label
               key={opt.value}
-              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+              className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
                 dietaryPreferences.includes(opt.value)
-                  ? "bg-[#3B82F6]/10 border-[#3B82F6]/30"
-                  : "bg-white/[0.03] border-white/[0.08] hover:border-white/[0.15]"
+                  ? "bg-[var(--color-accent-dynamic)]/10 border-[var(--color-accent-dynamic)]/30"
+                  : "bg-transparent border-border hover:border-border"
               }`}
             >
               <input
@@ -522,17 +522,17 @@ export default function ProfilePage() {
               <div
                 className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
                   dietaryPreferences.includes(opt.value)
-                    ? "bg-[#3B82F6] border-[#3B82F6]"
-                    : "border-white/20"
+                    ? "bg-[var(--color-accent-dynamic)] border-[var(--color-accent-dynamic)]"
+                    : "border-border"
                 }`}
               >
                 {dietaryPreferences.includes(opt.value) && (
-                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <svg className="w-2.5 h-2.5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 )}
               </div>
-              <span className="text-sm text-white">{t(opt.labelKey)}</span>
+              <span className="font-body text-sm text-text-secondary">{t(opt.labelKey)}</span>
             </label>
           ))}
         </div>
@@ -540,33 +540,33 @@ export default function ProfilePage() {
         <button
           onClick={handleSaveDietary}
           disabled={savingSection === "dietary"}
-          className="w-full py-3 rounded-xl bg-gradient-to-r from-[#3B82F6] to-[#8B5CF6] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="w-full py-3 rounded-lg bg-[var(--color-accent-dynamic)] text-black text-sm font-mono-label hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {savingSection === "dietary" ? t("common.saving") : t("common.save")}
         </button>
       </motion.div>
 
       {/* --- Statistiche --- */}
-      <motion.div variants={staggerItem} className="glass-card-strong rounded-2xl p-5 space-y-1">
-        <h3 className="text-lg font-semibold text-white mb-3">{t("profile.stats")}</h3>
+      <motion.div variants={staggerItem} className="data-card space-y-1">
+        <span className="font-mono-label text-text-tertiary mb-3 block">{t("profile.stats")}</span>
 
-        <div className="flex justify-between items-center py-2.5 border-b border-white/[0.06]">
-          <span className="text-sm text-[#A1A1A1]">{t("profile.memberSince")}</span>
-          <span className="text-sm font-medium">
+        <div className="flex justify-between items-center py-2.5 border-b border-border-subtle">
+          <span className="font-body text-sm text-text-secondary">{t("profile.memberSince")}</span>
+          <span className="font-display text-sm font-bold text-text-primary">
             {daysSinceJoin} {t("common.days")} ({memberSince})
           </span>
         </div>
 
-        <div className="flex justify-between items-center py-2.5 border-b border-white/[0.06]">
-          <span className="text-sm text-[#A1A1A1]">{t("profile.telegramId")}</span>
-          <span className="text-sm font-medium text-[#666]">
+        <div className="flex justify-between items-center py-2.5 border-b border-border-subtle">
+          <span className="font-body text-sm text-text-secondary">{t("profile.telegramId")}</span>
+          <span className="font-mono-label text-text-tertiary">
             {user.telegram_id ?? t("profile.notLinked")}
           </span>
         </div>
 
         <div className="flex justify-between items-center py-2.5">
-          <span className="text-sm text-[#A1A1A1]">{t("profile.plan")}</span>
-          <span className="text-sm font-medium gradient-text">ViTrack</span>
+          <span className="font-body text-sm text-text-secondary">{t("profile.plan")}</span>
+          <span className="font-display text-sm font-bold text-[var(--color-accent-dynamic)]">ViTrack</span>
         </div>
       </motion.div>
     </motion.div>

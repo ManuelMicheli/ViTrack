@@ -53,7 +53,7 @@ export default function WorkoutsPage() {
       <div className="px-4 md:px-8 py-6 space-y-4">
         <div className="h-8 w-40 shimmer rounded-lg" />
         <div className="h-10 w-64 shimmer rounded-lg" />
-        {[...Array(3)].map((_, i) => <div key={i} className="h-24 shimmer rounded-2xl" />)}
+        {[...Array(3)].map((_, i) => <div key={i} className="h-24 shimmer rounded-lg" />)}
       </div>
     );
   }
@@ -61,40 +61,40 @@ export default function WorkoutsPage() {
   return (
     <motion.div className="px-4 md:px-8 py-6 space-y-4" initial="initial" animate="animate" variants={staggerContainer(0.08)}>
       <motion.div variants={staggerItem} className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">{t("workoutsPage.title")}</h2>
+        <h1 className="font-display text-2xl font-bold text-text-primary">{t("workoutsPage.title")}</h1>
         <DatePicker value={date} onChange={setDate} />
       </motion.div>
 
       {/* Summary cards */}
       {workouts.length > 0 && (
         <motion.div variants={staggerItem} className="grid grid-cols-3 gap-2">
-          <div className="glass-card p-3 text-center">
-            <p className="text-xs text-[#666] uppercase tracking-wider">{t("workoutsPage.sessions")}</p>
-            <p className="text-lg font-bold mt-1">{workouts.length}</p>
+          <div className="data-card text-center">
+            <p className="font-mono-label text-[10px] text-text-tertiary">{t("workoutsPage.sessions")}</p>
+            <p className="font-display text-xl font-bold mt-1 text-text-primary">{workouts.length}</p>
           </div>
-          <div className="glass-card p-3 text-center">
-            <p className="text-xs text-[#666] uppercase tracking-wider">{t("workoutsPage.duration")}</p>
-            <p className="text-lg font-bold mt-1 text-[#3B82F6]">{totalDuration} <span className="text-xs font-normal">min</span></p>
+          <div className="data-card text-center">
+            <p className="font-mono-label text-[10px] text-text-tertiary">{t("workoutsPage.duration")}</p>
+            <p className="font-display text-xl font-bold mt-1 text-[var(--color-accent-dynamic)]">{totalDuration} <span className="text-xs font-normal text-text-tertiary">min</span></p>
           </div>
-          <div className="glass-card p-3 text-center">
-            <p className="text-xs text-[#666] uppercase tracking-wider">{t("workoutsPage.burned")}</p>
-            <p className="text-lg font-bold mt-1 text-[#F59E0B]">{totalBurned} <span className="text-xs font-normal">kcal</span></p>
+          <div className="data-card text-center">
+            <p className="font-mono-label text-[10px] text-text-tertiary">{t("workoutsPage.burned")}</p>
+            <p className="font-display text-xl font-bold mt-1 text-carbs">{totalBurned} <span className="text-xs font-normal text-text-tertiary">kcal</span></p>
           </div>
         </motion.div>
       )}
 
       {workouts.length === 0 ? (
-        <motion.div variants={staggerItem} className="glass-card p-8 text-center">
+        <motion.div variants={staggerItem} className="data-card text-center !py-8">
           <span className="text-4xl mb-3 block">{"\uD83C\uDFCB\uFE0F"}</span>
-          <p className="text-[#A1A1A1] text-sm">{t("workoutsPage.noWorkouts")}</p>
-          <p className="text-xs text-[#666] mt-1">{t("workoutsPage.useTelegram")}</p>
+          <p className="text-text-secondary text-sm font-body">{t("workoutsPage.noWorkouts")}</p>
+          <p className="text-text-tertiary text-xs font-body mt-1">{t("workoutsPage.useTelegram")}</p>
         </motion.div>
       ) : (
         <motion.div variants={staggerItem} className="space-y-3">
           {workouts.map((workout) => {
             const isExpanded = expandedId === workout.id;
             return (
-              <div key={workout.id} className="glass-card overflow-hidden transition-all duration-300 group relative">
+              <div key={workout.id} className="data-card !p-0 overflow-hidden transition-all duration-300 group relative">
                 <div
                   role="button"
                   tabIndex={0}
@@ -105,8 +105,8 @@ export default function WorkoutsPage() {
                   <div className="flex gap-3">
                     <span className="text-xl">{"\uD83C\uDFCB\uFE0F"}</span>
                     <div>
-                      <p className="font-medium text-white text-sm">{workout.description}</p>
-                      <p className="text-xs text-[#666] mt-0.5">
+                      <p className="font-body text-base text-text-primary">{workout.description}</p>
+                      <p className="font-mono-label text-text-tertiary mt-0.5">
                         {workout.workout_type}
                         {workout.duration_min && ` \u00B7 ${workout.duration_min} min`}
                       </p>
@@ -114,27 +114,27 @@ export default function WorkoutsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {workout.calories_burned && (
-                      <span className="text-sm font-semibold text-[#F59E0B]">-{workout.calories_burned} kcal</span>
+                      <span className="font-mono-label text-text-secondary">-{workout.calories_burned} kcal</span>
                     )}
                   </div>
                 </div>
                 <button
                   onClick={() => setDeleteId(workout.id)}
-                  className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-[#666] hover:text-[#EF4444] transition-all p-1"
+                  className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-danger hover:bg-danger/10 rounded p-1 transition-all"
                 >
                   <TrashIcon className="w-4 h-4" />
                 </button>
 
                 {isExpanded && workout.exercises && workout.exercises.length > 0 && (
                   <div className="px-4 pb-4">
-                    <div className="rounded-xl bg-white/[0.03] border border-white/[0.04] divide-y divide-white/[0.04]">
+                    <div className="bg-surface border border-border rounded-lg divide-y divide-border-subtle">
                       <div className="px-3 py-2">
-                        <p className="text-[10px] text-[#666] uppercase tracking-wider font-medium">{t("workoutsPage.exercises")}</p>
+                        <span className="font-mono-label text-text-tertiary">{t("workoutsPage.exercises")}</span>
                       </div>
                       {workout.exercises.map((ex, i) => (
                         <div key={i} className="flex items-center justify-between px-3 py-2.5 text-sm">
-                          <span className="text-white">{ex.name}</span>
-                          <span className="text-[#A1A1A1] text-xs">
+                          <span className="font-body text-text-primary">{ex.name}</span>
+                          <span className="font-mono-label text-[11px] text-text-tertiary">
                             {ex.sets && ex.reps ? `${ex.sets}x${ex.reps}` : ""}
                             {ex.weight_kg ? ` @ ${ex.weight_kg}kg` : ""}
                           </span>

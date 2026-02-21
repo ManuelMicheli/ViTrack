@@ -97,7 +97,7 @@ export default function MealsPage() {
       <div className="px-4 md:px-8 py-6 space-y-4">
         <div className="h-8 w-32 shimmer rounded-lg" />
         <div className="h-10 w-64 shimmer rounded-lg" />
-        {[...Array(3)].map((_, i) => <div key={i} className="h-24 shimmer rounded-2xl" />)}
+        {[...Array(3)].map((_, i) => <div key={i} className="h-24 shimmer rounded-lg" />)}
       </div>
     );
   }
@@ -105,7 +105,7 @@ export default function MealsPage() {
   return (
     <motion.div className="px-4 md:px-8 py-6 space-y-4" initial="initial" animate="animate" variants={staggerContainer(0.08)}>
       <motion.div variants={staggerItem} className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">{t("mealsPage.title")}</h2>
+        <h1 className="font-display text-2xl font-bold text-text-primary">{t("mealsPage.title")}</h1>
         <DatePicker value={date} onChange={setDate} />
       </motion.div>
 
@@ -114,14 +114,14 @@ export default function MealsPage() {
         <motion.div key={type} variants={staggerItem}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-medium uppercase tracking-wider text-[#A1A1A1]">{label}</h3>
+              <span className="font-mono-label text-text-tertiary">{label}</span>
               {totalCal > 0 && (
-                <span className="text-xs text-[#666] ml-1">{totalCal} kcal</span>
+                <span className="font-mono-label text-text-tertiary ml-1">{totalCal} kcal</span>
               )}
             </div>
             <button
               onClick={() => openAddForType(type)}
-              className="p-1.5 rounded-lg hover:bg-white/[0.06] text-[#666] hover:text-white transition-all"
+              className="p-1.5 rounded-lg hover:bg-surface-raised text-text-tertiary hover:text-text-primary transition-all"
             >
               <PlusIcon className="w-4 h-4" />
             </button>
@@ -130,32 +130,32 @@ export default function MealsPage() {
           {sectionMeals.length === 0 ? (
             <button
               onClick={() => openAddForType(type)}
-              className="w-full py-4 rounded-2xl border border-dashed border-white/[0.08] text-[#666] text-sm hover:border-white/[0.15] hover:text-[#A1A1A1] transition-all"
+              className="w-full py-4 rounded-lg border border-dashed border-border text-text-tertiary text-sm hover:border-border hover:text-text-secondary transition-all font-body"
             >
               + {t("mealsPage.addType")} {label.toLowerCase()}
             </button>
           ) : (
-            <div className="space-y-2">
+            <div className="data-card !p-0 divide-y divide-border-subtle">
               {sectionMeals.map((meal) => (
-                <div key={meal.id} className="glass-card p-4 group">
+                <div key={meal.id} className="p-4 group">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-white text-sm">{meal.description}</p>
-                      <p className="text-xs text-[#666] mt-0.5">
+                      <p className="font-body text-[15px] text-text-primary">{meal.description}</p>
+                      <p className="font-body text-xs text-text-tertiary mt-0.5">
                         {new Date(meal.logged_at).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
                       </p>
-                      <div className="flex gap-2 mt-1.5 text-xs">
-                        <span className="text-[#3B82F6]">P:{meal.protein_g ?? 0}g</span>
-                        <span className="text-[#F59E0B]">C:{meal.carbs_g ?? 0}g</span>
-                        <span className="text-[#EF4444]">G:{meal.fat_g ?? 0}g</span>
-                        <span className="text-[#22C55E]">F:{meal.fiber_g ?? 0}g</span>
+                      <div className="flex gap-2 mt-1.5 font-mono-label text-[11px]">
+                        <span className="text-protein">P:{meal.protein_g ?? 0}g</span>
+                        <span className="text-carbs">C:{meal.carbs_g ?? 0}g</span>
+                        <span className="text-fat">G:{meal.fat_g ?? 0}g</span>
+                        <span className="text-fiber">F:{meal.fiber_g ?? 0}g</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold">{meal.calories} kcal</span>
+                      <span className="font-mono-label text-text-secondary">{meal.calories} kcal</span>
                       <button
                         onClick={() => setDeleteId(meal.id)}
-                        className="opacity-0 group-hover:opacity-100 text-[#666] hover:text-[#EF4444] transition-all"
+                        className="opacity-0 group-hover:opacity-100 text-danger hover:bg-danger/10 rounded p-1 transition-all"
                       >
                         <TrashIcon className="w-4 h-4" />
                       </button>
@@ -179,10 +179,10 @@ export default function MealsPage() {
 
       {/* Daily total */}
       {meals.length > 0 && (
-        <motion.div variants={staggerItem} className="glass-card-strong p-4">
+        <motion.div variants={staggerItem} className="data-card">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-[#666] uppercase tracking-wider font-medium">{t("mealsPage.dailyTotal")}</span>
-            <span className="text-sm font-bold">{totalCalories} kcal</span>
+            <span className="font-mono-label text-text-tertiary">{t("mealsPage.dailyTotal")}</span>
+            <span className="font-display text-2xl font-bold text-text-primary">{totalCalories} kcal</span>
           </div>
           <MacroBar protein={totalProtein} carbs={totalCarbs} fat={totalFat} fiber={totalFiber} showLabels />
         </motion.div>

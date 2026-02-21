@@ -69,13 +69,19 @@ export default function StatsPage() {
   const totalBurned = data.reduce((s, d) => s + d.burned, 0);
   const calorieGoal = data.length > 0 ? data[data.length - 1].goal : 0;
 
+  const axisStyle = {
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 10,
+    fill: '#585858',
+  };
+
   const tooltipStyle = {
-    backgroundColor: "rgba(17,17,17,0.95)",
-    border: "1px solid rgba(255,255,255,0.08)",
-    borderRadius: "12px",
+    backgroundColor: "#0A0A0A",
+    border: "1px solid #1A1A1A",
+    borderRadius: "8px",
     color: "#FFFFFF",
     fontSize: "12px",
-    backdropFilter: "blur(20px)",
+    fontFamily: "'IBM Plex Mono', monospace",
   };
 
   if (loading) {
@@ -83,14 +89,14 @@ export default function StatsPage() {
       <div className="px-4 md:px-8 py-6 space-y-4">
         <div className="h-8 w-36 shimmer rounded-lg" />
         <div className="flex gap-2">
-          <div className="h-9 w-24 shimmer rounded-full" />
-          <div className="h-9 w-24 shimmer rounded-full" />
+          <div className="h-9 w-24 shimmer rounded-lg" />
+          <div className="h-9 w-24 shimmer rounded-lg" />
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {[...Array(4)].map((_, i) => <div key={i} className="h-20 shimmer rounded-2xl" />)}
+          {[...Array(4)].map((_, i) => <div key={i} className="h-20 shimmer rounded-lg" />)}
         </div>
-        <div className="h-64 shimmer rounded-2xl" />
-        <div className="h-64 shimmer rounded-2xl" />
+        <div className="h-64 shimmer rounded-lg" />
+        <div className="h-64 shimmer rounded-lg" />
       </div>
     );
   }
@@ -98,7 +104,7 @@ export default function StatsPage() {
   return (
     <motion.div className="px-4 md:px-8 py-6 space-y-4" initial="initial" animate="animate" variants={staggerContainer(0.08)}>
       <motion.div variants={staggerItem}>
-        <h2 className="text-xl font-bold">{t("statsPage.title")}</h2>
+        <h1 className="font-display text-2xl font-bold text-text-primary">{t("statsPage.title")}</h1>
       </motion.div>
 
       <motion.div variants={staggerItem} className="flex gap-2">
@@ -106,10 +112,10 @@ export default function StatsPage() {
           <button
             key={p}
             onClick={() => setPeriod(p)}
-            className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
+            className={`font-mono-label border rounded-lg px-3 py-1.5 transition-all ${
               period === p
-                ? "bg-white text-black"
-                : "glass-card text-[#A1A1A1] hover:text-white"
+                ? "border-[var(--color-accent-dynamic)] text-text-primary"
+                : "border-border text-text-tertiary hover:text-text-secondary"
             }`}
           >
             {p} {t("common.days")}
@@ -119,57 +125,51 @@ export default function StatsPage() {
 
       <motion.div variants={staggerItem} className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: t("statsPage.avgCalories"), value: `${avgCalories}`, unit: "kcal", color: "" },
-          { label: t("statsPage.workouts"), value: `${totalWorkouts}`, unit: "", color: "" },
-          { label: t("statsPage.avgProtein"), value: `${avgProtein}`, unit: "g", color: "text-[#3B82F6]" },
-          { label: t("statsPage.caloriesBurned"), value: `${totalBurned}`, unit: "kcal", color: "text-[#F59E0B]" },
+          { label: t("statsPage.avgCalories"), value: `${avgCalories}`, unit: "kcal", color: "text-text-primary" },
+          { label: t("statsPage.workouts"), value: `${totalWorkouts}`, unit: "", color: "text-text-primary" },
+          { label: t("statsPage.avgProtein"), value: `${avgProtein}`, unit: "g", color: "text-protein" },
+          { label: t("statsPage.caloriesBurned"), value: `${totalBurned}`, unit: "kcal", color: "text-carbs" },
         ].map((card) => (
-          <div key={card.label} className="glass-card p-4">
-            <p className="text-[10px] text-[#666] uppercase tracking-wider">{card.label}</p>
-            <p className={`text-xl font-bold mt-1 ${card.color}`}>
-              {card.value} {card.unit && <span className="text-xs font-normal text-[#666]">{card.unit}</span>}
+          <div key={card.label} className="data-card">
+            <p className="font-mono-label text-[10px] text-text-tertiary">{card.label}</p>
+            <p className={`font-display text-xl font-bold mt-1 ${card.color}`}>
+              {card.value} {card.unit && <span className="text-xs font-normal text-text-tertiary">{card.unit}</span>}
             </p>
           </div>
         ))}
       </motion.div>
 
       <motion.div variants={staggerItem} className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="glass-card p-4">
-          <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium mb-4">{t("statsPage.calorieTrend")}</h3>
+        <div className="data-card">
+          <span className="font-mono-label text-text-tertiary mb-4 block">{t("statsPage.calorieTrend")}</span>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={data}>
-              <CartesianGrid stroke="rgba(255,255,255,0.04)" strokeDasharray="3 3" />
-              <XAxis dataKey="label" stroke="#666" fontSize={11} tickLine={false} axisLine={false} />
-              <YAxis stroke="#666" fontSize={11} tickLine={false} axisLine={false} width={40} />
+              <CartesianGrid stroke="#1A1A1A" strokeDasharray="3 3" />
+              <XAxis dataKey="label" stroke="#585858" style={axisStyle} tickLine={false} axisLine={false} />
+              <YAxis stroke="#585858" style={axisStyle} tickLine={false} axisLine={false} width={40} />
               <Tooltip contentStyle={tooltipStyle} />
               {calorieGoal > 0 && (
-                <ReferenceLine y={calorieGoal} stroke="#666" strokeDasharray="5 5"
-                  label={{ value: t("weight.objective"), position: "insideTopRight", fill: "#666", fontSize: 11 }} />
+                <ReferenceLine y={calorieGoal} stroke="#1A1A1A" strokeDasharray="5 5"
+                  label={{ value: t("weight.objective"), position: "insideTopRight", fill: "#585858", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }} />
               )}
-              <Line type="monotone" dataKey="calories" stroke="url(#lineGradient)" strokeWidth={2}
-                dot={{ fill: "#3B82F6", r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: "#8B5CF6" }} name={t("statsPage.calories")} />
-              <defs>
-                <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#3B82F6" />
-                  <stop offset="100%" stopColor="#8B5CF6" />
-                </linearGradient>
-              </defs>
+              <Line type="monotone" dataKey="calories" stroke="#E8E4DE" strokeWidth={2}
+                dot={{ fill: "#E8E4DE", r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: "#E8E4DE" }} name={t("statsPage.calories")} />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="glass-card p-4">
-          <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium mb-4">{t("statsPage.macroDistribution")}</h3>
+        <div className="data-card">
+          <span className="font-mono-label text-text-tertiary mb-4 block">{t("statsPage.macroDistribution")}</span>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={data}>
-              <CartesianGrid stroke="rgba(255,255,255,0.04)" strokeDasharray="3 3" />
-              <XAxis dataKey="label" stroke="#666" fontSize={11} tickLine={false} axisLine={false} />
-              <YAxis stroke="#666" fontSize={11} tickLine={false} axisLine={false} width={40} unit="g" />
+              <CartesianGrid stroke="#1A1A1A" strokeDasharray="3 3" />
+              <XAxis dataKey="label" stroke="#585858" style={axisStyle} tickLine={false} axisLine={false} />
+              <YAxis stroke="#585858" style={axisStyle} tickLine={false} axisLine={false} width={40} unit="g" />
               <Tooltip contentStyle={tooltipStyle} />
-              <Bar dataKey="protein" stackId="macro" fill="#3B82F6" name={t("macro.protein")} radius={[0, 0, 0, 0]} />
-              <Bar dataKey="carbs" stackId="macro" fill="#F59E0B" name={t("macro.carbs")} />
-              <Bar dataKey="fat" stackId="macro" fill="#EF4444" name={t("macro.fat")} />
-              <Bar dataKey="fiber" stackId="macro" fill="#22C55E" name={t("macro.fiber")} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="protein" stackId="macro" fill="var(--color-protein)" name={t("macro.protein")} radius={[0, 0, 0, 0]} />
+              <Bar dataKey="carbs" stackId="macro" fill="var(--color-carbs)" name={t("macro.carbs")} />
+              <Bar dataKey="fat" stackId="macro" fill="var(--color-fat)" name={t("macro.fat")} />
+              <Bar dataKey="fiber" stackId="macro" fill="var(--color-fiber)" name={t("macro.fiber")} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
