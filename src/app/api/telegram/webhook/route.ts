@@ -10,8 +10,9 @@ import {
   type WorkoutClassification,
   type ParsedExercise,
 } from "@/lib/openai";
-import { warmupCache } from "@/lib/nutrition";
+import { warmupCache, type NutrientResult } from "@/lib/nutrition";
 import { enrichWithNutrition } from "@/lib/chat-processor";
+import { analyzePhoto, lookupByBarcode, labelToNutrients } from "@/lib/vision";
 
 // ---------------------------------------------------------------------------
 // In-memory state
@@ -32,9 +33,17 @@ interface PendingMealInfo {
   history: { role: string; content: string }[];
 }
 
+interface AwaitingPhoto {
+  items: { name: string; name_en: string; brand: string | null; quantity_g: number; is_branded: boolean }[];
+  failedItemNames: string[];
+  meal_type: "colazione" | "pranzo" | "cena" | "snack";
+  expiresAt: number;
+}
+
 const activeSessions = new Map<number, SessionData>();
 const pendingWorkouts = new Map<number, PendingWorkout>();
 const pendingMeals = new Map<number, PendingMealInfo>();
+const awaitingPhotos = new Map<number, AwaitingPhoto>();
 
 // ---------------------------------------------------------------------------
 // Hourglass animation — flips ⏳/⌛ every 2s while processing
@@ -136,6 +145,18 @@ export async function POST(request: Request) {
           text = transcription;
           if (thinkingId) await editMessage(chatId, thinkingId, `\uD83C\uDFA4 <i>"${text}"</i>`);
         }
+      }
+
+      // Handle photo messages (with or without caption)
+      if (message.photo && message.photo.length > 0) {
+        const photoUserId = await getUserId(telegramId);
+        if (!photoUserId) {
+          await sendMessage(chatId, "Invia prima /start per registrarti.");
+          return;
+        }
+        saveChatMsg(photoUserId, "user", message.caption ? `[foto] ${message.caption}` : "[foto]");
+        await handlePhoto(chatId, telegramId, photoUserId, message);
+        return;
       }
 
       if (!text) return;
@@ -394,11 +415,23 @@ async function handleFreeText(
           if (thinkingId) await editMessage(chatId, thinkingId, reply);
           else await sendMessage(chatId, reply);
           saveChatMsg(userId, "assistant", reply, "need_info");
+          awaitingPhotos.set(telegramId, {
+            items: (result as ParsedMeal).items,
+            failedItemNames: enrichResult.failedItems,
+            meal_type: (result as ParsedMeal).meal_type,
+            expiresAt: Date.now() + 5 * 60 * 1000,
+          });
         } else if (enrichResult.meal) {
           let extraMsg = "";
           if (enrichResult.failedItems.length > 0) {
             const itemNames = enrichResult.failedItems.join(", ");
             extraMsg = `\n\nNon ho trovato i valori per: ${itemNames}\nMandami una foto dell'etichetta per aggiungerli.`;
+            awaitingPhotos.set(telegramId, {
+              items: (result as ParsedMeal).items,
+              failedItemNames: enrichResult.failedItems,
+              meal_type: (result as ParsedMeal).meal_type,
+              expiresAt: Date.now() + 5 * 60 * 1000,
+            });
           }
           await saveMealWithEdit(chatId, userId, enrichResult.meal, thinkingId, extraMsg);
         } else {
@@ -458,6 +491,52 @@ async function handlePendingMealResponse(
     return;
   }
 
+  const firstMsg = pending.history[0]?.content ?? "";
+
+  // Handle barcode follow-up (user sending quantity after barcode scan)
+  if (firstMsg.startsWith("[foto barcode:")) {
+    const barcodeMatch = firstMsg.match(/\[foto barcode: (\d+)\]/);
+    const quantityMatch = text.match(/(\d+)/);
+    if (barcodeMatch && quantityMatch) {
+      pendingMeals.delete(telegramId);
+      const barcode = barcodeMatch[1];
+      const grams = parseInt(quantityMatch[1]);
+
+      const [thinkId] = await Promise.all([
+        sendMessage(chatId, "\u23F3 Cerco il prodotto..."),
+        sendTyping(chatId),
+      ]);
+
+      const nutrients = await lookupByBarcode(barcode, grams);
+      if (nutrients) {
+        await saveMealFromNutrients(chatId, userId, nutrients, grams, "snack", thinkId);
+        return;
+      }
+      if (thinkId) await editMessage(chatId, thinkId, "Prodotto non trovato nel database. Prova a mandarmi una foto dell'etichetta nutrizionale.");
+      saveChatMsg(userId, "assistant", "Barcode non trovato.", "error");
+      return;
+    }
+  }
+
+  // Handle label follow-up (user sending quantity after label scan)
+  if (firstMsg.startsWith("[foto etichetta:")) {
+    const quantityMatch = text.match(/(\d+)/);
+    if (quantityMatch) {
+      try {
+        const labelJson = firstMsg.replace("[foto etichetta: ", "").replace(/\]$/, "");
+        const labelData = JSON.parse(labelJson);
+        const grams = parseInt(quantityMatch[1]);
+        pendingMeals.delete(telegramId);
+
+        const nutrients = labelToNutrients(labelData, grams);
+
+        const thinkId = await sendMessage(chatId, "\u23F3 Calcolo i valori...");
+        await saveMealFromNutrients(chatId, userId, nutrients, grams, "snack", thinkId, labelData.product_name);
+        return;
+      } catch { /* fall through to normal classification */ }
+    }
+  }
+
   pending.history.push({ role: "user", content: text });
 
   const [thinkingId] = await Promise.all([
@@ -503,11 +582,23 @@ async function handlePendingMealResponse(
           if (thinkingId) await editMessage(chatId, thinkingId, reply);
           else await sendMessage(chatId, reply);
           saveChatMsg(userId, "assistant", reply, "need_info");
+          awaitingPhotos.set(telegramId, {
+            items: (result as ParsedMeal).items,
+            failedItemNames: enrichResult.failedItems,
+            meal_type: (result as ParsedMeal).meal_type,
+            expiresAt: Date.now() + 5 * 60 * 1000,
+          });
         } else if (enrichResult.meal) {
           let extraMsg = "";
           if (enrichResult.failedItems.length > 0) {
             const itemNames = enrichResult.failedItems.join(", ");
             extraMsg = `\n\nNon ho trovato i valori per: ${itemNames}\nMandami una foto dell'etichetta per aggiungerli.`;
+            awaitingPhotos.set(telegramId, {
+              items: (result as ParsedMeal).items,
+              failedItemNames: enrichResult.failedItems,
+              meal_type: (result as ParsedMeal).meal_type,
+              expiresAt: Date.now() + 5 * 60 * 1000,
+            });
           }
           await saveMealWithEdit(chatId, userId, enrichResult.meal, thinkingId, extraMsg);
         } else {
@@ -709,6 +800,140 @@ async function handleSessionExercise(
 }
 
 // enrichWithNutrition is imported from @/lib/chat-processor
+
+// ---------------------------------------------------------------------------
+// Photo handling — nutrition labels and barcodes
+// ---------------------------------------------------------------------------
+async function handlePhoto(
+  chatId: number,
+  telegramId: number,
+  userId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  message: any
+) {
+  const photos = message.photo;
+  const largestPhoto = photos[photos.length - 1];
+  const caption: string = message.caption?.trim() ?? "";
+
+  const thinkingId = await sendMessage(chatId, "\uD83D\uDCF7 Analizzo l'immagine...");
+
+  const imageBuffer = await downloadFile(largestPhoto.file_id);
+  if (!imageBuffer) {
+    if (thinkingId) await editMessage(chatId, thinkingId, "Non sono riuscito a scaricare l'immagine. Riprova.");
+    return;
+  }
+
+  const visionResult = await analyzePhoto(imageBuffer);
+
+  if (visionResult.type === "unreadable") {
+    if (thinkingId) await editMessage(chatId, thinkingId, "Non riesco a leggere l'immagine. Prova con una foto più nitida dell'etichetta nutrizionale.");
+    saveChatMsg(userId, "assistant", "Non riesco a leggere l'immagine.", "error");
+    return;
+  }
+
+  // Extract quantity from caption
+  const quantityMatch = caption.match(/(\d+)\s*g/i);
+  let grams: number | null = quantityMatch ? parseInt(quantityMatch[1]) : null;
+
+  // Check awaiting-photo state
+  const awaiting = awaitingPhotos.get(telegramId);
+  if (awaiting && Date.now() < awaiting.expiresAt) {
+    awaitingPhotos.delete(telegramId);
+    if (!grams && awaiting.items.length > 0) {
+      grams = awaiting.items[0].quantity_g;
+    }
+  }
+
+  if (visionResult.type === "barcode" || visionResult.type === "both") {
+    const barcode = visionResult.code;
+
+    if (!grams) {
+      pendingMeals.set(telegramId, {
+        history: [
+          { role: "user", content: `[foto barcode: ${barcode}]` },
+          { role: "assistant", content: JSON.stringify({ type: "need_info", message: "Quanti grammi?" }) },
+        ],
+      });
+      if (thinkingId) await editMessage(chatId, thinkingId, "\uD83D\uDCF7 Ho letto il codice a barre. Quanti grammi hai mangiato?");
+      saveChatMsg(userId, "assistant", "Ho letto il codice a barre. Quanti grammi?", "need_info");
+      return;
+    }
+
+    const nutrients = await lookupByBarcode(barcode, grams);
+    if (nutrients) {
+      await saveMealFromNutrients(chatId, userId, nutrients, grams, "snack", thinkingId);
+      return;
+    }
+
+    if (visionResult.type === "both") {
+      const labelNutrients = labelToNutrients(visionResult, grams);
+      await saveMealFromNutrients(chatId, userId, labelNutrients, grams, "snack", thinkingId, visionResult.product_name);
+      return;
+    }
+
+    if (thinkingId) await editMessage(chatId, thinkingId, "Ho letto il codice a barre ma il prodotto non \u00e8 nel database. Puoi mandarmi una foto dell'etichetta nutrizionale?");
+    saveChatMsg(userId, "assistant", "Barcode non trovato, serve foto etichetta.", "need_info");
+    return;
+  }
+
+  // type === "label"
+  if (!grams) {
+    pendingMeals.set(telegramId, {
+      history: [
+        { role: "user", content: `[foto etichetta: ${JSON.stringify({ calories: visionResult.calories, protein_g: visionResult.protein_g, carbs_g: visionResult.carbs_g, fat_g: visionResult.fat_g, fiber_g: visionResult.fiber_g, product_name: visionResult.product_name })}]` },
+        { role: "assistant", content: JSON.stringify({ type: "need_info", message: "Quanti grammi?" }) },
+      ],
+    });
+    const nameText = visionResult.product_name ? ` di <b>${visionResult.product_name}</b>` : "";
+    if (thinkingId) await editMessage(chatId, thinkingId, `\uD83D\uDCF7 Ho letto l'etichetta${nameText}. Quanti grammi hai mangiato?`);
+    saveChatMsg(userId, "assistant", "Ho letto l'etichetta. Quanti grammi?", "need_info");
+    return;
+  }
+
+  const nutrients = labelToNutrients(visionResult, grams);
+  await saveMealFromNutrients(chatId, userId, nutrients, grams, "snack", thinkingId, visionResult.product_name);
+}
+
+async function saveMealFromNutrients(
+  chatId: number,
+  userId: string,
+  nutrients: NutrientResult,
+  grams: number,
+  mealType: string,
+  thinkingId: number | null,
+  productName?: string | null
+) {
+  const description = productName ? `${productName} (${grams}g)` : `Prodotto (${grams}g)`;
+
+  const msg =
+    `<b>Pasto registrato!</b>\n\n` +
+    `${description}\n\n` +
+    `Calorie: ${nutrients.calories} kcal\n` +
+    `Proteine: ${nutrients.protein_g}g\n` +
+    `Carboidrati: ${nutrients.carbs_g}g\n` +
+    `Grassi: ${nutrients.fat_g}g\n` +
+    `Fibre: ${nutrients.fiber_g}g\n\n` +
+    `Tipo: ${mealType}`;
+
+  const [, dbResult] = await Promise.all([
+    thinkingId
+      ? editMessage(chatId, thinkingId, msg)
+      : sendMessage(chatId, msg),
+    supabase.from("meals").insert({
+      user_id: userId,
+      description,
+      calories: nutrients.calories,
+      protein_g: nutrients.protein_g,
+      carbs_g: nutrients.carbs_g,
+      fat_g: nutrients.fat_g,
+      fiber_g: nutrients.fiber_g,
+      meal_type: mealType,
+    }),
+  ]);
+
+  if (dbResult.error) console.error("Photo meal save error:", dbResult.error);
+  saveChatMsg(userId, "assistant", msg, "meal_saved");
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
