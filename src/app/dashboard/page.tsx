@@ -29,7 +29,7 @@ export default function DashboardPage() {
 
   const { celebrate } = useCelebration();
   const { sectionOrder, layoutMode } = usePreferences();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const isCompact = layoutMode === "compact";
 
   const localUserId = typeof window !== "undefined" ? localStorage.getItem("vitrack_user_id") : null;
@@ -142,9 +142,9 @@ export default function DashboardPage() {
         <div className="h-8 w-48 shimmer rounded-lg" />
         <div className="h-10 w-64 shimmer rounded-lg" />
         <div className="grid grid-cols-4 gap-2">
-          {[...Array(4)].map((_, i) => <div key={i} className="h-20 shimmer rounded-2xl" />)}
+          {[...Array(4)].map((_, i) => <div key={i} className="h-20 shimmer rounded-lg" />)}
         </div>
-        <div className="h-64 shimmer rounded-2xl" />
+        <div className="h-64 shimmer rounded-lg" />
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {[...Array(4)].map((_, i) => <div key={i} className="h-20 shimmer rounded-xl" />)}
         </div>
@@ -156,16 +156,17 @@ export default function DashboardPage() {
     greeting: (
       <motion.div key="greeting" variants={staggerItem} className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold">{getGreeting(user?.first_name ?? null)}</h2>
+          <h1 className="font-display text-2xl font-bold text-text-primary">DASHBOARD</h1>
+          <p className="font-body text-base text-text-secondary mt-1">{getGreeting(user?.first_name ?? null, language)}</p>
           {summary && (
-            <p className="text-sm text-[#A1A1A1] mt-0.5">
+            <p className="font-body text-sm text-text-tertiary mt-0.5">
               {getMotivation({
                 calories: summary.totals.calories,
                 calorieGoal: summary.calorie_goal,
                 streak: 0,
                 workoutsToday: summary.totals.workouts_count,
                 mealsToday: summary.totals.meals_count,
-              })}
+              }, language)}
             </p>
           )}
         </div>
@@ -215,8 +216,8 @@ export default function DashboardPage() {
     meals: summary ? (
       <motion.div key="meals" variants={staggerItem}>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium">{t("dashboard.todaysMeals")}</h3>
-          <Link href="/dashboard/meals" className="text-xs text-[#666] hover:text-white transition-colors">
+          <h3 className="font-mono-label text-text-tertiary">{t("dashboard.todaysMeals")}</h3>
+          <Link href="/dashboard/meals" className="font-mono-label text-text-tertiary hover:text-text-primary transition-colors">
             {t("dashboard.viewAll")} &rarr;
           </Link>
         </div>
@@ -226,8 +227,8 @@ export default function DashboardPage() {
     workouts: summary ? (
       <motion.div key="workouts" variants={staggerItem}>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium">{t("dashboard.todaysWorkouts")}</h3>
-          <Link href="/dashboard/workouts" className="text-xs text-[#666] hover:text-white transition-colors">
+          <h3 className="font-mono-label text-text-tertiary">{t("dashboard.todaysWorkouts")}</h3>
+          <Link href="/dashboard/workouts" className="font-mono-label text-text-tertiary hover:text-text-primary transition-colors">
             {t("dashboard.viewAll")} &rarr;
           </Link>
         </div>
@@ -238,7 +239,7 @@ export default function DashboardPage() {
 
   return (
     <motion.div
-      className={`px-4 md:px-8 ${isCompact ? "py-3 space-y-2" : "py-6 space-y-4"}`}
+      className={`px-4 md:px-8 ${isCompact ? "py-3 space-y-2" : "py-6 space-y-6"}`}
       initial="initial"
       animate="animate"
       variants={staggerContainer(0.08)}

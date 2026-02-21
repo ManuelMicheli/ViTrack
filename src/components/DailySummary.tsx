@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { springs, staggerContainer, staggerItem } from "@/lib/animation-config";
+import { useLanguage } from "@/lib/language-context";
+import type { TranslationKey } from "@/lib/translations";
 
 interface DailySummaryProps {
   totals: {
@@ -19,12 +21,12 @@ interface DailySummaryProps {
   compact?: boolean;
 }
 
-const macroCards = [
-  { key: "protein_g", label: "Proteine", unit: "g", color: "#3B82F6", goal: 150 },
-  { key: "carbs_g", label: "Carboidrati", unit: "g", color: "#F59E0B", goal: 250 },
-  { key: "fat_g", label: "Grassi", unit: "g", color: "#EF4444", goal: 70 },
-  { key: "fiber_g", label: "Fibre", unit: "g", color: "#22C55E", goal: 30 },
-] as const;
+const macroCards: { key: "protein_g" | "carbs_g" | "fat_g" | "fiber_g"; labelKey: TranslationKey; unit: string; color: string; goal: number }[] = [
+  { key: "protein_g", labelKey: "macro.protein", unit: "g", color: "#3B82F6", goal: 150 },
+  { key: "carbs_g", labelKey: "macro.carbs", unit: "g", color: "#F59E0B", goal: 250 },
+  { key: "fat_g", labelKey: "macro.fat", unit: "g", color: "#EF4444", goal: 70 },
+  { key: "fiber_g", labelKey: "macro.fiber", unit: "g", color: "#22C55E", goal: 30 },
+];
 
 function AnimatedNum({ value }: { value: number }) {
   const mv = useMotionValue(value);
@@ -43,6 +45,8 @@ function AnimatedNum({ value }: { value: number }) {
 }
 
 export default function DailySummary({ totals, compact }: DailySummaryProps) {
+  const { t } = useLanguage();
+
   return (
     <motion.div
       className="grid grid-cols-2 sm:grid-cols-4 gap-2"
@@ -54,13 +58,13 @@ export default function DailySummary({ totals, compact }: DailySummaryProps) {
         const value = totals[macro.key];
         const pct = Math.min((value / macro.goal) * 100, 100);
         return (
-          <motion.div key={macro.key} className={`glass-card ${compact ? "p-2" : "p-3"}`} variants={staggerItem}>
-            <span className="text-[10px] text-[#666] uppercase tracking-wider">{macro.label}</span>
-            <p className="text-xl font-bold mt-1">
+          <motion.div key={macro.key} className={`data-card ${compact ? "p-2" : "p-3"}`} variants={staggerItem}>
+            <span className="font-mono-label text-text-tertiary">{t(macro.labelKey)}</span>
+            <p className="font-display text-lg font-bold mt-1">
               <AnimatedNum value={value} />
-              <span className="text-xs font-normal text-[#666] ml-0.5">{macro.unit}</span>
+              <span className="font-body text-xs font-normal text-text-tertiary ml-0.5">{macro.unit}</span>
             </p>
-            <div className="mt-2 w-full h-1 bg-white/[0.06] rounded-full overflow-hidden">
+            <div className="mt-2 w-full h-0.5 bg-border rounded-full overflow-hidden">
               <motion.div
                 className="h-full rounded-full"
                 animate={{ width: pct + "%" }}
