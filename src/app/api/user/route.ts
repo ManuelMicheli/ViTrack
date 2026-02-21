@@ -38,7 +38,13 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
   }
 
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
   const allowedFields = [
     "first_name",
     "username",
@@ -84,7 +90,8 @@ export async function PATCH(request: NextRequest) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[PATCH /api/user] Supabase error:", { id, updates, code: error.code, message: error.message });
+    return NextResponse.json({ error: error.message, code: error.code, details: { id, fields: Object.keys(updates) } }, { status: 500 });
   }
 
   return NextResponse.json(data);

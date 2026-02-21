@@ -156,10 +156,12 @@ export default function SettingsPage() {
       if (res.ok) {
         const updated = await res.json();
         setUser(updated);
+        setGoalValue(String(parsed));
         setEditGoal(false);
         showSaveToast("success", t("settings.saved"));
       } else {
-        showSaveToast("error", t("error.saveGoal"));
+        const err = await res.json().catch(() => null);
+        showSaveToast("error", err?.error || t("error.saveGoal"));
       }
     } catch {
       showSaveToast("error", t("error.connection"));
@@ -186,7 +188,8 @@ export default function SettingsPage() {
         showSaveToast("success", t("settings.saved"));
         return true;
       } else {
-        showSaveToast("error", t("error.saveSetting"));
+        const err = await res.json().catch(() => null);
+        showSaveToast("error", err?.error || t("error.saveSetting"));
         return false;
       }
     } catch {
