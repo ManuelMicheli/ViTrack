@@ -1,5 +1,5 @@
 import { lookupUSDA } from "./usda";
-import { lookupOFF } from "./openfoodfacts";
+import { lookupOFF, lookupOFFBranded } from "./openfoodfacts";
 import { lookupFood } from "./fatsecret";
 
 // ---------------------------------------------------------------------------
@@ -61,9 +61,10 @@ function scaleResult(
 }
 
 // ---------------------------------------------------------------------------
-// Fetch per-100g from all 3 sources in parallel, pick best
+// Generic lookup — USDA priority, queries all 3 sources in parallel
+// Cross-validates when 2+ APIs agree within 15% on calories
 // ---------------------------------------------------------------------------
-async function fetchPer100g(
+async function fetchPer100gGeneric(
   name: string,
   nameEn: string
 ): Promise<NutrientResult | null> {
@@ -77,9 +78,64 @@ async function fetchPer100g(
   const off = offRes.status === "fulfilled" ? offRes.value : null;
   const fs = fsRes.status === "fulfilled" ? fsRes.value : null;
 
+  const valid = [usda, off, fs].filter(
+    (r): r is NutrientResult => r !== null && atwaterCheck(r)
+  );
+
+  if (valid.length >= 2) {
+    const [a, b] = valid;
+    const diff = Math.abs(a.calories - b.calories);
+    const avg = (a.calories + b.calories) / 2;
+    if (avg > 0 && diff / avg <= 0.15) {
+      return a;
+    }
+  }
+
   if (usda && atwaterCheck(usda)) return usda;
   if (off && atwaterCheck(off)) return off;
   if (fs && atwaterCheck(fs)) return fs;
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Branded lookup — OpenFoodFacts priority, prepends brand to queries
+// Cross-validates when 2+ APIs agree within 15% on calories
+// ---------------------------------------------------------------------------
+async function fetchPer100gBranded(
+  name: string,
+  nameEn: string,
+  brand: string
+): Promise<NutrientResult | null> {
+  const [offBrandedRes, offRes, fsRes, usdaRes] = await Promise.allSettled([
+    lookupOFFBranded(name, brand, 100),
+    lookupOFF(`${brand} ${name}`, 100),
+    lookupFood(`${brand} ${name}`, 100),
+    lookupUSDA(`${brand} ${nameEn}`, 100),
+  ]);
+
+  const offBranded =
+    offBrandedRes.status === "fulfilled" ? offBrandedRes.value : null;
+  const off = offRes.status === "fulfilled" ? offRes.value : null;
+  const fs = fsRes.status === "fulfilled" ? fsRes.value : null;
+  const usda = usdaRes.status === "fulfilled" ? usdaRes.value : null;
+
+  const valid = [offBranded, off, fs, usda].filter(
+    (r): r is NutrientResult => r !== null && atwaterCheck(r)
+  );
+
+  if (valid.length >= 2) {
+    const [a, b] = valid;
+    const diff = Math.abs(a.calories - b.calories);
+    const avg = (a.calories + b.calories) / 2;
+    if (avg > 0 && diff / avg <= 0.15) {
+      return a;
+    }
+  }
+
+  if (offBranded && atwaterCheck(offBranded)) return offBranded;
+  if (off && atwaterCheck(off)) return off;
+  if (fs && atwaterCheck(fs)) return fs;
+  if (usda && atwaterCheck(usda)) return usda;
   return null;
 }
 
@@ -89,7 +145,8 @@ async function fetchPer100g(
 export async function lookupNutrients(
   name: string,
   nameEn: string,
-  grams: number
+  grams: number,
+  brand?: string | null
 ): Promise<NutrientResult | null> {
   const key = makeKey(name, nameEn);
 
@@ -111,7 +168,9 @@ export async function lookupNutrients(
   //    wait for their result instead of making duplicate API calls
   let fetchPromise = inFlight.get(key);
   if (!fetchPromise) {
-    fetchPromise = fetchPer100g(name, nameEn);
+    fetchPromise = brand
+      ? fetchPer100gBranded(name, nameEn, brand)
+      : fetchPer100gGeneric(name, nameEn);
     inFlight.set(key, fetchPromise);
   }
 
@@ -129,7 +188,9 @@ export async function lookupNutrients(
       return r;
     }
 
-    console.log(`[Nutrition] "${name}" → ai fallback (${grams}g)`);
+    console.log(
+      `[Nutrition] "${name}" → NO DATA (all APIs failed, no fallback)`
+    );
     return null;
   } finally {
     inFlight.delete(key);
@@ -181,7 +242,7 @@ export function warmupCache(): void {
         batch.map(([name, nameEn]) => {
           const key = makeKey(name, nameEn);
           if (cache.has(key)) return Promise.resolve();
-          return fetchPer100g(name, nameEn).then((per100g) => {
+          return fetchPer100gGeneric(name, nameEn).then((per100g) => {
             cache.set(key, { per100g, ts: Date.now() });
           });
         })
