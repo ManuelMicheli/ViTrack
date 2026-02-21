@@ -22,6 +22,12 @@ const sectionTranslationKeys: Record<string, string> = {
   workouts: "section.workouts",
 };
 
+const ACCENT_COLOR_LABELS: Record<AccentColor, string> = {
+  ivory: "Ivory",
+  red: "Signal Red",
+  blue: "Cold Blue",
+};
+
 export default function SettingsPage() {
   const router = useRouter();
   const { accentColor, accentHex, setAccentColor, layoutMode, setLayoutMode, sectionOrder, setSectionOrder, saveError: prefSaveError } = usePreferences();
@@ -349,51 +355,52 @@ export default function SettingsPage() {
       <div className="px-4 md:px-8 py-6 space-y-4">
         <div className="h-8 w-40 shimmer rounded-lg" />
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-24 shimmer rounded-2xl" />
+          <div key={i} className="h-24 shimmer rounded-lg" />
         ))}
       </div>
     );
   }
 
   return (
-    <div className="px-4 md:px-8 py-6 space-y-6 animate-fade-in max-w-2xl">
-      <h2 className="text-xl font-bold">{t("settings.title")}</h2>
+    <div className="px-4 md:px-8 py-6 space-y-10 animate-fade-in max-w-2xl">
+      <h1 className="font-display text-2xl font-bold text-text-primary">{t("settings.title").toUpperCase()}</h1>
 
       {/* Global toasts */}
       {resetSuccess && (
-        <div className="p-3 rounded-xl bg-[#22C55E]/10 border border-[#22C55E]/20 text-[#22C55E] text-sm text-center animate-slide-up">
+        <div className="p-3 rounded-lg bg-success/10 border border-success/20 text-success text-sm text-center animate-slide-up">
           {resetSuccess}
         </div>
       )}
       {resetError && (
-        <div className="p-3 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#EF4444] text-sm text-center animate-slide-up">
+        <div className="p-3 rounded-lg bg-danger/10 border border-danger/20 text-danger text-sm text-center animate-slide-up">
           {resetError}
         </div>
       )}
       {saveToast && (
         <div
-          className={`p-3 rounded-xl text-sm text-center animate-slide-up ${
+          className={`p-3 rounded-lg text-sm text-center animate-slide-up ${
             saveToast.type === "error"
-              ? "bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#EF4444]"
-              : "bg-[#22C55E]/10 border border-[#22C55E]/20 text-[#22C55E]"
+              ? "bg-danger/10 border border-danger/20 text-danger"
+              : "bg-success/10 border border-success/20 text-success"
           }`}
         >
           {saveToast.text}
         </div>
       )}
       {prefSaveError && (
-        <div className="p-3 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#EF4444] text-sm text-center animate-slide-up">
+        <div className="p-3 rounded-lg bg-danger/10 border border-danger/20 text-danger text-sm text-center animate-slide-up">
           {prefSaveError}
         </div>
       )}
+
       {/* ──────────── 1. Account Section ──────────── */}
-      <div className="glass-card-strong rounded-2xl p-5">
-        <h3 className="text-lg font-semibold mb-4">{t("settings.account")}</h3>
+      <div>
+        <h3 className="font-mono-label text-text-tertiary mb-4">{t("settings.account")}</h3>
         <div className="space-y-4">
           {/* Email */}
           <div className="flex justify-between items-center">
-            <span className="text-sm text-text-secondary">{t("settings.email")}</span>
-            <span className="text-sm font-medium opacity-70">
+            <span className="font-body text-sm text-text-secondary">{t("settings.email")}</span>
+            <span className="font-body text-sm text-text-tertiary">
               {user?.email || t("settings.emailNotSet")}
             </span>
           </div>
@@ -401,10 +408,10 @@ export default function SettingsPage() {
           {/* Password change */}
           <div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-text-secondary">{t("settings.password")}</span>
+              <span className="font-body text-sm text-text-secondary">{t("settings.password")}</span>
               <button
                 onClick={() => setShowPasswordForm(!showPasswordForm)}
-                className="text-xs text-[#3B82F6] font-medium hover:text-[#3B82F6]/80 transition-colors"
+                className="font-mono-label text-[var(--color-accent-dynamic)] hover:opacity-80 transition-colors"
               >
                 {showPasswordForm ? t("settings.cancel") : t("settings.changePassword")}
               </button>
@@ -416,19 +423,19 @@ export default function SettingsPage() {
                   placeholder={t("settings.newPassword")}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-sm focus:outline-none focus:border-[#3B82F6]/30"
+                  className="w-full px-4 py-3 rounded-lg bg-transparent border border-border focus:outline-none focus:border-[var(--color-accent-dynamic)] text-text-primary placeholder-text-tertiary font-body transition-all"
                 />
                 <input
                   type="password"
                   placeholder={t("settings.confirmPassword")}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-sm focus:outline-none focus:border-[#3B82F6]/30"
+                  className="w-full px-4 py-3 rounded-lg bg-transparent border border-border focus:outline-none focus:border-[var(--color-accent-dynamic)] text-text-primary placeholder-text-tertiary font-body transition-all"
                 />
                 {passwordMsg && (
                   <p
                     className={`text-xs ${
-                      passwordMsg.type === "success" ? "text-[#22C55E]" : "text-[#EF4444]"
+                      passwordMsg.type === "success" ? "text-success" : "text-danger"
                     }`}
                   >
                     {passwordMsg.text}
@@ -437,7 +444,7 @@ export default function SettingsPage() {
                 <button
                   onClick={handlePasswordChange}
                   disabled={passwordSaving || !newPassword || !confirmPassword}
-                  className="w-full py-2.5 rounded-xl bg-[#3B82F6]/20 text-[#3B82F6] text-sm font-medium hover:bg-[#3B82F6]/30 transition-colors disabled:opacity-40"
+                  className="w-full px-4 py-2 bg-[var(--color-accent-dynamic)] text-black rounded-lg font-mono-label tracking-wider transition-all hover:opacity-90 disabled:opacity-50"
                 >
                   {passwordSaving ? t("settings.updating") : t("settings.updatePassword")}
                 </button>
@@ -448,14 +455,14 @@ export default function SettingsPage() {
           {/* Telegram link/unlink */}
           <div className="border-t border-border pt-4">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-text-secondary">{t("settings.telegram")}</span>
+              <span className="font-body text-sm text-text-secondary">{t("settings.telegram")}</span>
               {user?.telegram_id ? (
                 <div className="flex items-center gap-3">
-                  <span className="text-sm opacity-70">{user.telegram_id}</span>
+                  <span className="font-body text-sm text-text-tertiary">{user.telegram_id}</span>
                   <button
                     onClick={handleUnlinkTelegram}
                     disabled={telegramSaving}
-                    className="text-xs text-[#EF4444] font-medium hover:text-[#EF4444]/80 transition-colors"
+                    className="font-mono-label text-danger hover:opacity-80 transition-colors"
                   >
                     {telegramSaving ? "..." : t("settings.unlink")}
                   </button>
@@ -467,12 +474,12 @@ export default function SettingsPage() {
                     placeholder="Telegram ID"
                     value={telegramInput}
                     onChange={(e) => setTelegramInput(e.target.value)}
-                    className="w-32 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-sm focus:outline-none focus:border-[#3B82F6]/30"
+                    className="w-32 px-3 py-2 rounded-lg bg-transparent border border-border text-sm text-text-primary placeholder-text-tertiary focus:outline-none focus:border-[var(--color-accent-dynamic)] font-body transition-all"
                   />
                   <button
                     onClick={handleLinkTelegram}
                     disabled={telegramSaving || !telegramInput.trim()}
-                    className="text-xs text-[#3B82F6] font-medium hover:text-[#3B82F6]/80 transition-colors disabled:opacity-40"
+                    className="font-mono-label text-[var(--color-accent-dynamic)] hover:opacity-80 transition-colors disabled:opacity-40"
                   >
                     {telegramSaving ? "..." : t("settings.link")}
                   </button>
@@ -482,7 +489,7 @@ export default function SettingsPage() {
             {telegramMsg && (
               <p
                 className={`text-xs mt-2 ${
-                  telegramMsg.type === "success" ? "text-[#22C55E]" : "text-[#EF4444]"
+                  telegramMsg.type === "success" ? "text-success" : "text-danger"
                 }`}
               >
                 {telegramMsg.text}
@@ -493,48 +500,48 @@ export default function SettingsPage() {
       </div>
 
       {/* ──────────── Profile Section ──────────── */}
-      <div className="glass-card-strong rounded-2xl p-5">
-        <h3 className="text-lg font-semibold mb-4">{t("settings.profile")}</h3>
+      <div>
+        <h3 className="font-mono-label text-text-tertiary mb-4">{t("settings.profile")}</h3>
         <div className="space-y-0 divide-y divide-border">
           <div className="py-3 flex justify-between items-center">
-            <span className="text-sm text-text-secondary">{t("settings.name")}</span>
-            <span className="text-sm font-medium">{user?.first_name || "\u2014"}</span>
+            <span className="font-body text-sm text-text-secondary">{t("settings.name")}</span>
+            <span className="font-body text-sm text-text-primary">{user?.first_name || "\u2014"}</span>
           </div>
           <div className="py-3 flex justify-between items-center">
-            <span className="text-sm text-text-secondary">{t("settings.username")}</span>
-            <span className="text-sm font-medium">{user?.username ? `@${user.username}` : "\u2014"}</span>
+            <span className="font-body text-sm text-text-secondary">{t("settings.username")}</span>
+            <span className="font-body text-sm text-text-primary">{user?.username ? `@${user.username}` : "\u2014"}</span>
           </div>
         </div>
       </div>
 
       {/* ──────────── Obiettivi Section ──────────── */}
-      <div className="glass-card-strong rounded-2xl p-5">
-        <h3 className="text-lg font-semibold mb-4">{t("settings.goals")}</h3>
+      <div>
+        <h3 className="font-mono-label text-text-tertiary mb-4">{t("settings.goals")}</h3>
         <div className="space-y-0 divide-y divide-border">
           {/* Calorie goal */}
           <div className="py-3 flex justify-between items-center">
-            <span className="text-sm text-text-secondary">{t("settings.calorieGoal")}</span>
+            <span className="font-body text-sm text-text-secondary">{t("settings.calorieGoal")}</span>
             {editGoal ? (
               <div className="flex items-center gap-2">
                 <input
                   type="number"
                   value={goalValue}
                   onChange={(e) => setGoalValue(e.target.value)}
-                  className="w-20 bg-transparent border-b border-border text-sm text-right py-0.5 focus:outline-none focus:border-[#3B82F6]/50"
+                  className="w-20 bg-transparent border-b border-border text-sm text-right py-0.5 focus:outline-none focus:border-[var(--color-accent-dynamic)] text-text-primary font-body"
                   autoFocus
                 />
                 <span className="text-xs text-text-tertiary">kcal</span>
-                <button onClick={handleSaveGoal} disabled={savingGoal} className="text-xs text-[#3B82F6] font-medium">
+                <button onClick={handleSaveGoal} disabled={savingGoal} className="font-mono-label text-[var(--color-accent-dynamic)]">
                   {savingGoal ? t("settings.saving") : t("settings.save")}
                 </button>
-                <button onClick={() => setEditGoal(false)} className="text-xs text-text-tertiary">
+                <button onClick={() => setEditGoal(false)} className="font-mono-label text-text-tertiary">
                   {t("settings.cancel")}
                 </button>
               </div>
             ) : (
               <button
                 onClick={() => setEditGoal(true)}
-                className="text-sm font-medium hover:text-[#3B82F6] transition-colors"
+                className="font-body text-sm text-text-primary hover:text-[var(--color-accent-dynamic)] transition-colors"
               >
                 {user?.daily_calorie_goal} kcal
               </button>
@@ -544,7 +551,7 @@ export default function SettingsPage() {
           {/* Water goal */}
           <div className="py-3 flex justify-between items-center">
             <div>
-              <span className="text-sm text-text-secondary">{t("settings.waterGoal")}</span>
+              <span className="font-body text-sm text-text-secondary">{t("settings.waterGoal")}</span>
               <p className="text-[10px] text-text-tertiary mt-0.5">{t("settings.waterGoalDesc")}</p>
             </div>
             {editWaterGoal ? (
@@ -553,7 +560,7 @@ export default function SettingsPage() {
                   type="number"
                   value={waterGoalValue}
                   onChange={(e) => setWaterGoalValue(e.target.value)}
-                  className="w-20 bg-transparent border-b border-border text-sm text-right py-0.5 focus:outline-none focus:border-[#06B6D4]/50"
+                  className="w-20 bg-transparent border-b border-border text-sm text-right py-0.5 focus:outline-none focus:border-[var(--color-accent-dynamic)] text-text-primary font-body"
                   autoFocus
                 />
                 <span className="text-xs text-text-tertiary">ml</span>
@@ -568,11 +575,11 @@ export default function SettingsPage() {
                     }
                   }}
                   disabled={savingField === "water_goal_ml"}
-                  className="text-xs text-[#06B6D4] font-medium"
+                  className="font-mono-label text-[var(--color-accent-dynamic)]"
                 >
                   {savingField === "water_goal_ml" ? t("settings.saving") : t("settings.save")}
                 </button>
-                <button onClick={() => setEditWaterGoal(false)} className="text-xs text-text-tertiary">
+                <button onClick={() => setEditWaterGoal(false)} className="font-mono-label text-text-tertiary">
                   {t("settings.cancel")}
                 </button>
               </div>
@@ -582,7 +589,7 @@ export default function SettingsPage() {
                   setEditWaterGoal(true);
                   setWaterGoalValue(String(user?.water_goal_ml ?? 2000));
                 }}
-                className="text-sm font-medium text-[#06B6D4] hover:text-[#06B6D4]/80 transition-colors"
+                className="font-body text-sm text-text-primary hover:text-[var(--color-accent-dynamic)] transition-colors"
               >
                 {user?.water_goal_ml ?? 2000} ml
               </button>
@@ -592,17 +599,18 @@ export default function SettingsPage() {
           {/* Water tracking mode */}
           <div className="py-3 flex justify-between items-center">
             <div>
-              <span className="text-sm text-text-secondary">{t("settings.trackingMode")}</span>
+              <span className="font-body text-sm text-text-secondary">{t("settings.trackingMode")}</span>
               <p className="text-[10px] text-text-tertiary mt-0.5">{t("settings.trackingModeDesc")}</p>
             </div>
-            <div className="flex bg-white/[0.04] rounded-lg p-0.5">
+            <div className="flex bg-surface-raised rounded-lg p-0.5">
               <button
                 onClick={() => handleSaveField("water_tracking_mode", "glasses")}
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                   (user?.water_tracking_mode ?? "glasses") === "glasses"
-                    ? "bg-[#06B6D4]/20 text-[#06B6D4]"
+                    ? "bg-[var(--color-accent-dynamic)]/20 text-[var(--color-accent-dynamic)]"
                     : "text-text-tertiary hover:text-text-secondary"
                 }`}
+                style={(user?.water_tracking_mode ?? "glasses") === "glasses" ? { backgroundColor: `${accentHex}20`, color: accentHex } : undefined}
               >
                 {t("settings.glasses")}
               </button>
@@ -610,9 +618,10 @@ export default function SettingsPage() {
                 onClick={() => handleSaveField("water_tracking_mode", "ml")}
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                   user?.water_tracking_mode === "ml"
-                    ? "bg-[#06B6D4]/20 text-[#06B6D4]"
+                    ? ""
                     : "text-text-tertiary hover:text-text-secondary"
                 }`}
+                style={user?.water_tracking_mode === "ml" ? { backgroundColor: `${accentHex}20`, color: accentHex } : undefined}
               >
                 ML
               </button>
@@ -622,7 +631,7 @@ export default function SettingsPage() {
           {/* Weight goal */}
           <div className="py-3 flex justify-between items-center">
             <div>
-              <span className="text-sm text-text-secondary">{t("settings.weightGoal")}</span>
+              <span className="font-body text-sm text-text-secondary">{t("settings.weightGoal")}</span>
               <p className="text-[10px] text-text-tertiary mt-0.5">{t("settings.weightGoalDesc")}</p>
             </div>
             {editWeightGoal ? (
@@ -632,7 +641,7 @@ export default function SettingsPage() {
                   step="0.1"
                   value={weightGoalValue}
                   onChange={(e) => setWeightGoalValue(e.target.value)}
-                  className="w-20 bg-transparent border-b border-border text-sm text-right py-0.5 focus:outline-none focus:border-[#A78BFA]/50"
+                  className="w-20 bg-transparent border-b border-border text-sm text-right py-0.5 focus:outline-none focus:border-[var(--color-accent-dynamic)] text-text-primary font-body"
                   autoFocus
                 />
                 <span className="text-xs text-text-tertiary">kg</span>
@@ -647,11 +656,11 @@ export default function SettingsPage() {
                     }
                   }}
                   disabled={savingField === "weight_goal_kg"}
-                  className="text-xs text-[#A78BFA] font-medium"
+                  className="font-mono-label text-[var(--color-accent-dynamic)]"
                 >
                   {savingField === "weight_goal_kg" ? t("settings.saving") : t("settings.save")}
                 </button>
-                <button onClick={() => setEditWeightGoal(false)} className="text-xs text-text-tertiary">
+                <button onClick={() => setEditWeightGoal(false)} className="font-mono-label text-text-tertiary">
                   {t("settings.cancel")}
                 </button>
               </div>
@@ -661,7 +670,7 @@ export default function SettingsPage() {
                   setEditWeightGoal(true);
                   setWeightGoalValue(user?.weight_goal_kg ? String(user.weight_goal_kg) : "");
                 }}
-                className="text-sm font-medium text-[#A78BFA] hover:text-[#A78BFA]/80 transition-colors"
+                className="font-body text-sm text-text-primary hover:text-[var(--color-accent-dynamic)] transition-colors"
               >
                 {user?.weight_goal_kg ? `${user.weight_goal_kg} kg` : t("settings.notSet")}
               </button>
@@ -671,7 +680,7 @@ export default function SettingsPage() {
           {/* Height */}
           <div className="py-3 flex justify-between items-center">
             <div>
-              <span className="text-sm text-text-secondary">{t("settings.height")}</span>
+              <span className="font-body text-sm text-text-secondary">{t("settings.height")}</span>
               <p className="text-[10px] text-text-tertiary mt-0.5">{t("settings.heightDesc")}</p>
             </div>
             {editHeight ? (
@@ -680,7 +689,7 @@ export default function SettingsPage() {
                   type="number"
                   value={heightValue}
                   onChange={(e) => setHeightValue(e.target.value)}
-                  className="w-20 bg-transparent border-b border-border text-sm text-right py-0.5 focus:outline-none focus:border-[#22C55E]/50"
+                  className="w-20 bg-transparent border-b border-border text-sm text-right py-0.5 focus:outline-none focus:border-[var(--color-accent-dynamic)] text-text-primary font-body"
                   autoFocus
                 />
                 <span className="text-xs text-text-tertiary">cm</span>
@@ -695,11 +704,11 @@ export default function SettingsPage() {
                     }
                   }}
                   disabled={savingField === "height_cm"}
-                  className="text-xs text-[#22C55E] font-medium"
+                  className="font-mono-label text-[var(--color-accent-dynamic)]"
                 >
                   {savingField === "height_cm" ? t("settings.saving") : t("settings.save")}
                 </button>
-                <button onClick={() => setEditHeight(false)} className="text-xs text-text-tertiary">
+                <button onClick={() => setEditHeight(false)} className="font-mono-label text-text-tertiary">
                   {t("settings.cancel")}
                 </button>
               </div>
@@ -709,7 +718,7 @@ export default function SettingsPage() {
                   setEditHeight(true);
                   setHeightValue(user?.height_cm ? String(user.height_cm) : "");
                 }}
-                className="text-sm font-medium hover:text-[#22C55E] transition-colors"
+                className="font-body text-sm text-text-primary hover:text-[var(--color-accent-dynamic)] transition-colors"
               >
                 {user?.height_cm ? `${user.height_cm} cm` : t("settings.notSet")}
               </button>
@@ -719,17 +728,16 @@ export default function SettingsPage() {
       </div>
 
       {/* ──────────── Personalizzazione ──────────── */}
-      <div className="glass-card-strong rounded-2xl p-5">
+      <div>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">{t("settings.personalization")}</h3>
+          <h3 className="font-mono-label text-text-tertiary">{t("settings.personalization")}</h3>
           <AnimatePresence>
             {prefSaved && (
               <motion.span
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 10 }}
-                className="text-xs font-medium px-2.5 py-1 rounded-full"
-                style={{ backgroundColor: `${accentHex}20`, color: accentHex }}
+                className="font-mono-label px-2.5 py-1 rounded-lg bg-success/10 border border-success/20 text-success"
               >
                 {t("settings.saved")}
               </motion.span>
@@ -739,19 +747,27 @@ export default function SettingsPage() {
         <div className="space-y-0 divide-y divide-border">
           {/* Accent color */}
           <div className="py-3">
-            <span className="text-sm text-text-secondary block mb-3">{t("settings.accentColor")}</span>
-            <div className="flex gap-3">
+            <span className="font-mono-label text-text-tertiary mb-3 block">{t("settings.accentColor")}</span>
+            <div className="flex gap-4">
               {(Object.entries(ACCENT_COLORS) as [AccentColor, string][]).map(([key, hex]) => (
                 <motion.button
                   key={key}
                   onClick={() => { setAccentColor(key); showPrefSaved(); }}
-                  className={`w-8 h-8 rounded-full border-2 transition-colors ${
-                    accentColor === key ? "border-current" : "border-transparent"
-                  }`}
-                  style={{ backgroundColor: hex }}
-                  whileTap={{ scale: 0.9 }}
-                  animate={accentColor === key ? { scale: 1.1 } : { scale: 1 }}
-                />
+                  className="flex flex-col items-center gap-1.5"
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <div
+                    className={`w-8 h-8 rounded-full border-2 transition-colors ${
+                      accentColor === key ? "border-text-primary" : "border-transparent"
+                    }`}
+                    style={{ backgroundColor: hex }}
+                  />
+                  <span className={`text-[10px] font-body transition-colors ${
+                    accentColor === key ? "text-text-primary" : "text-text-tertiary"
+                  }`}>
+                    {ACCENT_COLOR_LABELS[key]}
+                  </span>
+                </motion.button>
               ))}
             </div>
           </div>
@@ -759,10 +775,10 @@ export default function SettingsPage() {
           {/* Layout mode */}
           <div className="py-3 flex justify-between items-center">
             <div>
-              <span className="text-sm text-text-secondary">{t("settings.layout")}</span>
+              <span className="font-body text-sm text-text-secondary">{t("settings.layout")}</span>
               <p className="text-[10px] text-text-tertiary mt-0.5">{t("settings.layoutDesc")}</p>
             </div>
-            <div className="flex bg-white/[0.04] rounded-lg p-0.5">
+            <div className="flex bg-surface-raised rounded-lg p-0.5">
               <button
                 onClick={() => { setLayoutMode("compact"); showPrefSaved(); }}
                 className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
@@ -782,7 +798,7 @@ export default function SettingsPage() {
 
           {/* Section order */}
           <div className="py-3">
-            <span className="text-sm text-text-secondary block mb-3">{t("settings.sectionOrder")}</span>
+            <span className="font-mono-label text-text-tertiary mb-3 block">{t("settings.sectionOrder")}</span>
             <Reorder.Group
               axis="y"
               values={sectionOrder}
@@ -793,10 +809,10 @@ export default function SettingsPage() {
                 <Reorder.Item
                   key={section}
                   value={section}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-border cursor-grab active:cursor-grabbing"
+                  className="flex items-center gap-3 p-3 rounded-lg bg-surface border border-border cursor-grab active:cursor-grabbing"
                 >
                   <span className="text-text-tertiary">&#x2807;</span>
-                  <span className="text-sm flex-1">{getSectionLabel(section)}</span>
+                  <span className="font-body text-sm text-text-primary flex-1">{getSectionLabel(section)}</span>
                   <span className="text-[10px] text-text-tertiary tabular-nums">{i + 1}</span>
                 </Reorder.Item>
               ))}
@@ -805,15 +821,15 @@ export default function SettingsPage() {
 
           {/* Live preview */}
           <div className="py-3">
-            <span className="text-sm text-text-secondary block mb-3">{t("settings.preview")}</span>
-            <div className="rounded-xl bg-black/40 border border-border p-3 overflow-hidden">
+            <span className="font-mono-label text-text-tertiary mb-3 block">{t("settings.preview")}</span>
+            <div className="rounded-lg bg-surface border border-border p-3 overflow-hidden">
               <div className="flex gap-2">
                 <div className="hidden sm:flex flex-col gap-1 w-10 shrink-0">
                   {[0,1,2,3,4].map((i) => (
                     <div
                       key={i}
                       className="h-2 rounded-full transition-all duration-300"
-                      style={i === 0 ? { backgroundColor: `${accentHex}40`, border: `1px solid ${accentHex}30` } : { backgroundColor: "rgba(255,255,255,0.05)" }}
+                      style={i === 0 ? { backgroundColor: `${accentHex}40`, border: `1px solid ${accentHex}30` } : { backgroundColor: "var(--color-surface-raised)" }}
                     />
                   ))}
                 </div>
@@ -827,11 +843,11 @@ export default function SettingsPage() {
                         layoutMode === "compact" ? "h-4" : "h-6"
                       }`}
                       style={{
-                        backgroundColor: i === 0 ? `${accentHex}15` : "rgba(255,255,255,0.03)",
+                        backgroundColor: i === 0 ? `${accentHex}15` : "var(--color-surface)",
                         borderLeft: i === 0 ? `2px solid ${accentHex}` : "2px solid transparent",
                       }}
                     >
-                      <span className="text-[8px] text-white/40 truncate">{getSectionLabel(section)}</span>
+                      <span className="text-[8px] text-text-tertiary truncate">{getSectionLabel(section)}</span>
                     </motion.div>
                   ))}
                 </div>
@@ -842,12 +858,12 @@ export default function SettingsPage() {
       </div>
 
       {/* ──────────── 2. Aspetto Section ──────────── */}
-      <div className="glass-card-strong rounded-2xl p-5">
-        <h3 className="text-lg font-semibold mb-4">{t("settings.appearance")}</h3>
+      <div>
+        <h3 className="font-mono-label text-text-tertiary mb-4">{t("settings.appearance")}</h3>
         <div className="space-y-5">
           {/* Theme */}
           <div>
-            <p className="text-sm text-text-secondary mb-2">{t("settings.theme")}</p>
+            <p className="font-mono-label text-text-tertiary mb-2">{t("settings.theme")}</p>
             <div className="flex gap-2">
               {(
                 [
@@ -861,12 +877,11 @@ export default function SettingsPage() {
                   <button
                     key={opt.value}
                     onClick={() => handleQuickSave("theme", opt.value)}
-                    className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
+                    className={`flex-1 py-2 rounded-lg text-sm font-body transition-all ${
                       isSelected
-                        ? "border"
-                        : "bg-white/5 border border-border text-text-secondary hover:text-text-primary hover:bg-white/[0.08]"
+                        ? "border border-[var(--color-accent-dynamic)] text-text-primary"
+                        : "border border-border text-text-tertiary hover:text-text-primary hover:bg-surface-raised"
                     }`}
-                    style={isSelected ? { backgroundColor: `${accentHex}20`, borderColor: `${accentHex}66`, color: accentHex } : undefined}
                   >
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     {t(opt.labelKey as any)}
@@ -878,7 +893,7 @@ export default function SettingsPage() {
 
           {/* Language */}
           <div>
-            <p className="text-sm text-text-secondary mb-2">{t("settings.language")}</p>
+            <p className="font-mono-label text-text-tertiary mb-2">{t("settings.language")}</p>
             <div className="flex gap-2">
               {(
                 [
@@ -891,12 +906,11 @@ export default function SettingsPage() {
                   <button
                     key={opt.value}
                     onClick={() => handleQuickSave("language", opt.value)}
-                    className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
+                    className={`flex-1 py-2 rounded-lg text-sm font-body transition-all ${
                       isSelected
-                        ? "border"
-                        : "bg-white/5 border border-border text-text-secondary hover:text-text-primary hover:bg-white/[0.08]"
+                        ? "border border-[var(--color-accent-dynamic)] text-text-primary"
+                        : "border border-border text-text-tertiary hover:text-text-primary hover:bg-surface-raised"
                     }`}
-                    style={isSelected ? { backgroundColor: `${accentHex}20`, borderColor: `${accentHex}66`, color: accentHex } : undefined}
                   >
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     {t(opt.labelKey as any)}
@@ -908,7 +922,7 @@ export default function SettingsPage() {
 
           {/* Unit system */}
           <div>
-            <p className="text-sm text-text-secondary mb-2">{t("settings.units")}</p>
+            <p className="font-mono-label text-text-tertiary mb-2">{t("settings.units")}</p>
             <div className="flex gap-2">
               {(
                 [
@@ -921,12 +935,11 @@ export default function SettingsPage() {
                   <button
                     key={opt.value}
                     onClick={() => handleQuickSave("unit_system", opt.value)}
-                    className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
+                    className={`flex-1 py-2 rounded-lg text-sm font-body transition-all ${
                       isSelected
-                        ? "border"
-                        : "bg-white/5 border border-border text-text-secondary hover:text-text-primary hover:bg-white/[0.08]"
+                        ? "border border-[var(--color-accent-dynamic)] text-text-primary"
+                        : "border border-border text-text-tertiary hover:text-text-primary hover:bg-surface-raised"
                     }`}
-                    style={isSelected ? { backgroundColor: `${accentHex}20`, borderColor: `${accentHex}66`, color: accentHex } : undefined}
                   >
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     {t(opt.labelKey as any)}
@@ -939,11 +952,11 @@ export default function SettingsPage() {
       </div>
 
       {/* ──────────── 3. Notifiche Section ──────────── */}
-      <div className="glass-card-strong rounded-2xl p-5">
-        <h3 className="text-lg font-semibold mb-4">{t("settings.notifications")}</h3>
+      <div>
+        <h3 className="font-mono-label text-text-tertiary mb-4">{t("settings.notifications")}</h3>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm">
+            <p className="font-body text-sm text-text-primary">
               {user?.notifications_enabled ? t("settings.notificationsActive") : t("settings.notificationsOff")}
             </p>
             <p className="text-[10px] text-text-tertiary mt-0.5">{t("settings.notificationsDesc")}</p>
@@ -951,7 +964,7 @@ export default function SettingsPage() {
           <button
             onClick={() => handleQuickSave("notifications_enabled", !user?.notifications_enabled)}
             className={`relative w-12 h-7 rounded-full transition-colors ${
-              user?.notifications_enabled ? "" : "bg-white/10"
+              user?.notifications_enabled ? "" : "bg-surface-raised"
             }`}
             style={user?.notifications_enabled ? { backgroundColor: accentHex } : undefined}
             aria-label="Toggle notifiche"
@@ -966,18 +979,18 @@ export default function SettingsPage() {
       </div>
 
       {/* ──────────── 4. Gestione Dati Section ──────────── */}
-      <div className="glass-card-strong rounded-2xl p-5">
-        <h3 className="text-lg font-semibold mb-4">{t("settings.dataManagement")}</h3>
+      <div className="border border-danger/20 rounded-lg p-5">
+        <h3 className="font-mono-label text-text-tertiary mb-4">{t("settings.dataManagement")}</h3>
         <div className="space-y-3">
           {/* Reset meals */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium">{t("settings.resetMeals")}</p>
+              <p className="font-body text-sm text-text-primary">{t("settings.resetMeals")}</p>
               <p className="text-xs text-text-tertiary mt-0.5">{t("settings.resetMealsDesc")}</p>
             </div>
             <button
               onClick={() => setResetType("meals")}
-              className="px-4 py-2 rounded-xl text-xs font-medium bg-[#EF4444]/10 text-[#EF4444] hover:bg-[#EF4444]/20 transition-colors"
+              className="px-4 py-2 bg-danger/10 border border-danger/20 text-danger rounded-lg font-mono-label tracking-wider transition-all hover:bg-danger/20"
             >
               {t("settings.reset")}
             </button>
@@ -988,12 +1001,12 @@ export default function SettingsPage() {
           {/* Reset workouts */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium">{t("settings.resetWorkouts")}</p>
+              <p className="font-body text-sm text-text-primary">{t("settings.resetWorkouts")}</p>
               <p className="text-xs text-text-tertiary mt-0.5">{t("settings.resetWorkoutsDesc")}</p>
             </div>
             <button
               onClick={() => setResetType("workouts")}
-              className="px-4 py-2 rounded-xl text-xs font-medium bg-[#EF4444]/10 text-[#EF4444] hover:bg-[#EF4444]/20 transition-colors"
+              className="px-4 py-2 bg-danger/10 border border-danger/20 text-danger rounded-lg font-mono-label tracking-wider transition-all hover:bg-danger/20"
             >
               {t("settings.reset")}
             </button>
@@ -1004,12 +1017,12 @@ export default function SettingsPage() {
           {/* Reset all */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-[#EF4444]">{t("settings.resetAll")}</p>
+              <p className="font-body text-sm text-danger">{t("settings.resetAll")}</p>
               <p className="text-xs text-text-tertiary mt-0.5">{t("settings.resetAllDesc")}</p>
             </div>
             <button
               onClick={() => setResetType("all")}
-              className="px-4 py-2 rounded-xl text-xs font-medium bg-[#EF4444]/20 text-[#EF4444] hover:bg-[#EF4444]/30 transition-colors"
+              className="px-4 py-2 bg-danger/10 border border-danger/20 text-danger rounded-lg font-mono-label tracking-wider transition-all hover:bg-danger/20"
             >
               {t("settings.resetAllBtn")}
             </button>
@@ -1020,12 +1033,12 @@ export default function SettingsPage() {
           {/* Export data */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium">{t("settings.exportData")}</p>
+              <p className="font-body text-sm text-text-primary">{t("settings.exportData")}</p>
               <p className="text-xs text-text-tertiary mt-0.5">{t("settings.exportDataDesc")}</p>
             </div>
             <button
               onClick={handleExportData}
-              className="px-4 py-2 rounded-xl text-xs font-medium bg-[#3B82F6]/10 text-[#3B82F6] hover:bg-[#3B82F6]/20 transition-colors"
+              className="px-4 py-2 border border-border rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-raised transition-all font-body text-sm"
             >
               {t("settings.export")}
             </button>
@@ -1036,7 +1049,7 @@ export default function SettingsPage() {
       {/* ──────────── 5. Logout ──────────── */}
       <button
         onClick={handleLogout}
-        className="w-full py-3 rounded-2xl bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#EF4444] text-sm font-medium hover:bg-[#EF4444]/20 transition-colors"
+        className="w-full py-3 rounded-lg bg-danger/10 border border-danger/20 text-danger font-mono-label tracking-wider transition-all hover:bg-danger/20"
       >
         {t("settings.logoutBtn")}
       </button>
@@ -1073,20 +1086,20 @@ export default function SettingsPage() {
               setResetConfirmText("");
             }}
           />
-          <div className="relative glass-card-strong p-6 w-full max-w-sm animate-scale-in">
-            <h3 className="text-lg font-bold text-[#EF4444] mb-2">{t("settings.resetAllTitle")}</h3>
-            <p className="text-sm text-text-secondary mb-4">
+          <div className="relative bg-surface border border-border rounded-lg p-6 w-full max-w-sm animate-scale-in">
+            <h3 className="font-display text-lg font-bold text-danger mb-2">{t("settings.resetAllTitle")}</h3>
+            <p className="font-body text-sm text-text-secondary mb-4">
               {t("settings.resetAllMsg")}
             </p>
-            <p className="text-sm mb-3">
-              {t("settings.resetAllType")} <span className="font-bold text-[#EF4444]">CONFERMA</span> {t("settings.resetAllToProceed")}
+            <p className="font-body text-sm text-text-primary mb-3">
+              {t("settings.resetAllType")} <span className="font-bold text-danger">CONFERMA</span> {t("settings.resetAllToProceed")}
             </p>
             <input
               type="text"
               value={resetConfirmText}
               onChange={(e) => setResetConfirmText(e.target.value)}
               placeholder="CONFERMA"
-              className="w-full px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-sm focus:outline-none focus:border-[#EF4444]/30 mb-4"
+              className="w-full px-4 py-3 rounded-lg bg-transparent border border-border focus:outline-none focus:border-danger text-text-primary placeholder-text-tertiary font-body transition-all mb-4"
             />
             <div className="flex gap-3">
               <button
@@ -1094,14 +1107,14 @@ export default function SettingsPage() {
                   setResetType(null);
                   setResetConfirmText("");
                 }}
-                className="flex-1 py-2.5 rounded-xl bg-card text-text-secondary text-sm font-medium"
+                className="flex-1 px-4 py-2 border border-border rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-raised transition-all font-body text-sm"
               >
                 {t("settings.cancel")}
               </button>
               <button
                 onClick={handleReset}
                 disabled={resetConfirmText !== "CONFERMA" || resetting}
-                className="flex-1 py-2.5 rounded-xl bg-[#EF4444]/20 text-[#EF4444] text-sm font-medium disabled:opacity-30 transition-colors"
+                className="flex-1 px-4 py-2 bg-danger/10 border border-danger/20 text-danger rounded-lg font-mono-label tracking-wider transition-all hover:bg-danger/20 disabled:opacity-30"
               >
                 {resetting ? "..." : t("settings.deleteAll")}
               </button>
