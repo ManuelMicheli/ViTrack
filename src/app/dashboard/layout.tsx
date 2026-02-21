@@ -89,7 +89,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <ThemeProvider initialTheme={user?.theme ?? "dark"}>
+    <ThemeProvider>
       <LanguageProvider initialLanguage={user?.language ?? "it"}>
         <PreferencesProvider
           userId={user?.id}

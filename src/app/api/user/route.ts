@@ -46,7 +46,6 @@ export async function PATCH(request: NextRequest) {
     "activity_level",
     "dietary_preferences",
     "avatar_url",
-    "theme",
     "unit_system",
     "language",
     "notifications_enabled",

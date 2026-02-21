@@ -7,7 +7,7 @@ import type { User } from "@/lib/types";
 import ConfirmModal from "@/components/ConfirmModal";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { usePreferences, ACCENT_COLORS, type AccentColor } from "@/lib/preferences-context";
-import { useTheme, type Theme } from "@/lib/theme-context";
+
 import { useLanguage } from "@/lib/language-context";
 
 const SECTION_KEYS = ["greeting", "quickadd", "calories", "water-streak", "weight", "meals", "workouts"] as const;
@@ -31,7 +31,6 @@ const ACCENT_COLOR_LABELS: Record<AccentColor, string> = {
 export default function SettingsPage() {
   const router = useRouter();
   const { accentColor, accentHex, setAccentColor, layoutMode, setLayoutMode, sectionOrder, setSectionOrder, saveError: prefSaveError } = usePreferences();
-  const { theme, setTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -185,10 +184,7 @@ export default function SettingsPage() {
 
   const handleQuickSave = async (field: string, value: unknown) => {
     if (!user) return;
-    // Apply theme/language changes immediately to context
-    if (field === "theme") {
-      setTheme(value as Theme);
-    }
+    // Apply language changes immediately to context
     if (field === "language") {
       setLanguage(value as "it" | "en");
     }
@@ -930,36 +926,6 @@ export default function SettingsPage() {
       <div>
         <h3 className="font-mono-label text-text-tertiary mb-4">{t("settings.appearance")}</h3>
         <div className="space-y-5">
-          {/* Theme */}
-          <div>
-            <p className="font-mono-label text-text-tertiary mb-2">{t("settings.theme")}</p>
-            <div className="flex gap-2">
-              {(
-                [
-                  { value: "dark", labelKey: "settings.themeDark" },
-                  { value: "light", labelKey: "settings.themeLight" },
-                  { value: "auto", labelKey: "settings.themeAuto" },
-                ] as const
-              ).map((opt) => {
-                const isSelected = theme === opt.value;
-                return (
-                  <button
-                    key={opt.value}
-                    onClick={() => handleQuickSave("theme", opt.value)}
-                    className={`flex-1 py-2 rounded-lg text-sm font-body transition-all ${
-                      isSelected
-                        ? "border border-[var(--color-accent-dynamic)] text-text-primary"
-                        : "border border-border text-text-tertiary hover:text-text-primary hover:bg-surface-raised"
-                    }`}
-                  >
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {t(opt.labelKey as any)}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           {/* Language */}
           <div>
             <p className="font-mono-label text-text-tertiary mb-2">{t("settings.language")}</p>

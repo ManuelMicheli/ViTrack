@@ -9,7 +9,7 @@ export interface User {
   activity_level: "sedentary" | "light" | "moderate" | "active" | "very_active";
   dietary_preferences: string[];
   avatar_url: string | null;
-  theme: "dark" | "light" | "auto";
+  theme: "dark";
   unit_system: "metric" | "imperial";
   language: "it" | "en";
   notifications_enabled: boolean;
