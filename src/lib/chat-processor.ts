@@ -841,6 +841,7 @@ export async function processMessage(
   // Commands
   if (text === "/oggi") return processToday(userId);
   if (text.startsWith("/obiettivo")) return processGoal(userId, text);
+  if (text.startsWith("/crearicetta")) return processCreateRecipe(userId, text);
   if (text.startsWith("/ricetta")) return processRecipe(userId, text);
   if (text === "/ricette") return processRecipeList(userId);
   if (text === "/sessione") return processSessionStart(userId);
