@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { HomeIcon, UtensilsIcon, DumbbellIcon, ChartIcon, SettingsIcon, ChatIcon } from "./icons";
-import VTLogoIcon from "./VTLogo";
 import { useChat } from "@/lib/chat-context";
 import { usePreferences } from "@/lib/preferences-context";
 import { useLanguage } from "@/lib/language-context";
@@ -30,13 +29,19 @@ export default function Sidebar({ currentPath, user, onLogout }: SidebarProps) {
   ];
 
   return (
-    <aside className="hidden md:flex md:flex-col fixed left-0 top-0 h-full w-60 bg-card/80 backdrop-blur-xl border-r border-border z-20">
-      <div className="p-6 flex items-center gap-3">
-        <VTLogoIcon className="w-10 h-5" />
-        <h1 className="text-xl font-bold tracking-tight">ViTrack</h1>
+    <aside className="hidden md:flex md:flex-col fixed left-0 top-0 h-full w-[220px] bg-black border-r border-border z-20">
+      {/* Logo */}
+      <div className="p-6">
+        <h1 className="font-display text-lg font-bold uppercase tracking-tight text-text-primary">
+          VITRACK
+        </h1>
       </div>
 
-      <nav className="flex-1 px-3 space-y-1">
+      {/* Separator */}
+      <div className="mx-4 border-t border-border-subtle" />
+
+      {/* Navigation */}
+      <nav className="flex-1 px-4 pt-4 space-y-0.5">
         {navItems.map((item) => {
           const isActive = currentPath === item.href;
           const Icon = item.icon;
@@ -44,81 +49,83 @@ export default function Sidebar({ currentPath, user, onLogout }: SidebarProps) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 ${
+              className={`relative flex items-center gap-3 px-3 py-2.5 text-sm font-body transition-colors duration-200 ${
                 isActive
-                  ? "text-text-primary bg-white/[0.08]"
-                  : "text-text-secondary hover:text-text-primary hover:bg-white/[0.04]"
+                  ? "text-text-primary"
+                  : "text-text-tertiary hover:text-text-secondary"
               }`}
-              style={isActive ? { boxShadow: `0 0 12px ${accentHex}14` } : undefined}
             >
-              <Icon className="w-5 h-5" filled={isActive} />
-              {item.label}
               {isActive && (
                 <motion.div
                   layoutId="sidebar-indicator"
-                  className="ml-auto w-1.5 h-1.5 rounded-full"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full"
                   style={{ backgroundColor: accentHex }}
                   transition={springs.smooth}
                 />
               )}
+              <Icon className="w-4 h-4 opacity-40" filled={false} />
+              {item.label}
             </Link>
           );
         })}
 
-        <div className="pt-2">
+        {/* Chat button */}
+        <div className="pt-1">
           <motion.button
             onClick={toggleChat}
             whileTap={{ scale: 0.98 }}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 w-full ${
+            className={`relative flex items-center gap-3 px-3 py-2.5 text-sm font-body transition-colors duration-200 w-full text-left ${
               isChatOpen
-                ? "text-text-primary bg-white/[0.08]"
-                : "text-text-secondary hover:text-text-primary hover:bg-white/[0.04]"
+                ? "text-text-primary"
+                : "text-text-tertiary hover:text-text-secondary"
             }`}
-            style={isChatOpen ? { boxShadow: `0 0 12px ${accentHex}14` } : undefined}
           >
-            <ChatIcon className="w-5 h-5" filled={isChatOpen} />
-            {t("nav.assistant")}
             {isChatOpen && (
               <motion.div
                 layoutId="sidebar-chat-indicator"
-                className="ml-auto w-1.5 h-1.5 rounded-full"
+                className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full"
                 style={{ backgroundColor: accentHex }}
                 transition={springs.smooth}
               />
             )}
+            <ChatIcon className="w-4 h-4 opacity-40" filled={false} />
+            {t("nav.assistant")}
           </motion.button>
         </div>
       </nav>
 
-      <div className="p-4 border-t border-border">
+      {/* Separator */}
+      <div className="mx-4 border-t border-border-subtle" />
+
+      {/* User section */}
+      <div className="p-4">
         {user && (
-          <Link href="/dashboard/profile" className="flex items-center gap-3 px-3 py-2 mb-2 rounded-xl hover:bg-white/[0.04] transition-all">
+          <Link href="/dashboard/profile" className="flex items-center gap-3 px-3 py-2 mb-2 transition-colors hover:opacity-80">
             {user.avatar_url ? (
               <Image
                 src={user.avatar_url}
                 alt={user.first_name || "Avatar"}
-                width={32}
-                height={32}
-                className="w-8 h-8 rounded-full object-cover"
+                width={28}
+                height={28}
+                className="w-7 h-7 rounded-full object-cover"
               />
             ) : (
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: `linear-gradient(to bottom right, ${accentHex}, #8B5CF6)` }}>
-                {user.first_name?.[0]?.toUpperCase() || "U"}
+              <div className="w-7 h-7 rounded-full bg-surface border border-border flex items-center justify-center">
+                <span className="font-mono-label text-[9px] text-text-secondary">
+                  {user.first_name?.[0]?.toUpperCase() || "U"}
+                </span>
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">
+              <p className="font-mono-label text-text-secondary truncate">
                 {user.first_name || user.username || t("nav.user")}
               </p>
-              {user.username && (
-                <p className="text-xs text-text-tertiary truncate">@{user.username}</p>
-              )}
             </div>
           </Link>
         )}
         <button
           onClick={onLogout}
-          className="w-full text-left px-3 py-2 text-sm text-text-tertiary hover:text-[#EF4444] transition-colors rounded-xl hover:bg-white/[0.04]"
+          className="w-full text-left px-3 py-2 text-xs text-text-tertiary hover:text-danger transition-colors"
         >
           {t("nav.logout")}
         </button>
