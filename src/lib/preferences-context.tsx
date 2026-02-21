@@ -2,16 +2,13 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 
-export type AccentColor = "blue" | "violet" | "cyan" | "green" | "orange" | "pink";
+export type AccentColor = "ivory" | "red" | "blue";
 export type LayoutMode = "compact" | "expanded";
 
 const ACCENT_COLORS: Record<AccentColor, string> = {
-  blue: "#3B82F6",
-  violet: "#8B5CF6",
-  cyan: "#06B6D4",
-  green: "#22C55E",
-  orange: "#F59E0B",
-  pink: "#EC4899",
+  ivory: "#E8E4DE",
+  red: "#E03C32",
+  blue: "#6B8CAE",
 };
 
 const DEFAULT_SECTION_ORDER = [
@@ -43,8 +40,8 @@ interface PreferencesContextType {
 }
 
 const PreferencesContext = createContext<PreferencesContextType>({
-  accentColor: "blue",
-  accentHex: "#3B82F6",
+  accentColor: "ivory",
+  accentHex: "#E8E4DE",
   setAccentColor: () => {},
   layoutMode: "expanded",
   setLayoutMode: () => {},
@@ -60,9 +57,9 @@ export function usePreferences() {
 
 function loadAccentColor(initial?: AccentColor): AccentColor {
   if (initial && ACCENT_COLORS[initial]) return initial;
-  if (typeof window === "undefined") return "blue";
+  if (typeof window === "undefined") return "ivory";
   const saved = localStorage.getItem("vitrack_accent_color") as AccentColor | null;
-  return saved && ACCENT_COLORS[saved] ? saved : "blue";
+  return saved && ACCENT_COLORS[saved] ? saved : "ivory";
 }
 
 function loadLayoutMode(initial?: LayoutMode): LayoutMode {
