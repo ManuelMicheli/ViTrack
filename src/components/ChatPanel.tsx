@@ -198,9 +198,9 @@ export default function ChatPanel() {
               <h2 className="font-mono-label text-text-secondary">ASSISTENTE</h2>
               <button
                 onClick={closeChat}
-                className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors"
+                className="p-2 rounded-lg hover:bg-surface-raised transition-colors"
               >
-                <CloseIcon className="w-5 h-5 text-white/60" />
+                <CloseIcon className="w-5 h-5 text-text-tertiary" />
               </button>
             </div>
 

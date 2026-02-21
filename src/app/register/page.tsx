@@ -55,44 +55,38 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative">
-      {/* Background gradient */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#3B82F6]/[0.04] rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/4 left-1/3 w-[400px] h-[400px] bg-[#8B5CF6]/[0.03] rounded-full blur-[100px]" />
-      </div>
-
+    <div className="min-h-screen flex items-center justify-center p-4 relative bg-background">
       <div className="w-full max-w-sm relative z-10 animate-fade-in">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white">ViTrack</h1>
-          <p className="text-white/60 mt-2 text-sm">
+          <h1 className="font-display text-4xl font-bold text-text-primary">ViTrack</h1>
+          <p className="text-text-secondary mt-2 text-sm font-body">
             Crea il tuo account
           </p>
         </div>
 
         {emailSent ? (
-          <div className="glass-card-strong p-6 space-y-4 text-center">
+          <div className="bg-surface border border-border rounded-lg p-6 space-y-4 text-center">
             <div className="text-4xl mb-2">&#9993;</div>
-            <h2 className="text-lg font-semibold text-white">Controlla la tua email</h2>
-            <p className="text-sm text-white/60">
-              Abbiamo inviato un link di conferma a <span className="text-white font-medium">{email}</span>.
+            <h2 className="font-display text-lg font-semibold text-text-primary">Controlla la tua email</h2>
+            <p className="text-sm text-text-secondary font-body">
+              Abbiamo inviato un link di conferma a <span className="text-text-primary font-medium">{email}</span>.
               Clicca il link nell&apos;email per attivare il tuo account.
             </p>
-            <p className="text-xs text-white/40 mt-2">
+            <p className="text-xs text-text-tertiary mt-2 font-body">
               Non trovi l&apos;email? Controlla la cartella spam.
             </p>
             <Link
               href="/"
-              className="inline-block mt-4 text-sm text-[#3B82F6] hover:text-[#60A5FA] transition-colors"
+              className="inline-block mt-4 text-sm text-[var(--color-accent-dynamic)] hover:opacity-80 transition-colors"
             >
               Torna al login
             </Link>
           </div>
         ) : (
           <>
-            <form onSubmit={handleRegister} className="glass-card-strong p-6 space-y-4">
+            <form onSubmit={handleRegister} className="bg-surface border border-border rounded-lg p-6 space-y-4">
               <div>
-                <label htmlFor="first_name" className="block text-xs text-white/60 uppercase tracking-wider font-medium mb-2">
+                <label htmlFor="first_name" className="font-mono-label text-text-tertiary block mb-2">
                   Nome
                 </label>
                 <input
@@ -101,13 +95,13 @@ export default function RegisterPage() {
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="Il tuo nome"
-                  className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_15px_rgba(59,130,246,0.1)] text-white placeholder-[#444] transition-all"
+                  className="w-full px-4 py-3 rounded-lg bg-transparent border border-border focus:outline-none focus:border-[var(--color-accent-dynamic)]/30 text-text-primary placeholder-text-tertiary font-body transition-all"
                   required
                 />
               </div>
 
               <div>
-                <label htmlFor="email" className="block text-xs text-white/60 uppercase tracking-wider font-medium mb-2">
+                <label htmlFor="email" className="font-mono-label text-text-tertiary block mb-2">
                   Email
                 </label>
                 <input
@@ -116,13 +110,13 @@ export default function RegisterPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="nome@esempio.com"
-                  className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_15px_rgba(59,130,246,0.1)] text-white placeholder-[#444] transition-all"
+                  className="w-full px-4 py-3 rounded-lg bg-transparent border border-border focus:outline-none focus:border-[var(--color-accent-dynamic)]/30 text-text-primary placeholder-text-tertiary font-body transition-all"
                   required
                 />
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-xs text-white/60 uppercase tracking-wider font-medium mb-2">
+                <label htmlFor="password" className="font-mono-label text-text-tertiary block mb-2">
                   Password
                 </label>
                 <input
@@ -131,13 +125,13 @@ export default function RegisterPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Minimo 6 caratteri"
-                  className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_15px_rgba(59,130,246,0.1)] text-white placeholder-[#444] transition-all"
+                  className="w-full px-4 py-3 rounded-lg bg-transparent border border-border focus:outline-none focus:border-[var(--color-accent-dynamic)]/30 text-text-primary placeholder-text-tertiary font-body transition-all"
                   required
                 />
               </div>
 
               <div>
-                <label htmlFor="confirm_password" className="block text-xs text-white/60 uppercase tracking-wider font-medium mb-2">
+                <label htmlFor="confirm_password" className="font-mono-label text-text-tertiary block mb-2">
                   Conferma Password
                 </label>
                 <input
@@ -146,29 +140,29 @@ export default function RegisterPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Ripeti la password"
-                  className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_15px_rgba(59,130,246,0.1)] text-white placeholder-[#444] transition-all"
+                  className="w-full px-4 py-3 rounded-lg bg-transparent border border-border focus:outline-none focus:border-[var(--color-accent-dynamic)]/30 text-text-primary placeholder-text-tertiary font-body transition-all"
                   required
                 />
               </div>
 
               {error && (
-                <div className="p-3 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/20">
-                  <p className="text-sm text-[#EF4444]">{error}</p>
+                <div className="p-3 rounded-lg bg-danger/10 border border-danger/20">
+                  <p className="text-sm text-danger font-body">{error}</p>
                 </div>
               )}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-gradient-to-r from-[#3B82F6] to-[#8B5CF6] text-white rounded-xl font-medium transition-all disabled:opacity-50 hover:shadow-[0_0_25px_rgba(59,130,246,0.25)] active:scale-[0.98]"
+                className="w-full py-3 bg-[var(--color-accent-dynamic)] text-black rounded-lg font-mono-label transition-all disabled:opacity-50 hover:opacity-90 active:scale-[0.98]"
               >
                 {loading ? "Registrazione..." : "Registrati"}
               </button>
             </form>
 
-            <p className="text-center text-sm text-white/50 mt-6">
+            <p className="text-center text-sm text-text-tertiary mt-6 font-body">
               Hai gia un account?{" "}
-              <Link href="/" className="text-[#3B82F6] hover:text-[#60A5FA] transition-colors">
+              <Link href="/" className="text-[var(--color-accent-dynamic)] hover:opacity-80 transition-colors">
                 Accedi
               </Link>
             </p>

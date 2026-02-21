@@ -72,13 +72,12 @@ export default function StreakCalendar({ userId }: StreakCalendarProps) {
   }
 
   return (
-    <div className="glass-card p-4">
+    <div className="data-card">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-base">{"\uD83D\uDD25"}</span>
-          <h3 className="text-sm font-medium">Streak</h3>
+          <span className="font-mono-label text-text-tertiary">STREAK</span>
         </div>
-        <span className="text-sm font-bold text-[#F59E0B]">{streak} {streak === 1 ? t("streak.day") : t("streak.days")}</span>
+        <span className="font-display text-2xl font-bold text-[var(--color-accent-dynamic)]">{streak} <span className="font-mono-label text-text-tertiary">{streak === 1 ? t("streak.day") : t("streak.days")}</span></span>
       </div>
 
       {loading ? (
@@ -101,9 +100,9 @@ export default function StreakCalendar({ userId }: StreakCalendarProps) {
                 transition={springs.tap}
                 className={`aspect-square rounded-sm transition-colors ${
                   isActive
-                    ? "bg-[#22C55E]/60"
-                    : "bg-white/[0.04]"
-                } ${isToday ? "ring-1 ring-white/20" : ""}`}
+                    ? "bg-success/60"
+                    : "bg-surface-raised"
+                } ${isToday ? "ring-1 ring-border" : ""}`}
                 title={new Date(day + "T12:00:00").toLocaleDateString(locale, { day: "numeric", month: "short" })}
               />
             );

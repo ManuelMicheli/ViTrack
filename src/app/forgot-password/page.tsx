@@ -34,24 +34,18 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative">
-      {/* Background gradient */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#3B82F6]/[0.04] rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/4 left-1/3 w-[400px] h-[400px] bg-[#8B5CF6]/[0.03] rounded-full blur-[100px]" />
-      </div>
-
+    <div className="min-h-screen flex items-center justify-center p-4 relative bg-background">
       <div className="w-full max-w-sm relative z-10 animate-fade-in">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white">ViTrack</h1>
-          <p className="text-white/60 mt-2 text-sm">Recupera Password</p>
+          <h1 className="font-display text-4xl font-bold text-text-primary">ViTrack</h1>
+          <p className="text-text-secondary mt-2 text-sm font-body">Recupera Password</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="glass-card-strong p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-surface border border-border rounded-lg p-6 space-y-4">
           <div>
             <label
               htmlFor="email"
-              className="block text-xs text-white/60 uppercase tracking-wider font-medium mb-2"
+              className="font-mono-label text-text-tertiary block mb-2"
             >
               Email
             </label>
@@ -61,20 +55,20 @@ export default function ForgotPasswordPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="esempio@email.com"
-              className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_15px_rgba(59,130,246,0.1)] text-white placeholder-[#444] transition-all"
+              className="w-full px-4 py-3 rounded-lg bg-transparent border border-border focus:outline-none focus:border-[var(--color-accent-dynamic)]/30 text-text-primary placeholder-text-tertiary font-body transition-all"
               required
             />
           </div>
 
           {error && (
-            <div className="p-3 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/20">
-              <p className="text-sm text-[#EF4444]">{error}</p>
+            <div className="p-3 rounded-lg bg-danger/10 border border-danger/20">
+              <p className="text-sm text-danger font-body">{error}</p>
             </div>
           )}
 
           {success && (
-            <div className="p-3 rounded-xl bg-[#22C55E]/10 border border-[#22C55E]/20">
-              <p className="text-sm text-[#22C55E]">
+            <div className="p-3 rounded-lg bg-success/10 border border-success/20">
+              <p className="text-sm text-success font-body">
                 Controlla la tua email per il link di reset
               </p>
             </div>
@@ -83,14 +77,14 @@ export default function ForgotPasswordPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-gradient-to-r from-[#3B82F6] to-[#8B5CF6] text-white rounded-xl font-medium transition-all disabled:opacity-50 hover:shadow-[0_0_25px_rgba(59,130,246,0.25)] active:scale-[0.98]"
+            className="w-full py-3 bg-[var(--color-accent-dynamic)] text-black rounded-lg font-mono-label transition-all disabled:opacity-50 hover:opacity-90 active:scale-[0.98]"
           >
             {loading ? "Invio in corso..." : "Invia link di reset"}
           </button>
         </form>
 
-        <p className="text-center text-sm text-white/50 mt-6">
-          <Link href="/" className="text-[#3B82F6] hover:text-[#3B82F6]/80 transition-colors">
+        <p className="text-center text-sm text-text-tertiary mt-6 font-body">
+          <Link href="/" className="text-[var(--color-accent-dynamic)] hover:opacity-80 transition-colors">
             Torna al login
           </Link>
         </p>

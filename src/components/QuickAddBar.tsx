@@ -14,11 +14,11 @@ interface QuickAddBarProps {
   onAddWeight: () => void;
 }
 
-const actionKeys: { labelKey: TranslationKey; icon: typeof UtensilsIcon; actionProp: keyof QuickAddBarProps; color: string }[] = [
-  { labelKey: "quickAdd.meal", icon: UtensilsIcon, actionProp: "onAddMeal", color: "from-[#3B82F6]/20 to-[#3B82F6]/5" },
-  { labelKey: "quickAdd.water", icon: WaterIcon, actionProp: "onAddWater", color: "from-[#06B6D4]/20 to-[#06B6D4]/5" },
-  { labelKey: "quickAdd.workout", icon: DumbbellIcon, actionProp: "onAddWorkout", color: "from-[#F59E0B]/20 to-[#F59E0B]/5" },
-  { labelKey: "quickAdd.weight", icon: ScaleIcon, actionProp: "onAddWeight", color: "from-[#A78BFA]/20 to-[#A78BFA]/5" },
+const actionKeys: { labelKey: TranslationKey; icon: typeof UtensilsIcon; actionProp: keyof QuickAddBarProps }[] = [
+  { labelKey: "quickAdd.meal", icon: UtensilsIcon, actionProp: "onAddMeal" },
+  { labelKey: "quickAdd.water", icon: WaterIcon, actionProp: "onAddWater" },
+  { labelKey: "quickAdd.workout", icon: DumbbellIcon, actionProp: "onAddWorkout" },
+  { labelKey: "quickAdd.weight", icon: ScaleIcon, actionProp: "onAddWeight" },
 ];
 
 export default function QuickAddBar({ onAddMeal, onAddWater, onAddWorkout, onAddWeight }: QuickAddBarProps) {
@@ -45,15 +45,15 @@ export default function QuickAddBar({ onAddMeal, onAddWater, onAddWorkout, onAdd
           <motion.div key={action.labelKey} variants={staggerItem}>
             <RippleButton
               onClick={handlers[action.actionProp]}
-              className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl bg-gradient-to-b ${action.color} border border-white/[0.06] hover:border-white/[0.12] transition-all duration-200`}
+              className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-lg border border-border hover:border-border hover:bg-surface-raised transition-all duration-200"
             >
               <motion.span
                 whileHover={{ y: -2 }}
                 transition={{ type: "spring", stiffness: 300, damping: 15 }}
               >
-                <Icon className="w-5 h-5" />
+                <Icon className="w-5 h-5 text-text-tertiary" />
               </motion.span>
-              <span className="text-xs text-[#A1A1A1]">{label}</span>
+              <span className="font-mono-label text-text-tertiary">{label}</span>
             </RippleButton>
           </motion.div>
         );

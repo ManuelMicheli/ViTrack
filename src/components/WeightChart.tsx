@@ -188,11 +188,12 @@ export default function WeightChart({
       : null;
 
   const tooltipStyle = {
-    backgroundColor: "#111111",
-    border: "1px solid rgba(255,255,255,0.08)",
+    backgroundColor: "var(--color-surface)",
+    border: "1px solid var(--color-border)",
     borderRadius: "8px",
-    color: "#FFFFFF",
+    color: "var(--color-text-primary)",
     fontSize: "12px",
+    fontFamily: "'IBM Plex Mono', monospace",
   };
 
   const periods: { label: string; value: Period }[] = [
@@ -202,22 +203,19 @@ export default function WeightChart({
   ];
 
   return (
-    <div className="glass-card p-4">
+    <div className="data-card">
       {/* Header */}
       <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-2">
-          <span className="text-base">&#9878;&#65039;</span>
-          <h3 className="text-sm font-medium">{t("weight.title")}</h3>
-        </div>
+        <span className="font-mono-label text-text-tertiary">{t("weight.title")}</span>
         <div className="flex items-center gap-2">
           {/* Current weight */}
           {latest ? (
             <div className="text-right">
-              <span className="text-sm font-bold">{latest} kg</span>
+              <span className="font-display text-sm font-bold text-text-primary">{latest} kg</span>
               {delta !== null && delta !== 0 && (
                 <span
-                  className={`text-xs ml-1.5 ${
-                    delta > 0 ? "text-[#EF4444]" : "text-[#22C55E]"
+                  className={`font-mono-label ml-1.5 ${
+                    delta > 0 ? "text-danger" : "text-success"
                   }`}
                 >
                   {delta > 0 ? "+" : ""}
@@ -226,7 +224,7 @@ export default function WeightChart({
               )}
             </div>
           ) : (
-            <span className="text-xs text-[#666]">{t("weight.noData")}</span>
+            <span className="font-mono-label text-text-tertiary">{t("weight.noData")}</span>
           )}
         </div>
       </div>
@@ -236,12 +234,12 @@ export default function WeightChart({
         <div className="flex items-center gap-3 mb-3">
           {weightGoalKg && (
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-[#666]">{t("weight.goal")}</span>
-              <span className="text-xs font-medium text-[#A78BFA]">
+              <span className="font-mono-label text-text-tertiary">{t("weight.goal")}</span>
+              <span className="font-mono-label text-[var(--color-accent-dynamic)]">
                 {weightGoalKg} kg
               </span>
               {goalProgress !== null && (
-                <span className="text-[10px] text-[#666]">
+                <span className="font-mono-label text-text-tertiary">
                   ({goalProgress}%)
                 </span>
               )}
@@ -249,16 +247,16 @@ export default function WeightChart({
           )}
           {bmi && (
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-[#666]">BMI:</span>
+              <span className="font-mono-label text-text-tertiary">BMI:</span>
               <span
-                className={`text-xs font-medium ${
+                className={`font-mono-label ${
                   bmi < 18.5
-                    ? "text-[#F59E0B]"
+                    ? "text-carbs"
                     : bmi < 25
-                    ? "text-[#22C55E]"
+                    ? "text-success"
                     : bmi < 30
-                    ? "text-[#F59E0B]"
-                    : "text-[#EF4444]"
+                    ? "text-carbs"
+                    : "text-danger"
                 }`}
               >
                 {bmi}
@@ -271,20 +269,20 @@ export default function WeightChart({
       {/* Goal progress bar */}
       {weightGoalKg && goalProgress !== null && (
         <div className="mb-3">
-          <div className="w-full h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+          <div className="w-full h-1.5 bg-surface-raised rounded-full overflow-hidden">
             <motion.div
               className={`h-full rounded-full ${
-                isApproachingGoal ? "bg-gradient-to-r from-[#A78BFA] to-[#8B5CF6]" : "bg-[#EF4444]/50"
+                isApproachingGoal ? "bg-[var(--color-accent-dynamic)]" : "bg-danger/50"
               }`}
               animate={{ width: goalProgress + "%" }}
               transition={springs.smooth}
             />
           </div>
           <div className="flex justify-between mt-1">
-            <span className="text-[10px] text-[#666]">
+            <span className="font-mono-label text-text-tertiary">
               {data.length > 0 ? data[0].weight : "\u2014"} kg
             </span>
-            <span className="text-[10px] text-[#A78BFA]">{weightGoalKg} kg</span>
+            <span className="font-mono-label text-[var(--color-accent-dynamic)]">{weightGoalKg} kg</span>
           </div>
         </div>
       )}
@@ -295,16 +293,16 @@ export default function WeightChart({
         <>
           {/* Period selector */}
           <div className="flex items-center justify-between mb-2">
-            <div className="flex bg-white/[0.04] rounded-lg p-0.5">
+            <div className="flex bg-surface-raised rounded-lg p-0.5">
               {periods.map((p) => (
                 <motion.button
                   key={p.value}
                   onClick={() => setPeriod(p.value)}
                   whileTap={{ scale: 0.95 }}
-                  className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-all ${
+                  className={`px-2.5 py-1 rounded-md font-mono-label transition-all ${
                     period === p.value
-                      ? "bg-[#A78BFA]/20 text-[#A78BFA]"
-                      : "text-[#666] hover:text-[#999]"
+                      ? "bg-[var(--color-accent-dynamic)]/20 text-[var(--color-accent-dynamic)]"
+                      : "text-text-tertiary hover:text-text-secondary"
                   }`}
                 >
                   {p.label}
@@ -321,18 +319,18 @@ export default function WeightChart({
                   value={goalInput}
                   onChange={(e) => setGoalInput(e.target.value)}
                   placeholder="kg"
-                  className="w-14 bg-white/[0.04] border border-white/[0.08] rounded-md px-2 py-0.5 text-xs text-white focus:outline-none focus:border-[#A78BFA]/40"
+                  className="w-14 bg-transparent border border-border rounded-lg px-2 py-0.5 text-xs text-text-primary font-body focus:outline-none focus:border-[var(--color-accent-dynamic)]/40"
                   autoFocus
                 />
                 <button
                   onClick={handleSaveGoal}
-                  className="text-[10px] text-[#A78BFA] font-medium"
+                  className="font-mono-label text-[var(--color-accent-dynamic)]"
                 >
                   OK
                 </button>
                 <button
                   onClick={() => setEditingGoal(false)}
-                  className="text-[10px] text-[#666]"
+                  className="font-mono-label text-text-tertiary"
                 >
                   x
                 </button>
@@ -343,7 +341,7 @@ export default function WeightChart({
                   setEditingGoal(true);
                   setGoalInput(weightGoalKg ? String(weightGoalKg) : "");
                 }}
-                className="text-[10px] text-[#666] hover:text-[#A78BFA] transition-colors"
+                className="font-mono-label text-text-tertiary hover:text-[var(--color-accent-dynamic)] transition-colors"
               >
                 {weightGoalKg ? t("weight.editGoal") : t("weight.setGoal")}
               </button>
@@ -361,15 +359,15 @@ export default function WeightChart({
                 <AreaChart data={data}>
                   <defs>
                     <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#A78BFA" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="#A78BFA" stopOpacity={0} />
+                      <stop offset="0%" stopColor="var(--color-accent-dynamic)" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="var(--color-accent-dynamic)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <XAxis
                     dataKey="date"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: "#666", fontSize: 9 }}
+                    tick={{ fill: "var(--color-text-tertiary)", fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}
                     interval="preserveStartEnd"
                   />
                   <YAxis
@@ -380,17 +378,17 @@ export default function WeightChart({
                   <Area
                     type="monotone"
                     dataKey="weight"
-                    stroke="#A78BFA"
+                    stroke="var(--color-accent-dynamic)"
                     strokeWidth={2}
                     fill="url(#weightGradient)"
                     dot={false}
-                    activeDot={{ r: 3, fill: "#A78BFA", strokeWidth: 0 }}
+                    activeDot={{ r: 3, fill: "var(--color-accent-dynamic)", strokeWidth: 0 }}
                     name={t("weight.chartName")}
                   />
                   <Line
                     type="monotone"
                     dataKey="avg"
-                    stroke="#A78BFA"
+                    stroke="var(--color-accent-dynamic)"
                     strokeWidth={1}
                     strokeDasharray="4 4"
                     dot={false}
@@ -401,7 +399,7 @@ export default function WeightChart({
               </ResponsiveContainer>
             </motion.div>
           ) : (
-            <p className="text-xs text-[#666] text-center py-6">
+            <p className="font-body text-xs text-text-tertiary text-center py-6">
               {t("weight.addPrompt")}
             </p>
           )}
@@ -409,53 +407,53 @@ export default function WeightChart({
           {/* Stats row */}
           {data.length > 1 && (
             <motion.div
-              className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-white/[0.06]"
+              className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-border"
               variants={staggerContainer()}
               initial="initial"
               animate="animate"
             >
               <motion.div className="text-center" variants={staggerItem}>
-                <p className="text-xs font-bold">
+                <p className="font-display text-xs font-bold text-text-primary">
                   <AnimatedNum value={min} />
                 </p>
-                <p className="text-[9px] text-[#666] uppercase tracking-wider">
+                <p className="font-mono-label text-text-tertiary">
                   {t("weight.min")}
                 </p>
               </motion.div>
               <motion.div className="text-center" variants={staggerItem}>
-                <p className="text-xs font-bold">
+                <p className="font-display text-xs font-bold text-text-primary">
                   <AnimatedNum value={max} />
                 </p>
-                <p className="text-[9px] text-[#666] uppercase tracking-wider">
+                <p className="font-mono-label text-text-tertiary">
                   {t("weight.max")}
                 </p>
               </motion.div>
               <motion.div className="text-center" variants={staggerItem}>
-                <p className="text-xs font-bold">
+                <p className="font-display text-xs font-bold text-text-primary">
                   <AnimatedNum value={avg} />
                 </p>
-                <p className="text-[9px] text-[#666] uppercase tracking-wider">
+                <p className="font-mono-label text-text-tertiary">
                   {t("weight.avg")}
                 </p>
               </motion.div>
               <motion.div className="text-center" variants={staggerItem}>
                 {weeklyTrend !== null ? (
                   <p
-                    className={`text-xs font-bold ${
+                    className={`font-display text-xs font-bold ${
                       weeklyTrend > 0
-                        ? "text-[#EF4444]"
+                        ? "text-danger"
                         : weeklyTrend < 0
-                        ? "text-[#22C55E]"
-                        : "text-[#666]"
+                        ? "text-success"
+                        : "text-text-tertiary"
                     }`}
                   >
                     {weeklyTrend > 0 ? "+" : ""}
                     <AnimatedNum value={weeklyTrend} />
                   </p>
                 ) : (
-                  <p className="text-xs font-bold text-[#666]">&mdash;</p>
+                  <p className="font-display text-xs font-bold text-text-tertiary">&mdash;</p>
                 )}
-                <p className="text-[9px] text-[#666] uppercase tracking-wider">
+                <p className="font-mono-label text-text-tertiary">
                   {t("weight.perWeek")}
                 </p>
               </motion.div>
@@ -463,7 +461,7 @@ export default function WeightChart({
           )}
 
           {/* Integrated weight input */}
-          <div className="mt-3 pt-3 border-t border-white/[0.06]">
+          <div className="mt-3 pt-3 border-t border-border">
             <AnimatePresence mode="wait">
               {showInput ? (
                 <motion.div
@@ -480,15 +478,15 @@ export default function WeightChart({
                     value={weightInput}
                     onChange={(e) => setWeightInput(e.target.value)}
                     placeholder={language === "en" ? "e.g. 75.5" : "Es: 75.5"}
-                    className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#A78BFA]/40"
+                    className="flex-1 bg-transparent border border-border rounded-lg px-3 py-2 text-sm text-text-primary font-body focus:outline-none focus:border-[var(--color-accent-dynamic)]/40"
                     autoFocus
                     onKeyDown={(e) => e.key === "Enter" && handleSaveWeight()}
                   />
-                  <span className="text-xs text-[#666]">kg</span>
+                  <span className="font-mono-label text-text-tertiary">kg</span>
                   <button
                     onClick={handleSaveWeight}
                     disabled={saving || !weightInput}
-                    className="px-3 py-2 rounded-lg bg-[#A78BFA]/20 text-[#A78BFA] text-xs font-medium hover:bg-[#A78BFA]/30 transition-colors disabled:opacity-30"
+                    className="px-3 py-2 rounded-lg bg-[var(--color-accent-dynamic)] text-black font-mono-label hover:opacity-90 transition-colors disabled:opacity-30"
                   >
                     {saving ? "..." : t("common.save")}
                   </button>
@@ -497,7 +495,7 @@ export default function WeightChart({
                       setShowInput(false);
                       setWeightInput("");
                     }}
-                    className="text-[#666] text-xs hover:text-white transition-colors"
+                    className="text-text-tertiary font-mono-label hover:text-text-primary transition-colors"
                   >
                     {t("common.cancel")}
                   </button>
@@ -510,7 +508,7 @@ export default function WeightChart({
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={springs.smooth}
-                  className="w-full py-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-xs text-[#666] hover:text-[#A78BFA] hover:border-[#A78BFA]/20 transition-all"
+                  className="w-full py-2 rounded-lg border border-border font-mono-label text-text-tertiary hover:text-[var(--color-accent-dynamic)] hover:border-[var(--color-accent-dynamic)]/20 transition-all"
                 >
                   {t("weight.addWeight")}
                 </motion.button>

@@ -137,7 +137,7 @@ export default function AddMealModal({ isOpen, onClose, onSave, defaultMealType 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/80"
             onClick={onClose}
           />
           <motion.div
@@ -145,13 +145,13 @@ export default function AddMealModal({ isOpen, onClose, onSave, defaultMealType 
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
             transition={springs.enter}
-            className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-[#0A0A0A] border border-white/[0.08] rounded-t-3xl sm:rounded-3xl"
+            className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-background border border-border rounded-t-lg sm:rounded-lg"
           >
             {/* Header */}
-            <div className="sticky top-0 bg-[#0A0A0A]/90 backdrop-blur-xl px-6 pt-6 pb-4 border-b border-white/[0.06] z-10">
+            <div className="sticky top-0 bg-background px-6 pt-6 pb-4 border-b border-border z-10">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold">{t("addMeal.title")}</h2>
-                <button onClick={onClose} className="text-[#666] hover:text-white transition-colors">
+                <h2 className="font-display text-xl font-bold text-text-primary">{t("addMeal.title")}</h2>
+                <button onClick={onClose} className="text-text-tertiary hover:text-text-primary transition-colors">
                   <CloseIcon className="w-5 h-5" />
                 </button>
               </div>
@@ -163,10 +163,10 @@ export default function AddMealModal({ isOpen, onClose, onSave, defaultMealType 
                     key={type.value}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setMealType(type.value)}
-                    className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${
+                    className={`flex-1 py-2 rounded-lg font-mono-label transition-all ${
                       mealType === type.value
-                        ? "bg-white/[0.1] text-white shadow-[0_0_10px_rgba(59,130,246,0.1)]"
-                        : "bg-white/[0.03] text-[#666] hover:text-[#A1A1A1]"
+                        ? "bg-surface-raised text-text-primary border border-border"
+                        : "text-text-tertiary hover:text-text-secondary"
                     }`}
                   >
                     <span className="block text-base mb-0.5">{type.icon}</span>
@@ -185,7 +185,7 @@ export default function AddMealModal({ isOpen, onClose, onSave, defaultMealType 
                   onChange={(e) => setText(e.target.value)}
                   placeholder={t("addMeal.placeholder")}
                   rows={3}
-                  className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white placeholder-[#666] text-sm resize-none focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_12px_rgba(59,130,246,0.1)] transition-all"
+                  className="w-full px-4 py-3 rounded-lg bg-transparent border border-border text-text-primary placeholder-text-tertiary font-body text-sm resize-none focus:outline-none focus:border-[var(--color-accent-dynamic)]/30 transition-all"
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
@@ -196,7 +196,7 @@ export default function AddMealModal({ isOpen, onClose, onSave, defaultMealType 
                 <button
                   onClick={handleAnalyze}
                   disabled={loading || !text.trim()}
-                  className="w-full mt-2 py-2.5 rounded-xl bg-gradient-to-r from-[#3B82F6] to-[#8B5CF6] text-white text-sm font-medium disabled:opacity-40 transition-all hover:shadow-[0_0_20px_rgba(59,130,246,0.2)]"
+                  className="w-full mt-2 py-2.5 rounded-lg bg-[var(--color-accent-dynamic)] text-black font-mono-label disabled:opacity-40 transition-all hover:opacity-90"
                 >
                   {loading ? t("addMeal.analyzing") : t("addMeal.analyze")}
                 </button>
@@ -205,24 +205,24 @@ export default function AddMealModal({ isOpen, onClose, onSave, defaultMealType 
               {/* Loading shimmer */}
               {loading && (
                 <div className="space-y-3">
-                  <div className="h-16 shimmer rounded-xl" />
-                  <div className="h-16 shimmer rounded-xl" />
-                  <div className="h-12 shimmer rounded-xl" />
+                  <div className="h-16 shimmer rounded-lg" />
+                  <div className="h-16 shimmer rounded-lg" />
+                  <div className="h-12 shimmer rounded-lg" />
                 </div>
               )}
 
               {/* Need info message */}
               {needInfo && (
-                <div className="p-4 rounded-xl bg-[#F59E0B]/10 border border-[#F59E0B]/20">
-                  <p className="text-sm text-[#F59E0B] font-medium mb-1">{t("addMeal.needInfo")}</p>
-                  <p className="text-sm text-[#A1A1A1]">{needInfo}</p>
+                <div className="p-4 rounded-lg bg-carbs/10 border border-carbs/20">
+                  <p className="font-mono-label text-carbs mb-1">{t("addMeal.needInfo")}</p>
+                  <p className="font-body text-sm text-text-secondary">{needInfo}</p>
                 </div>
               )}
 
               {/* Error message */}
               {error && (
-                <div className="p-4 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/20">
-                  <p className="text-sm text-[#EF4444]">{error}</p>
+                <div className="p-4 rounded-lg bg-danger/10 border border-danger/20">
+                  <p className="font-body text-sm text-danger">{error}</p>
                 </div>
               )}
 
@@ -234,16 +234,16 @@ export default function AddMealModal({ isOpen, onClose, onSave, defaultMealType 
                     animate={{ opacity: 1 }}
                     className="space-y-3"
                   >
-                    <p className="text-xs text-[#666] uppercase tracking-wider font-medium">{t("addMeal.analysisResult")}</p>
+                    <p className="font-mono-label text-text-tertiary">{t("addMeal.analysisResult")}</p>
 
                     {/* Items breakdown */}
                     {result.items && result.items.length > 0 && (
                       <div className="space-y-2">
                         {result.items.map((item, i) => (
-                          <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                          <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-border">
                             <div>
-                              <p className="text-sm text-white capitalize">{item.name}</p>
-                              <p className="text-xs text-[#666]">{item.quantity_g}g</p>
+                              <p className="font-body text-sm text-text-primary capitalize">{item.name}</p>
+                              <p className="font-mono-label text-text-tertiary">{item.quantity_g}g</p>
                             </div>
                           </div>
                         ))}
@@ -251,31 +251,31 @@ export default function AddMealModal({ isOpen, onClose, onSave, defaultMealType 
                     )}
 
                     {/* Description */}
-                    <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                      <p className="text-sm text-white mb-3">{result.description}</p>
+                    <div className="p-4 rounded-lg border border-border">
+                      <p className="font-body text-sm text-text-primary mb-3">{result.description}</p>
                       <div className="flex items-center justify-between">
-                        <span className="text-2xl font-bold">{result.calories}</span>
-                        <span className="text-sm text-[#666]">kcal</span>
+                        <span className="font-display text-2xl font-bold text-text-primary">{result.calories}</span>
+                        <span className="font-mono-label text-text-tertiary">kcal</span>
                       </div>
                     </div>
 
                     {/* Macro grid */}
                     <div className="grid grid-cols-4 gap-2">
-                      <div className="p-3 rounded-xl bg-[#3B82F6]/10 text-center">
-                        <p className="text-xs text-[#3B82F6] mb-0.5">{t("macro.proteinShort")}</p>
-                        <p className="text-sm font-bold">{result.protein_g}g</p>
+                      <div className="p-3 rounded-lg bg-protein/10 text-center">
+                        <p className="font-mono-label text-protein mb-0.5">{t("macro.proteinShort")}</p>
+                        <p className="font-display text-sm font-bold text-text-primary">{result.protein_g}g</p>
                       </div>
-                      <div className="p-3 rounded-xl bg-[#F59E0B]/10 text-center">
-                        <p className="text-xs text-[#F59E0B] mb-0.5">{t("macro.carbsShort")}</p>
-                        <p className="text-sm font-bold">{result.carbs_g}g</p>
+                      <div className="p-3 rounded-lg bg-carbs/10 text-center">
+                        <p className="font-mono-label text-carbs mb-0.5">{t("macro.carbsShort")}</p>
+                        <p className="font-display text-sm font-bold text-text-primary">{result.carbs_g}g</p>
                       </div>
-                      <div className="p-3 rounded-xl bg-[#EF4444]/10 text-center">
-                        <p className="text-xs text-[#EF4444] mb-0.5">{t("macro.fat")}</p>
-                        <p className="text-sm font-bold">{result.fat_g}g</p>
+                      <div className="p-3 rounded-lg bg-fat/10 text-center">
+                        <p className="font-mono-label text-fat mb-0.5">{t("macro.fat")}</p>
+                        <p className="font-display text-sm font-bold text-text-primary">{result.fat_g}g</p>
                       </div>
-                      <div className="p-3 rounded-xl bg-[#22C55E]/10 text-center">
-                        <p className="text-xs text-[#22C55E] mb-0.5">{t("macro.fiber")}</p>
-                        <p className="text-sm font-bold">{result.fiber_g}g</p>
+                      <div className="p-3 rounded-lg bg-fiber/10 text-center">
+                        <p className="font-mono-label text-fiber mb-0.5">{t("macro.fiber")}</p>
+                        <p className="font-display text-sm font-bold text-text-primary">{result.fiber_g}g</p>
                       </div>
                     </div>
 
@@ -283,7 +283,7 @@ export default function AddMealModal({ isOpen, onClose, onSave, defaultMealType 
                     <button
                       onClick={handleSave}
                       disabled={saving}
-                      className="w-full py-3 rounded-xl bg-white text-black text-sm font-semibold disabled:opacity-50 hover:bg-white/90 transition-all"
+                      className="w-full py-3 rounded-lg bg-[var(--color-accent-dynamic)] text-black font-mono-label disabled:opacity-50 hover:opacity-90 transition-all"
                     >
                       {saving ? t("common.saving") : t("addMeal.saveMeal")}
                     </button>

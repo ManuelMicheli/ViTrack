@@ -22,17 +22,17 @@ export default function MacroBar({
   if (total === 0) {
     return (
       <div
-        className="w-full bg-[#1A1A1A] rounded-full overflow-hidden"
+        className="w-full bg-surface-raised rounded-full overflow-hidden"
         style={{ height }}
       />
     );
   }
 
   const segments = [
-    { value: protein, color: "#3B82F6", label: "P" },
-    { value: carbs, color: "#F59E0B", label: "C" },
-    { value: fat, color: "#EF4444", label: "G" },
-    { value: fiber, color: "#22C55E", label: "F" },
+    { value: protein, color: "var(--color-protein)", label: "P" },
+    { value: carbs, color: "var(--color-carbs)", label: "C" },
+    { value: fat, color: "var(--color-fat)", label: "G" },
+    { value: fiber, color: "var(--color-fiber)", label: "F" },
   ];
 
   return (
@@ -57,7 +57,7 @@ export default function MacroBar({
       {showLabels && (
         <div className="flex gap-3 mt-2">
           {segments.map((seg) => (
-            <div key={seg.label} className="flex items-center gap-1 text-xs text-[#A1A1A1]">
+            <div key={seg.label} className="flex items-center gap-1 text-xs text-text-secondary">
               <div
                 className="w-2 h-2 rounded-full"
                 style={{ backgroundColor: seg.color }}

@@ -17,7 +17,7 @@ export default function Celebration({ children }: { children: React.ReactNode })
           particleCount: 30,
           spread: 60,
           origin: { y: 0.7 },
-          colors: ["#3B82F6", "#8B5CF6", "#22C55E"],
+          colors: ["#E8E4DE", "#3B82F6", "#22C55E"],
         });
         break;
       case "streak_milestone":
