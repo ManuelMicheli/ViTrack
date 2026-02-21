@@ -303,7 +303,7 @@ const translations = {
   "chat.subtitle": { it: "Stessa chat di Telegram", en: "Same chat as Telegram" },
   "chat.placeholder": { it: "Scrivi un messaggio...", en: "Write a message..." },
   "chat.emptyTitle": { it: "Scrivi cosa hai mangiato o il tuo allenamento", en: "Write what you ate or your workout" },
-  "chat.emptySubtitle": { it: "I messaggi da Telegram appariranno qui", en: "Messages from Telegram will appear here" },
+  "chat.emptySubtitle": { it: "Comandi: /ricette, /ricetta <nome>, /crearicetta <nome>: <ingredienti>", en: "Commands: /ricette, /ricetta <name>, /crearicetta <name>: <ingredients>" },
   "chat.error": { it: "Errore nella comunicazione. Riprova.", en: "Communication error. Try again." },
   "chat.networkError": { it: "Errore di rete. Controlla la connessione.", en: "Network error. Check your connection." },
   "chat.viaTelegram": { it: "via Telegram", en: "via Telegram" },

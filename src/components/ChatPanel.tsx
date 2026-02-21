@@ -22,6 +22,7 @@ const getUserId = async (): Promise<string | null> => {
 
 const QUICK_COMMANDS = [
   { label: "Oggi", command: "/oggi" },
+  { label: "Ricette", command: "/ricette" },
   { label: "Sessione", command: "/sessione" },
   { label: "Fine", command: "/fine" },
   { label: "Annulla", command: "/annulla" },
