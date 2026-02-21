@@ -1,11 +1,5 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "ViTrack - Tracker Calorie e Allenamenti",
@@ -20,7 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="it" data-theme="dark">
-      <body className={`${geistSans.variable} font-sans antialiased bg-background text-text-primary`}>
+      <body className="font-body antialiased bg-background text-text-primary">
         {/* Inline loading screen — visible immediately before JS hydrates */}
         <div id="vt-preloader" suppressHydrationWarning style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "#000", transition: "opacity 0.2s", pointerEvents: "none" }}>
           <svg width="96" height="48" viewBox="0 0 96 48" fill="none">

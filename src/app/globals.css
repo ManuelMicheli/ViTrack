@@ -1,34 +1,56 @@
+@font-face {
+  font-family: 'ITC Orbon';
+  src: url('/fonts/ITC-Orbon-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Sohne';
+  src: url('/fonts/Sohne-Book.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('/fonts/IBMPlexMono-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-geist-sans);
+  /* Font families */
+  --font-display: 'ITC Orbon', Georgia, serif;
+  --font-body: 'Sohne', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Menlo', monospace;
+  --font-sans: 'Sohne', system-ui, -apple-system, sans-serif;
 
-  /* Base colors (dark theme defaults) */
+  /* Base palette — Pure Editorial Black */
   --color-background: #000000;
-  --color-card: #0A0A0A;
-  --color-card-alt: #111111;
-  --color-card-hover: #141414;
+  --color-surface: #0A0A0A;
+  --color-surface-raised: #111111;
   --color-border: #1A1A1A;
-  --color-border-light: #242424;
+  --color-border-subtle: #141414;
   --color-text-primary: #FFFFFF;
-  --color-text-secondary: #A1A1A1;
-  --color-text-tertiary: #666666;
+  --color-text-secondary: #A0A0A0;
+  --color-text-tertiary: #585858;
 
-  /* Macro colors */
+  /* Accent (default: ivory) */
+  --color-accent: #E8E4DE;
+  --color-accent-dynamic: #E8E4DE;
+
+  /* Data colors */
   --color-protein: #3B82F6;
   --color-carbs: #F59E0B;
   --color-fat: #EF4444;
   --color-fiber: #22C55E;
-  --color-burned: #F59E0B;
-  --color-over-goal: #EF4444;
-
-  /* Accent */
-  --color-accent: #3B82F6;
-  --color-accent-dynamic: #3B82F6;
-  --color-accent-violet: #8B5CF6;
   --color-water: #06B6D4;
-  --color-streak: #F59E0B;
-  --color-weight: #A78BFA;
   --color-success: #22C55E;
   --color-danger: #EF4444;
 
@@ -37,20 +59,18 @@
   --animate-slide-up: slide-up 0.4s ease-out;
   --animate-scale-in: scale-in 0.3s ease-out;
   --animate-shimmer: shimmer 1.5s infinite;
-  --animate-pulse-glow: pulse-glow 2s infinite;
 }
 
-/* ── Light theme overrides ── */
+/* ── Light Theme ── */
 [data-theme="light"] {
-  --color-background: #F5F5F5;
-  --color-card: #FFFFFF;
-  --color-card-alt: #FAFAFA;
-  --color-card-hover: #F0F0F0;
+  --color-background: #FAFAFA;
+  --color-surface: #FFFFFF;
+  --color-surface-raised: #F5F5F5;
   --color-border: #E5E5E5;
-  --color-border-light: #D4D4D4;
-  --color-text-primary: #171717;
-  --color-text-secondary: #525252;
-  --color-text-tertiary: #A3A3A3;
+  --color-border-subtle: #EEEEEE;
+  --color-text-primary: #0A0A0A;
+  --color-text-secondary: #585858;
+  --color-text-tertiary: #A0A0A0;
 }
 
 @keyframes fade-in {
@@ -73,80 +93,47 @@
   100% { background-position: 200% 0; }
 }
 
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 8px rgba(59, 130, 246, 0.15); }
-  50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
-}
-
 /* ── Body defaults ── */
 body {
   background: var(--color-background);
   color: var(--color-text-primary);
+  font-family: var(--font-body);
   transition: background-color 0.3s, color 0.3s;
 }
 
-/* ── Glass cards ── */
-.glass-card {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 1rem;
+/* ── Utility classes ── */
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+.font-body {
+  font-family: var(--font-body);
+}
+.font-mono-label {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 11px;
+}
+.data-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 20px;
 }
 
-.glass-card-strong {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 1.5rem;
-}
-
-[data-theme="light"] .glass-card {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-[data-theme="light"] .glass-card-strong {
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(24px);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.gradient-text {
-  background: linear-gradient(135deg, #3B82F6, #8B5CF6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.gradient-border {
-  position: relative;
-}
-.gradient-border::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(139, 92, 246, 0.3));
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-}
-
+/* ── Shimmer ── */
 .shimmer {
-  background: linear-gradient(90deg, #111111 25%, #1a1a1a 50%, #111111 75%);
+  background: linear-gradient(90deg, #0A0A0A 25%, #1A1A1A 50%, #0A0A0A 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
-
 [data-theme="light"] .shimmer {
-  background: linear-gradient(90deg, #e5e5e5 25%, #d4d4d4 50%, #e5e5e5 75%);
+  background: linear-gradient(90deg, #F5F5F5 25%, #E5E5E5 50%, #F5F5F5 75%);
   background-size: 200% 100%;
 }
 
+/* ── Date input ── */
 input[type="date"] {
   color-scheme: dark;
 }
@@ -161,6 +148,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   filter: none;
 }
 
+/* ── Scrollbar ── */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -168,15 +156,15 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #333;
+  background: #1A1A1A;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #333;
 }
 [data-theme="light"] ::-webkit-scrollbar-thumb {
-  background: #ccc;
+  background: #E5E5E5;
 }
 [data-theme="light"] ::-webkit-scrollbar-thumb:hover {
-  background: #aaa;
+  background: #CCCCCC;
 }
