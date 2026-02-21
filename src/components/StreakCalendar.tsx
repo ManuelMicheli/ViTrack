@@ -3,12 +3,15 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { staggerContainer, staggerItem, springs } from "@/lib/animation-config";
+import { useLanguage } from "@/lib/language-context";
 
 interface StreakCalendarProps {
   userId: string;
 }
 
 export default function StreakCalendar({ userId }: StreakCalendarProps) {
+  const { t, language } = useLanguage();
+  const locale = language === "en" ? "en-US" : "it-IT";
   const [activeDays, setActiveDays] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
@@ -72,10 +75,10 @@ export default function StreakCalendar({ userId }: StreakCalendarProps) {
     <div className="glass-card p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-base">🔥</span>
+          <span className="text-base">{"\uD83D\uDD25"}</span>
           <h3 className="text-sm font-medium">Streak</h3>
         </div>
-        <span className="text-sm font-bold text-[#F59E0B]">{streak} {streak === 1 ? "giorno" : "giorni"}</span>
+        <span className="text-sm font-bold text-[#F59E0B]">{streak} {streak === 1 ? t("streak.day") : t("streak.days")}</span>
       </div>
 
       {loading ? (
@@ -101,7 +104,7 @@ export default function StreakCalendar({ userId }: StreakCalendarProps) {
                     ? "bg-[#22C55E]/60"
                     : "bg-white/[0.04]"
                 } ${isToday ? "ring-1 ring-white/20" : ""}`}
-                title={new Date(day + "T12:00:00").toLocaleDateString("it-IT", { day: "numeric", month: "short" })}
+                title={new Date(day + "T12:00:00").toLocaleDateString(locale, { day: "numeric", month: "short" })}
               />
             );
           })}

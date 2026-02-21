@@ -7,8 +7,10 @@ import DatePicker from "@/components/DatePicker";
 import { TrashIcon } from "@/components/icons";
 import ConfirmModal from "@/components/ConfirmModal";
 import { staggerContainer, staggerItem } from "@/lib/animation-config";
+import { useLanguage } from "@/lib/language-context";
 
 export default function WorkoutsPage() {
+  const { t } = useLanguage();
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +61,7 @@ export default function WorkoutsPage() {
   return (
     <motion.div className="px-4 md:px-8 py-6 space-y-4" initial="initial" animate="animate" variants={staggerContainer(0.08)}>
       <motion.div variants={staggerItem} className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">Allenamenti</h2>
+        <h2 className="text-xl font-bold">{t("workoutsPage.title")}</h2>
         <DatePicker value={date} onChange={setDate} />
       </motion.div>
 
@@ -67,15 +69,15 @@ export default function WorkoutsPage() {
       {workouts.length > 0 && (
         <motion.div variants={staggerItem} className="grid grid-cols-3 gap-2">
           <div className="glass-card p-3 text-center">
-            <p className="text-xs text-[#666] uppercase tracking-wider">Sessioni</p>
+            <p className="text-xs text-[#666] uppercase tracking-wider">{t("workoutsPage.sessions")}</p>
             <p className="text-lg font-bold mt-1">{workouts.length}</p>
           </div>
           <div className="glass-card p-3 text-center">
-            <p className="text-xs text-[#666] uppercase tracking-wider">Durata</p>
+            <p className="text-xs text-[#666] uppercase tracking-wider">{t("workoutsPage.duration")}</p>
             <p className="text-lg font-bold mt-1 text-[#3B82F6]">{totalDuration} <span className="text-xs font-normal">min</span></p>
           </div>
           <div className="glass-card p-3 text-center">
-            <p className="text-xs text-[#666] uppercase tracking-wider">Bruciate</p>
+            <p className="text-xs text-[#666] uppercase tracking-wider">{t("workoutsPage.burned")}</p>
             <p className="text-lg font-bold mt-1 text-[#F59E0B]">{totalBurned} <span className="text-xs font-normal">kcal</span></p>
           </div>
         </motion.div>
@@ -83,9 +85,9 @@ export default function WorkoutsPage() {
 
       {workouts.length === 0 ? (
         <motion.div variants={staggerItem} className="glass-card p-8 text-center">
-          <span className="text-4xl mb-3 block">🏋️</span>
-          <p className="text-[#A1A1A1] text-sm">Nessun allenamento registrato</p>
-          <p className="text-xs text-[#666] mt-1">Usa il bot Telegram per registrare i tuoi allenamenti</p>
+          <span className="text-4xl mb-3 block">{"\uD83C\uDFCB\uFE0F"}</span>
+          <p className="text-[#A1A1A1] text-sm">{t("workoutsPage.noWorkouts")}</p>
+          <p className="text-xs text-[#666] mt-1">{t("workoutsPage.useTelegram")}</p>
         </motion.div>
       ) : (
         <motion.div variants={staggerItem} className="space-y-3">
@@ -101,12 +103,12 @@ export default function WorkoutsPage() {
                   className="w-full p-4 flex items-start justify-between text-left cursor-pointer"
                 >
                   <div className="flex gap-3">
-                    <span className="text-xl">🏋️</span>
+                    <span className="text-xl">{"\uD83C\uDFCB\uFE0F"}</span>
                     <div>
                       <p className="font-medium text-white text-sm">{workout.description}</p>
                       <p className="text-xs text-[#666] mt-0.5">
                         {workout.workout_type}
-                        {workout.duration_min && ` · ${workout.duration_min} min`}
+                        {workout.duration_min && ` \u00B7 ${workout.duration_min} min`}
                       </p>
                     </div>
                   </div>
@@ -127,7 +129,7 @@ export default function WorkoutsPage() {
                   <div className="px-4 pb-4">
                     <div className="rounded-xl bg-white/[0.03] border border-white/[0.04] divide-y divide-white/[0.04]">
                       <div className="px-3 py-2">
-                        <p className="text-[10px] text-[#666] uppercase tracking-wider font-medium">Esercizi</p>
+                        <p className="text-[10px] text-[#666] uppercase tracking-wider font-medium">{t("workoutsPage.exercises")}</p>
                       </div>
                       {workout.exercises.map((ex, i) => (
                         <div key={i} className="flex items-center justify-between px-3 py-2.5 text-sm">
@@ -149,9 +151,9 @@ export default function WorkoutsPage() {
 
       <ConfirmModal
         isOpen={!!deleteId}
-        title="Elimina allenamento"
-        message="Vuoi eliminare questo allenamento? L'azione è irreversibile."
-        confirmLabel="Elimina"
+        title={t("workoutList.deleteTitle")}
+        message={t("workoutList.deleteMsg")}
+        confirmLabel={t("common.delete")}
         danger
         loading={deleting}
         onConfirm={handleDelete}

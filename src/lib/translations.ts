@@ -14,10 +14,166 @@ const translations = {
   "nav.logout": { it: "Esci", en: "Logout" },
   "nav.user": { it: "Utente", en: "User" },
 
+  // ── Common ──
+  "common.save": { it: "Salva", en: "Save" },
+  "common.saving": { it: "Salvataggio...", en: "Saving..." },
+  "common.saved": { it: "Salvato!", en: "Saved!" },
+  "common.cancel": { it: "Annulla", en: "Cancel" },
+  "common.confirm": { it: "Conferma", en: "Confirm" },
+  "common.delete": { it: "Elimina", en: "Delete" },
+  "common.today": { it: "Oggi", en: "Today" },
+  "common.loading": { it: "Caricamento...", en: "Loading..." },
+  "common.noData": { it: "Nessun dato", en: "No data" },
+  "common.days": { it: "giorni", en: "days" },
+  "common.user": { it: "Utente", en: "User" },
+
+  // ── Meal types ──
+  "meal.colazione": { it: "Colazione", en: "Breakfast" },
+  "meal.pranzo": { it: "Pranzo", en: "Lunch" },
+  "meal.cena": { it: "Cena", en: "Dinner" },
+  "meal.snack": { it: "Snack", en: "Snack" },
+  "meal.meal": { it: "Pasto", en: "Meal" },
+
+  // ── Macros ──
+  "macro.protein": { it: "Proteine", en: "Protein" },
+  "macro.proteinShort": { it: "Proteine", en: "Protein" },
+  "macro.carbs": { it: "Carboidrati", en: "Carbs" },
+  "macro.carbsShort": { it: "Carbo", en: "Carbs" },
+  "macro.fat": { it: "Grassi", en: "Fat" },
+  "macro.fiber": { it: "Fibre", en: "Fiber" },
+
+  // ── AddMealModal ──
+  "addMeal.title": { it: "Aggiungi Pasto", en: "Add Meal" },
+  "addMeal.placeholder": { it: "Descrivi il tuo pasto...\nes: 100g petto di pollo con insalata mista e 10ml olio", en: "Describe your meal...\ne.g.: 100g chicken breast with mixed salad and 10ml oil" },
+  "addMeal.analyze": { it: "Analizza", en: "Analyze" },
+  "addMeal.analyzing": { it: "Analisi in corso...", en: "Analyzing..." },
+  "addMeal.needInfo": { it: "Informazioni mancanti", en: "Missing information" },
+  "addMeal.describeError": { it: "Descrivi un pasto per poterlo analizzare.", en: "Describe a meal to analyze it." },
+  "addMeal.analysisResult": { it: "Risultato analisi", en: "Analysis result" },
+  "addMeal.saveMeal": { it: "Salva Pasto", en: "Save Meal" },
+
+  // ── MealList ──
+  "mealList.noMeals": { it: "Nessun pasto registrato", en: "No meals recorded" },
+  "mealList.title": { it: "Pasti", en: "Meals" },
+  "mealList.deleteTitle": { it: "Elimina pasto", en: "Delete meal" },
+  "mealList.deleteMsg": { it: "Vuoi eliminare questo pasto? L'azione è irreversibile.", en: "Do you want to delete this meal? This action is irreversible." },
+
+  // ── WorkoutList ──
+  "workoutList.noWorkouts": { it: "Nessun allenamento registrato", en: "No workouts recorded" },
+  "workoutList.title": { it: "Allenamenti", en: "Workouts" },
+  "workoutList.deleteTitle": { it: "Elimina allenamento", en: "Delete workout" },
+  "workoutList.deleteMsg": { it: "Vuoi eliminare questo allenamento? L'azione è irreversibile.", en: "Do you want to delete this workout? This action is irreversible." },
+
+  // ── QuickAddBar ──
+  "quickAdd.meal": { it: "Pasto", en: "Meal" },
+  "quickAdd.water": { it: "Acqua", en: "Water" },
+  "quickAdd.workout": { it: "Allenam.", en: "Workout" },
+  "quickAdd.weight": { it: "Peso", en: "Weight" },
+
+  // ── WaterTracker ──
+  "water.title": { it: "Acqua", en: "Water" },
+  "water.glasses": { it: "Bicchieri", en: "Glasses" },
+  "water.glassesUnit": { it: "bicchieri", en: "glasses" },
+  "water.editGoal": { it: "Modifica obiettivo", en: "Edit goal" },
+  "water.last7days": { it: "Ultimi 7 giorni", en: "Last 7 days" },
+
+  // ── WeightChart ──
+  "weight.title": { it: "Peso", en: "Weight" },
+  "weight.noData": { it: "Nessun dato", en: "No data" },
+  "weight.goal": { it: "Goal:", en: "Goal:" },
+  "weight.editGoal": { it: "Modifica goal", en: "Edit goal" },
+  "weight.setGoal": { it: "Imposta goal", en: "Set goal" },
+  "weight.chartName": { it: "Peso (kg)", en: "Weight (kg)" },
+  "weight.avg": { it: "Media", en: "Average" },
+  "weight.min": { it: "Min", en: "Min" },
+  "weight.max": { it: "Max", en: "Max" },
+  "weight.perWeek": { it: "/sett", en: "/week" },
+  "weight.addWeight": { it: "+ Registra peso", en: "+ Log weight" },
+  "weight.addPrompt": { it: "Aggiungi il tuo peso per vedere il trend", en: "Add your weight to see the trend" },
+  "weight.7d": { it: "7gg", en: "7d" },
+  "weight.30d": { it: "30gg", en: "30d" },
+  "weight.90d": { it: "90gg", en: "90d" },
+  "weight.objective": { it: "Obiettivo", en: "Goal" },
+
+  // ── Meals page ──
+  "mealsPage.title": { it: "Pasti", en: "Meals" },
+  "mealsPage.addType": { it: "Aggiungi", en: "Add" },
+  "mealsPage.dailyTotal": { it: "Totale giornata", en: "Daily total" },
+
+  // ── Workouts page ──
+  "workoutsPage.title": { it: "Allenamenti", en: "Workouts" },
+  "workoutsPage.sessions": { it: "Sessioni", en: "Sessions" },
+  "workoutsPage.duration": { it: "Durata", en: "Duration" },
+  "workoutsPage.burned": { it: "Bruciate", en: "Burned" },
+  "workoutsPage.noWorkouts": { it: "Nessun allenamento registrato", en: "No workouts recorded" },
+  "workoutsPage.useTelegram": { it: "Usa il bot Telegram per registrare i tuoi allenamenti", en: "Use the Telegram bot to record your workouts" },
+  "workoutsPage.exercises": { it: "Esercizi", en: "Exercises" },
+
+  // ── Stats page ──
+  "statsPage.title": { it: "Statistiche", en: "Statistics" },
+  "statsPage.avgCalories": { it: "Media calorie", en: "Avg calories" },
+  "statsPage.workouts": { it: "Allenamenti", en: "Workouts" },
+  "statsPage.avgProtein": { it: "Media proteine", en: "Avg protein" },
+  "statsPage.caloriesBurned": { it: "Calorie bruciate", en: "Calories burned" },
+  "statsPage.calorieTrend": { it: "Trend calorie", en: "Calorie trend" },
+  "statsPage.macroDistribution": { it: "Distribuzione macro", en: "Macro distribution" },
+  "statsPage.calories": { it: "Calorie", en: "Calories" },
+
+  // ── Profile page ──
+  "profile.title": { it: "Profilo", en: "Profile" },
+  "profile.changePhoto": { it: "Cambia foto", en: "Change photo" },
+  "profile.uploading": { it: "Caricamento...", en: "Uploading..." },
+  "profile.personalInfo": { it: "Informazioni Personali", en: "Personal Information" },
+  "profile.name": { it: "Nome", en: "Name" },
+  "profile.namePlaceholder": { it: "Il tuo nome", en: "Your name" },
+  "profile.email": { it: "Email", en: "Email" },
+  "profile.emailNotSet": { it: "Non impostata", en: "Not set" },
+  "profile.dateOfBirth": { it: "Data di nascita", en: "Date of birth" },
+  "profile.gender": { it: "Sesso", en: "Gender" },
+  "profile.genderNone": { it: "Non specificato", en: "Not specified" },
+  "profile.genderMale": { it: "Maschio", en: "Male" },
+  "profile.genderFemale": { it: "Femmina", en: "Female" },
+  "profile.genderOther": { it: "Altro", en: "Other" },
+  "profile.height": { it: "Altezza", en: "Height" },
+  "profile.activityLevel": { it: "Livello di attivit\u00e0", en: "Activity level" },
+  "profile.sedentary": { it: "Sedentario", en: "Sedentary" },
+  "profile.light": { it: "Leggero", en: "Light" },
+  "profile.moderate": { it: "Moderato", en: "Moderate" },
+  "profile.active": { it: "Attivo", en: "Active" },
+  "profile.veryActive": { it: "Molto attivo", en: "Very active" },
+  "profile.nutritionalGoals": { it: "Obiettivi Nutrizionali", en: "Nutritional Goals" },
+  "profile.dailyCalories": { it: "Calorie giornaliere", en: "Daily calories" },
+  "profile.weightGoal": { it: "Obiettivo peso", en: "Weight goal" },
+  "profile.waterGoal": { it: "Obiettivo acqua", en: "Water goal" },
+  "profile.dietaryPrefs": { it: "Preferenze Alimentari", en: "Dietary Preferences" },
+  "profile.stats": { it: "Statistiche", en: "Statistics" },
+  "profile.memberSince": { it: "Membro da", en: "Member for" },
+  "profile.telegramId": { it: "Telegram ID", en: "Telegram ID" },
+  "profile.notLinked": { it: "Non collegato", en: "Not linked" },
+  "profile.plan": { it: "Piano", en: "Plan" },
+
+  // ── Dietary options ──
+  "dietary.vegan": { it: "Vegano", en: "Vegan" },
+  "dietary.vegetarian": { it: "Vegetariano", en: "Vegetarian" },
+  "dietary.celiac": { it: "Celiaco", en: "Celiac" },
+  "dietary.lactoseIntolerant": { it: "Intollerante al lattosio", en: "Lactose intolerant" },
+  "dietary.halal": { it: "Halal", en: "Halal" },
+  "dietary.kosher": { it: "Kosher", en: "Kosher" },
+
+  // ── Greetings & motivation ──
+  "greeting.morning": { it: "Buongiorno", en: "Good morning" },
+  "greeting.afternoon": { it: "Buon pomeriggio", en: "Good afternoon" },
+  "greeting.evening": { it: "Buonasera", en: "Good evening" },
+  "greeting.night": { it: "Buonanotte", en: "Good night" },
+  "motivation.goalReached": { it: "Obiettivo raggiunto! Ottimo lavoro", en: "Goal reached! Great job" },
+  "motivation.streak": { it: "Sei in streak da {count} giorni, continua cosi!", en: "You're on a {count}-day streak, keep it up!" },
+  "motivation.remaining": { it: "Ancora {count}kcal per completare la giornata", en: "{count}kcal left to complete the day" },
+  "motivation.workoutDone": { it: "Allenamento completato, bravo!", en: "Workout completed, great job!" },
+  "motivation.firstMeal": { it: "Inizia registrando il tuo primo pasto", en: "Start by logging your first meal" },
+  "motivation.keepTracking": { it: "Continua a tracciare la tua giornata", en: "Keep tracking your day" },
+
   // ── Settings page ──
   "settings.title": { it: "Impostazioni", en: "Settings" },
-
-  // Account
   "settings.account": { it: "Account", en: "Account" },
   "settings.email": { it: "Email", en: "Email" },
   "settings.emailNotSet": { it: "Non impostata", en: "Not set" },
@@ -32,8 +188,6 @@ const translations = {
   "settings.passwordError": { it: "Errore durante l'aggiornamento", en: "Error during update" },
   "settings.updatePassword": { it: "Aggiorna Password", en: "Update Password" },
   "settings.updating": { it: "Aggiornamento...", en: "Updating..." },
-
-  // Telegram
   "settings.telegram": { it: "Telegram", en: "Telegram" },
   "settings.unlink": { it: "Scollega", en: "Unlink" },
   "settings.link": { it: "Collega", en: "Link" },
@@ -42,13 +196,9 @@ const translations = {
   "settings.telegramLinkError": { it: "Errore durante il collegamento", en: "Error linking Telegram" },
   "settings.telegramUnlinked": { it: "Telegram scollegato", en: "Telegram unlinked" },
   "settings.telegramUnlinkError": { it: "Errore durante lo scollegamento", en: "Error unlinking Telegram" },
-
-  // Profile
   "settings.profile": { it: "Profilo", en: "Profile" },
   "settings.name": { it: "Nome", en: "Name" },
   "settings.username": { it: "Username", en: "Username" },
-
-  // Goals
   "settings.goals": { it: "Obiettivi", en: "Goals" },
   "settings.calorieGoal": { it: "Obiettivo calorie", en: "Calorie goal" },
   "settings.waterGoal": { it: "Obiettivo acqua", en: "Water goal" },
@@ -64,8 +214,6 @@ const translations = {
   "settings.save": { it: "Salva", en: "Save" },
   "settings.saved": { it: "Salvato", en: "Saved" },
   "settings.saving": { it: "...", en: "..." },
-
-  // Personalization
   "settings.personalization": { it: "Personalizzazione", en: "Personalization" },
   "settings.accentColor": { it: "Colore accento", en: "Accent color" },
   "settings.layout": { it: "Layout", en: "Layout" },
@@ -74,8 +222,6 @@ const translations = {
   "settings.expanded": { it: "Espanso", en: "Expanded" },
   "settings.sectionOrder": { it: "Ordine sezioni dashboard", en: "Dashboard section order" },
   "settings.preview": { it: "Anteprima", en: "Preview" },
-
-  // Section labels
   "section.greeting": { it: "Saluto", en: "Greeting" },
   "section.quickadd": { it: "Azioni rapide", en: "Quick actions" },
   "section.calories": { it: "Calorie e Macro", en: "Calories & Macros" },
@@ -83,8 +229,6 @@ const translations = {
   "section.weight": { it: "Peso", en: "Weight" },
   "section.meals": { it: "Pasti", en: "Meals" },
   "section.workouts": { it: "Allenamenti", en: "Workouts" },
-
-  // Appearance
   "settings.appearance": { it: "Aspetto", en: "Appearance" },
   "settings.theme": { it: "Tema", en: "Theme" },
   "settings.themeDark": { it: "Scuro", en: "Dark" },
@@ -96,14 +240,10 @@ const translations = {
   "settings.units": { it: "Unita di misura", en: "Units" },
   "settings.metric": { it: "Metrico (kg/cm)", en: "Metric (kg/cm)" },
   "settings.imperial": { it: "Imperiale (lbs/in)", en: "Imperial (lbs/in)" },
-
-  // Notifications
   "settings.notifications": { it: "Notifiche", en: "Notifications" },
   "settings.notificationsActive": { it: "Notifiche attive", en: "Notifications active" },
   "settings.notificationsOff": { it: "Notifiche disattivate", en: "Notifications disabled" },
   "settings.notificationsDesc": { it: "Ricevi promemoria e aggiornamenti", en: "Receive reminders and updates" },
-
-  // Data management
   "settings.dataManagement": { it: "Gestione Dati", en: "Data Management" },
   "settings.resetMeals": { it: "Azzera dati dieta", en: "Reset diet data" },
   "settings.resetMealsDesc": { it: "Elimina tutti i pasti registrati", en: "Delete all recorded meals" },
@@ -117,8 +257,6 @@ const translations = {
   "settings.exportDataDesc": { it: "Scarica tutti i tuoi dati", en: "Download all your data" },
   "settings.export": { it: "Esporta", en: "Export" },
   "settings.logoutBtn": { it: "Esci dall'account", en: "Log out" },
-
-  // Reset modals
   "settings.resetMealsTitle": { it: "Azzera dati dieta", en: "Reset diet data" },
   "settings.resetMealsMsg": { it: "Tutti i pasti registrati verranno eliminati. Questa azione è irreversibile.", en: "All recorded meals will be deleted. This action is irreversible." },
   "settings.resetMealsConfirm": { it: "Azzera dieta", en: "Reset diet" },
@@ -135,18 +273,18 @@ const translations = {
   "settings.resetSuccessAll": { it: "Tutti i dati azzerati", en: "All data reset" },
   "settings.resetError": { it: "Errore durante l'eliminazione", en: "Error during deletion" },
 
-  // Save errors
+  // ── Errors ──
   "error.saveGoal": { it: "Errore nel salvare l'obiettivo calorie", en: "Error saving calorie goal" },
   "error.saveSetting": { it: "Errore nel salvare l'impostazione", en: "Error saving setting" },
   "error.connection": { it: "Errore di connessione. Riprova.", en: "Connection error. Try again." },
   "error.savePreference": { it: "Errore nel salvare la personalizzazione", en: "Error saving preference" },
 
-  // Dashboard
+  // ── Dashboard ──
   "dashboard.todaysMeals": { it: "Pasti di oggi", en: "Today's meals" },
   "dashboard.viewAll": { it: "Vedi tutti", en: "View all" },
   "dashboard.todaysWorkouts": { it: "Allenamenti di oggi", en: "Today's workouts" },
 
-  // Chat
+  // ── Chat ──
   "chat.title": { it: "Assistente ViTrack", en: "ViTrack Assistant" },
   "chat.subtitle": { it: "Stessa chat di Telegram", en: "Same chat as Telegram" },
   "chat.placeholder": { it: "Scrivi un messaggio...", en: "Write a message..." },
@@ -155,6 +293,16 @@ const translations = {
   "chat.error": { it: "Errore nella comunicazione. Riprova.", en: "Communication error. Try again." },
   "chat.networkError": { it: "Errore di rete. Controlla la connessione.", en: "Network error. Check your connection." },
   "chat.viaTelegram": { it: "via Telegram", en: "via Telegram" },
+
+  // ── CalorieProgress ──
+  "calories.consumed": { it: "Assunte", en: "Consumed" },
+  "calories.burned": { it: "Bruciate", en: "Burned" },
+  "calories.excess": { it: "Eccesso", en: "Excess" },
+  "calories.remaining": { it: "Rimaste", en: "Remaining" },
+
+  // ── Streak ──
+  "streak.day": { it: "giorno", en: "day" },
+  "streak.days": { it: "giorni", en: "days" },
 } as const;
 
 export type TranslationKey = keyof typeof translations;

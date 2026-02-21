@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { springs } from "@/lib/animation-config";
 import { CloseIcon } from "./icons";
+import { useLanguage } from "@/lib/language-context";
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -20,13 +21,17 @@ export default function ConfirmModal({
   isOpen,
   title,
   message,
-  confirmLabel = "Conferma",
-  cancelLabel = "Annulla",
+  confirmLabel,
+  cancelLabel,
   danger = false,
   onConfirm,
   onCancel,
   loading = false,
 }: ConfirmModalProps) {
+  const { t } = useLanguage();
+  const confirm = confirmLabel ?? t("common.confirm");
+  const cancel = cancelLabel ?? t("common.cancel");
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -61,7 +66,7 @@ export default function ConfirmModal({
                 onClick={onCancel}
                 className="flex-1 py-2.5 rounded-xl bg-[#111111] text-[#A1A1A1] text-sm font-medium hover:bg-[#1A1A1A] transition-colors"
               >
-                {cancelLabel}
+                {cancel}
               </button>
               <button
                 onClick={onConfirm}
@@ -72,7 +77,7 @@ export default function ConfirmModal({
                     : "bg-white text-black hover:bg-white/90"
                 }`}
               >
-                {loading ? "..." : confirmLabel}
+                {loading ? "..." : confirm}
               </button>
             </div>
           </motion.div>

@@ -6,6 +6,7 @@ import type { Workout } from "@/lib/types";
 import { TrashIcon } from "./icons";
 import ConfirmModal from "./ConfirmModal";
 import { staggerContainer, staggerItem } from "@/lib/animation-config";
+import { useLanguage } from "@/lib/language-context";
 
 interface WorkoutListProps {
   workouts: Workout[];
@@ -14,6 +15,7 @@ interface WorkoutListProps {
 }
 
 export default function WorkoutList({ workouts, onDelete, compact }: WorkoutListProps) {
+  const { t } = useLanguage();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -28,7 +30,7 @@ export default function WorkoutList({ workouts, onDelete, compact }: WorkoutList
   if (workouts.length === 0) {
     return (
       <div className="glass-card p-6">
-        <p className="text-[#666] text-sm text-center py-2">Nessun allenamento registrato</p>
+        <p className="text-[#666] text-sm text-center py-2">{t("workoutList.noWorkouts")}</p>
       </div>
     );
   }
@@ -38,7 +40,7 @@ export default function WorkoutList({ workouts, onDelete, compact }: WorkoutList
       <div className="glass-card p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium">
-            Allenamenti ({workouts.length})
+            {t("workoutList.title")} ({workouts.length})
           </h3>
         </div>
         <motion.div
@@ -65,12 +67,12 @@ export default function WorkoutList({ workouts, onDelete, compact }: WorkoutList
               >
                 <div className="flex items-start justify-between">
                   <div className="flex gap-3">
-                    <span className="text-lg">🏋️</span>
+                    <span className="text-lg">{"\uD83C\uDFCB\uFE0F"}</span>
                     <div>
                       <p className="font-medium text-white text-sm">{workout.description}</p>
                       <p className="text-xs text-[#666]">
                         {workout.workout_type}
-                        {workout.duration_min && ` · ${workout.duration_min} min`}
+                        {workout.duration_min && ` \u00B7 ${workout.duration_min} min`}
                       </p>
                     </div>
                   </div>
@@ -109,9 +111,9 @@ export default function WorkoutList({ workouts, onDelete, compact }: WorkoutList
 
       <ConfirmModal
         isOpen={!!deleteId}
-        title="Elimina allenamento"
-        message="Vuoi eliminare questo allenamento? L'azione è irreversibile."
-        confirmLabel="Elimina"
+        title={t("workoutList.deleteTitle")}
+        message={t("workoutList.deleteMsg")}
+        confirmLabel={t("common.delete")}
         danger
         loading={deleting}
         onConfirm={handleDelete}

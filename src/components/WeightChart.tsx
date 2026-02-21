@@ -18,8 +18,9 @@ import {
   useTransform,
 } from "framer-motion";
 import { springs, staggerContainer, staggerItem } from "@/lib/animation-config";
+import { useLanguage } from "@/lib/language-context";
 
-/* ── Animated number (inline) ── */
+/* -- Animated number (inline) -- */
 function AnimatedNum({ value }: { value: number | null }) {
   const ref = useRef<HTMLSpanElement>(null);
   const mv = useMotionValue(0);
@@ -37,7 +38,7 @@ function AnimatedNum({ value }: { value: number | null }) {
     return unsub;
   }, [display]);
 
-  if (value === null) return <span>—</span>;
+  if (value === null) return <span>{"\u2014"}</span>;
   return <span ref={ref}>{value.toFixed(1)}</span>;
 }
 
@@ -62,6 +63,9 @@ export default function WeightChart({
   heightCm,
   onGoalChange,
 }: WeightChartProps) {
+  const { t, language } = useLanguage();
+  const locale = language === "en" ? "en-US" : "it-IT";
+
   const [data, setData] = useState<ChartEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>(30);
@@ -80,7 +84,7 @@ export default function WeightChart({
         const chartData: ChartEntry[] = logs
           .reverse()
           .map((log: { weight_kg: number; logged_at: string }) => ({
-            date: new Date(log.logged_at).toLocaleDateString("it-IT", {
+            date: new Date(log.logged_at).toLocaleDateString(locale, {
               day: "numeric",
               month: "short",
             }),
@@ -103,7 +107,7 @@ export default function WeightChart({
     } finally {
       setLoading(false);
     }
-  }, [userId, period]);
+  }, [userId, period, locale]);
 
   useEffect(() => {
     fetchWeight();
@@ -192,9 +196,9 @@ export default function WeightChart({
   };
 
   const periods: { label: string; value: Period }[] = [
-    { label: "7gg", value: 7 },
-    { label: "30gg", value: 30 },
-    { label: "90gg", value: 90 },
+    { label: t("weight.7d"), value: 7 },
+    { label: t("weight.30d"), value: 30 },
+    { label: t("weight.90d"), value: 90 },
   ];
 
   return (
@@ -203,7 +207,7 @@ export default function WeightChart({
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
           <span className="text-base">&#9878;&#65039;</span>
-          <h3 className="text-sm font-medium">Peso</h3>
+          <h3 className="text-sm font-medium">{t("weight.title")}</h3>
         </div>
         <div className="flex items-center gap-2">
           {/* Current weight */}
@@ -222,7 +226,7 @@ export default function WeightChart({
               )}
             </div>
           ) : (
-            <span className="text-xs text-[#666]">Nessun dato</span>
+            <span className="text-xs text-[#666]">{t("weight.noData")}</span>
           )}
         </div>
       </div>
@@ -232,7 +236,7 @@ export default function WeightChart({
         <div className="flex items-center gap-3 mb-3">
           {weightGoalKg && (
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-[#666]">Goal:</span>
+              <span className="text-[10px] text-[#666]">{t("weight.goal")}</span>
               <span className="text-xs font-medium text-[#A78BFA]">
                 {weightGoalKg} kg
               </span>
@@ -341,7 +345,7 @@ export default function WeightChart({
                 }}
                 className="text-[10px] text-[#666] hover:text-[#A78BFA] transition-colors"
               >
-                {weightGoalKg ? "Modifica goal" : "Imposta goal"}
+                {weightGoalKg ? t("weight.editGoal") : t("weight.setGoal")}
               </button>
             )}
           </div>
@@ -381,7 +385,7 @@ export default function WeightChart({
                     fill="url(#weightGradient)"
                     dot={false}
                     activeDot={{ r: 3, fill: "#A78BFA", strokeWidth: 0 }}
-                    name="Peso (kg)"
+                    name={t("weight.chartName")}
                   />
                   <Line
                     type="monotone"
@@ -391,14 +395,14 @@ export default function WeightChart({
                     strokeDasharray="4 4"
                     dot={false}
                     strokeOpacity={0.4}
-                    name="Media"
+                    name={t("weight.avg")}
                   />
                 </AreaChart>
               </ResponsiveContainer>
             </motion.div>
           ) : (
             <p className="text-xs text-[#666] text-center py-6">
-              Aggiungi il tuo peso per vedere il trend
+              {t("weight.addPrompt")}
             </p>
           )}
 
@@ -415,7 +419,7 @@ export default function WeightChart({
                   <AnimatedNum value={min} />
                 </p>
                 <p className="text-[9px] text-[#666] uppercase tracking-wider">
-                  Min
+                  {t("weight.min")}
                 </p>
               </motion.div>
               <motion.div className="text-center" variants={staggerItem}>
@@ -423,7 +427,7 @@ export default function WeightChart({
                   <AnimatedNum value={max} />
                 </p>
                 <p className="text-[9px] text-[#666] uppercase tracking-wider">
-                  Max
+                  {t("weight.max")}
                 </p>
               </motion.div>
               <motion.div className="text-center" variants={staggerItem}>
@@ -431,7 +435,7 @@ export default function WeightChart({
                   <AnimatedNum value={avg} />
                 </p>
                 <p className="text-[9px] text-[#666] uppercase tracking-wider">
-                  Media
+                  {t("weight.avg")}
                 </p>
               </motion.div>
               <motion.div className="text-center" variants={staggerItem}>
@@ -452,7 +456,7 @@ export default function WeightChart({
                   <p className="text-xs font-bold text-[#666]">&mdash;</p>
                 )}
                 <p className="text-[9px] text-[#666] uppercase tracking-wider">
-                  /sett
+                  {t("weight.perWeek")}
                 </p>
               </motion.div>
             </motion.div>
@@ -475,7 +479,7 @@ export default function WeightChart({
                     step="0.1"
                     value={weightInput}
                     onChange={(e) => setWeightInput(e.target.value)}
-                    placeholder="Es: 75.5"
+                    placeholder={language === "en" ? "e.g. 75.5" : "Es: 75.5"}
                     className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#A78BFA]/40"
                     autoFocus
                     onKeyDown={(e) => e.key === "Enter" && handleSaveWeight()}
@@ -486,7 +490,7 @@ export default function WeightChart({
                     disabled={saving || !weightInput}
                     className="px-3 py-2 rounded-lg bg-[#A78BFA]/20 text-[#A78BFA] text-xs font-medium hover:bg-[#A78BFA]/30 transition-colors disabled:opacity-30"
                   >
-                    {saving ? "..." : "Salva"}
+                    {saving ? "..." : t("common.save")}
                   </button>
                   <button
                     onClick={() => {
@@ -495,7 +499,7 @@ export default function WeightChart({
                     }}
                     className="text-[#666] text-xs hover:text-white transition-colors"
                   >
-                    Annulla
+                    {t("common.cancel")}
                   </button>
                 </motion.div>
               ) : (
@@ -508,7 +512,7 @@ export default function WeightChart({
                   transition={springs.smooth}
                   className="w-full py-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-xs text-[#666] hover:text-[#A78BFA] hover:border-[#A78BFA]/20 transition-all"
                 >
-                  + Registra peso
+                  {t("weight.addWeight")}
                 </motion.button>
               )}
             </AnimatePresence>

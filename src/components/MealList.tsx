@@ -6,6 +6,8 @@ import type { Meal } from "@/lib/types";
 import { TrashIcon } from "./icons";
 import ConfirmModal from "./ConfirmModal";
 import { staggerContainer, staggerItem } from "@/lib/animation-config";
+import { useLanguage } from "@/lib/language-context";
+import type { TranslationKey } from "@/lib/translations";
 
 interface MealListProps {
   meals: Meal[];
@@ -13,16 +15,15 @@ interface MealListProps {
   compact?: boolean;
 }
 
-const mealTypeLabels: Record<string, string> = {
-  colazione: "Colazione",
-  pranzo: "Pranzo",
-  cena: "Cena",
-  snack: "Snack",
-};
-
 export default function MealList({ meals, onDelete, compact }: MealListProps) {
+  const { t } = useLanguage();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  const getMealTypeLabel = (type: string) => {
+    const key = `meal.${type}` as TranslationKey;
+    return t(key);
+  };
 
   const handleDelete = async () => {
     if (!deleteId || !onDelete) return;
@@ -35,7 +36,7 @@ export default function MealList({ meals, onDelete, compact }: MealListProps) {
   if (meals.length === 0) {
     return (
       <div className="glass-card p-6">
-        <p className="text-[#666] text-sm text-center py-2">Nessun pasto registrato</p>
+        <p className="text-[#666] text-sm text-center py-2">{t("mealList.noMeals")}</p>
       </div>
     );
   }
@@ -45,7 +46,7 @@ export default function MealList({ meals, onDelete, compact }: MealListProps) {
       <div className="glass-card p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium">
-            Pasti ({meals.length})
+            {t("mealList.title")} ({meals.length})
           </h3>
         </div>
         <motion.div
@@ -71,7 +72,7 @@ export default function MealList({ meals, onDelete, compact }: MealListProps) {
                 className="flex items-start justify-between p-3 rounded-xl bg-white/[0.03] border border-white/[0.04] hover:bg-white/[0.05] transition-colors group"
               >
                 <div className="flex gap-3 flex-1 min-w-0">
-                  <span className="text-[10px] text-[#666] uppercase tracking-wider self-center">{mealTypeLabels[meal.meal_type] || "Pasto"}</span>
+                  <span className="text-[10px] text-[#666] uppercase tracking-wider self-center">{getMealTypeLabel(meal.meal_type)}</span>
                   <div className="min-w-0">
                     <p className="font-medium text-white text-sm truncate">{meal.description}</p>
                     <div className="flex gap-2 mt-1 text-xs">
@@ -100,9 +101,9 @@ export default function MealList({ meals, onDelete, compact }: MealListProps) {
 
       <ConfirmModal
         isOpen={!!deleteId}
-        title="Elimina pasto"
-        message="Vuoi eliminare questo pasto? L'azione è irreversibile."
-        confirmLabel="Elimina"
+        title={t("mealList.deleteTitle")}
+        message={t("mealList.deleteMsg")}
+        confirmLabel={t("common.delete")}
         danger
         loading={deleting}
         onConfirm={handleDelete}

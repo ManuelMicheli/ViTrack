@@ -1,11 +1,16 @@
 "use client";
 
+import { useLanguage } from "@/lib/language-context";
+
 interface DatePickerProps {
   value: string;
   onChange: (date: string) => void;
 }
 
 export default function DatePicker({ value, onChange }: DatePickerProps) {
+  const { t, language } = useLanguage();
+  const locale = language === "en" ? "en-US" : "it-IT";
+
   const goToDay = (offset: number) => {
     const d = new Date(value);
     d.setDate(d.getDate() + offset);
@@ -16,7 +21,7 @@ export default function DatePicker({ value, onChange }: DatePickerProps) {
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr + "T12:00:00");
-    return d.toLocaleDateString("it-IT", {
+    return d.toLocaleDateString(locale, {
       weekday: "short",
       day: "numeric",
       month: "short",
@@ -61,7 +66,7 @@ export default function DatePicker({ value, onChange }: DatePickerProps) {
           onClick={() => onChange(new Date().toISOString().split("T")[0])}
           className="px-2.5 py-1 rounded-lg text-xs text-[#666] hover:text-white bg-white/[0.03] hover:bg-white/[0.06] transition-all"
         >
-          Oggi
+          {t("common.today")}
         </button>
       )}
     </div>

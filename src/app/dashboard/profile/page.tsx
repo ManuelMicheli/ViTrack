@@ -7,6 +7,7 @@ import Image from "next/image";
 import type { User } from "@/lib/types";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { staggerContainer, staggerItem } from "@/lib/animation-config";
+import { useLanguage } from "@/lib/language-context";
 
 const INPUT_CLASS =
   "w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white placeholder-[#444] text-sm focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_12px_rgba(59,130,246,0.1)] transition-all";
@@ -14,16 +15,9 @@ const INPUT_CLASS =
 const SELECT_CLASS =
   "w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_12px_rgba(59,130,246,0.1)] transition-all appearance-none";
 
-const DIETARY_OPTIONS = [
-  { value: "Vegano", label: "Vegano" },
-  { value: "Vegetariano", label: "Vegetariano" },
-  { value: "Celiaco", label: "Celiaco" },
-  { value: "Intollerante al lattosio", label: "Intollerante al lattosio" },
-  { value: "Halal", label: "Halal" },
-  { value: "Kosher", label: "Kosher" },
-];
-
 export default function ProfilePage() {
+  const { t, language } = useLanguage();
+  const locale = language === "en" ? "en-US" : "it-IT";
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -55,6 +49,15 @@ export default function ProfilePage() {
 
   // Stats
   const [daysSinceJoin, setDaysSinceJoin] = useState(0);
+
+  const dietaryOptions = [
+    { value: "Vegano", labelKey: "dietary.vegan" as const },
+    { value: "Vegetariano", labelKey: "dietary.vegetarian" as const },
+    { value: "Celiaco", labelKey: "dietary.celiac" as const },
+    { value: "Intollerante al lattosio", labelKey: "dietary.lactoseIntolerant" as const },
+    { value: "Halal", labelKey: "dietary.halal" as const },
+    { value: "Kosher", labelKey: "dietary.kosher" as const },
+  ];
 
   const populateForm = useCallback((data: User) => {
     setFirstName(data.first_name || "");
@@ -231,7 +234,7 @@ export default function ProfilePage() {
         .slice(0, 2)
     : "U";
 
-  const memberSince = new Date(user.created_at).toLocaleDateString("it-IT", {
+  const memberSince = new Date(user.created_at).toLocaleDateString(locale, {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -240,10 +243,10 @@ export default function ProfilePage() {
   return (
     <motion.div className="px-4 md:px-8 py-6 space-y-6 max-w-2xl" initial="initial" animate="animate" variants={staggerContainer(0.08)}>
       <motion.div variants={staggerItem}>
-        <h2 className="text-xl font-bold">Profilo</h2>
+        <h2 className="text-xl font-bold">{t("profile.title")}</h2>
       </motion.div>
 
-      {/* ─── Header / Avatar ─── */}
+      {/* --- Header / Avatar --- */}
       <motion.div variants={staggerItem} className="flex flex-col items-center space-y-3">
         <div className="relative">
           {user.avatar_url ? (
@@ -278,47 +281,47 @@ export default function ProfilePage() {
           disabled={uploadingAvatar}
           className="text-xs text-[#3B82F6] font-medium hover:text-[#3B82F6]/80 transition-colors disabled:opacity-50"
         >
-          {uploadingAvatar ? "Caricamento..." : "Cambia foto"}
+          {uploadingAvatar ? t("profile.uploading") : t("profile.changePhoto")}
         </button>
 
         <div className="text-center">
-          <p className="text-lg font-semibold">{user.first_name || "Utente"}</p>
+          <p className="text-lg font-semibold">{user.first_name || t("common.user")}</p>
           {user.email && <p className="text-sm text-[#666]">{user.email}</p>}
         </div>
       </motion.div>
 
-      {/* ─── Informazioni Personali ─── */}
+      {/* --- Informazioni Personali --- */}
       <motion.div variants={staggerItem} className="glass-card-strong rounded-2xl p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-white">Informazioni Personali</h3>
+          <h3 className="text-lg font-semibold text-white">{t("profile.personalInfo")}</h3>
           {savedSection === "personal" && (
-            <span className="text-xs text-[#22C55E] font-medium">Salvato!</span>
+            <span className="text-xs text-[#22C55E] font-medium">{t("common.saved")}</span>
           )}
         </div>
 
         {/* Nome */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">Nome</label>
+          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("profile.name")}</label>
           <input
             type="text"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
-            placeholder="Il tuo nome"
+            placeholder={t("profile.namePlaceholder")}
             className={INPUT_CLASS}
           />
         </div>
 
         {/* Email (read-only) */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">Email</label>
+          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("profile.email")}</label>
           <div className="w-full px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.05] text-[#666] text-sm">
-            {user.email || "Non impostata"}
+            {user.email || t("profile.emailNotSet")}
           </div>
         </div>
 
         {/* Data di nascita */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">Data di nascita</label>
+          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("profile.dateOfBirth")}</label>
           <input
             type="date"
             value={dateOfBirth}
@@ -329,22 +332,22 @@ export default function ProfilePage() {
 
         {/* Sesso */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">Sesso</label>
+          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("profile.gender")}</label>
           <select
             value={gender}
             onChange={(e) => setGender(e.target.value)}
             className={SELECT_CLASS}
           >
-            <option value="">Non specificato</option>
-            <option value="male">Maschio</option>
-            <option value="female">Femmina</option>
-            <option value="other">Altro</option>
+            <option value="">{t("profile.genderNone")}</option>
+            <option value="male">{t("profile.genderMale")}</option>
+            <option value="female">{t("profile.genderFemale")}</option>
+            <option value="other">{t("profile.genderOther")}</option>
           </select>
         </div>
 
         {/* Altezza */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">Altezza</label>
+          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("profile.height")}</label>
           <div className="relative">
             <input
               type="number"
@@ -359,17 +362,17 @@ export default function ProfilePage() {
 
         {/* Livello di attivita */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">Livello di attivit&agrave;</label>
+          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("profile.activityLevel")}</label>
           <select
             value={activityLevel}
             onChange={(e) => setActivityLevel(e.target.value)}
             className={SELECT_CLASS}
           >
-            <option value="sedentary">Sedentario</option>
-            <option value="light">Leggero</option>
-            <option value="moderate">Moderato</option>
-            <option value="active">Attivo</option>
-            <option value="very_active">Molto attivo</option>
+            <option value="sedentary">{t("profile.sedentary")}</option>
+            <option value="light">{t("profile.light")}</option>
+            <option value="moderate">{t("profile.moderate")}</option>
+            <option value="active">{t("profile.active")}</option>
+            <option value="very_active">{t("profile.veryActive")}</option>
           </select>
         </div>
 
@@ -378,22 +381,22 @@ export default function ProfilePage() {
           disabled={savingSection === "personal"}
           className="w-full py-3 rounded-xl bg-gradient-to-r from-[#3B82F6] to-[#8B5CF6] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
         >
-          {savingSection === "personal" ? "Salvataggio..." : "Salva"}
+          {savingSection === "personal" ? t("common.saving") : t("common.save")}
         </button>
       </motion.div>
 
-      {/* ─── Obiettivi Nutrizionali ─── */}
+      {/* --- Obiettivi Nutrizionali --- */}
       <motion.div variants={staggerItem} className="glass-card-strong rounded-2xl p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-white">Obiettivi Nutrizionali</h3>
+          <h3 className="text-lg font-semibold text-white">{t("profile.nutritionalGoals")}</h3>
           {savedSection === "goals" && (
-            <span className="text-xs text-[#22C55E] font-medium">Salvato!</span>
+            <span className="text-xs text-[#22C55E] font-medium">{t("common.saved")}</span>
           )}
         </div>
 
         {/* Calorie giornaliere */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">Calorie giornaliere</label>
+          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("profile.dailyCalories")}</label>
           <div className="relative">
             <input
               type="number"
@@ -408,7 +411,7 @@ export default function ProfilePage() {
 
         {/* Proteine */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">Proteine</label>
+          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("macro.protein")}</label>
           <div className="relative">
             <input
               type="number"
@@ -423,7 +426,7 @@ export default function ProfilePage() {
 
         {/* Carboidrati */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">Carboidrati</label>
+          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("macro.carbs")}</label>
           <div className="relative">
             <input
               type="number"
@@ -438,7 +441,7 @@ export default function ProfilePage() {
 
         {/* Grassi */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">Grassi</label>
+          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("macro.fat")}</label>
           <div className="relative">
             <input
               type="number"
@@ -453,7 +456,7 @@ export default function ProfilePage() {
 
         {/* Obiettivo peso */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">Obiettivo peso</label>
+          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("profile.weightGoal")}</label>
           <div className="relative">
             <input
               type="number"
@@ -469,7 +472,7 @@ export default function ProfilePage() {
 
         {/* Obiettivo acqua */}
         <div>
-          <label className="block text-xs text-[#A1A1A1] mb-1.5">Obiettivo acqua</label>
+          <label className="block text-xs text-[#A1A1A1] mb-1.5">{t("profile.waterGoal")}</label>
           <div className="relative">
             <input
               type="number"
@@ -487,21 +490,21 @@ export default function ProfilePage() {
           disabled={savingSection === "goals"}
           className="w-full py-3 rounded-xl bg-gradient-to-r from-[#3B82F6] to-[#8B5CF6] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
         >
-          {savingSection === "goals" ? "Salvataggio..." : "Salva"}
+          {savingSection === "goals" ? t("common.saving") : t("common.save")}
         </button>
       </motion.div>
 
-      {/* ─── Preferenze Alimentari ─── */}
+      {/* --- Preferenze Alimentari --- */}
       <motion.div variants={staggerItem} className="glass-card-strong rounded-2xl p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-white">Preferenze Alimentari</h3>
+          <h3 className="text-lg font-semibold text-white">{t("profile.dietaryPrefs")}</h3>
           {savedSection === "dietary" && (
-            <span className="text-xs text-[#22C55E] font-medium">Salvato!</span>
+            <span className="text-xs text-[#22C55E] font-medium">{t("common.saved")}</span>
           )}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          {DIETARY_OPTIONS.map((opt) => (
+          {dietaryOptions.map((opt) => (
             <label
               key={opt.value}
               className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
@@ -529,7 +532,7 @@ export default function ProfilePage() {
                   </svg>
                 )}
               </div>
-              <span className="text-sm text-white">{opt.label}</span>
+              <span className="text-sm text-white">{t(opt.labelKey)}</span>
             </label>
           ))}
         </div>
@@ -539,30 +542,30 @@ export default function ProfilePage() {
           disabled={savingSection === "dietary"}
           className="w-full py-3 rounded-xl bg-gradient-to-r from-[#3B82F6] to-[#8B5CF6] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
         >
-          {savingSection === "dietary" ? "Salvataggio..." : "Salva"}
+          {savingSection === "dietary" ? t("common.saving") : t("common.save")}
         </button>
       </motion.div>
 
-      {/* ─── Statistiche ─── */}
+      {/* --- Statistiche --- */}
       <motion.div variants={staggerItem} className="glass-card-strong rounded-2xl p-5 space-y-1">
-        <h3 className="text-lg font-semibold text-white mb-3">Statistiche</h3>
+        <h3 className="text-lg font-semibold text-white mb-3">{t("profile.stats")}</h3>
 
         <div className="flex justify-between items-center py-2.5 border-b border-white/[0.06]">
-          <span className="text-sm text-[#A1A1A1]">Membro da</span>
+          <span className="text-sm text-[#A1A1A1]">{t("profile.memberSince")}</span>
           <span className="text-sm font-medium">
-            {daysSinceJoin} giorni ({memberSince})
+            {daysSinceJoin} {t("common.days")} ({memberSince})
           </span>
         </div>
 
         <div className="flex justify-between items-center py-2.5 border-b border-white/[0.06]">
-          <span className="text-sm text-[#A1A1A1]">Telegram ID</span>
+          <span className="text-sm text-[#A1A1A1]">{t("profile.telegramId")}</span>
           <span className="text-sm font-medium text-[#666]">
-            {user.telegram_id ?? "Non collegato"}
+            {user.telegram_id ?? t("profile.notLinked")}
           </span>
         </div>
 
         <div className="flex justify-between items-center py-2.5">
-          <span className="text-sm text-[#A1A1A1]">Piano</span>
+          <span className="text-sm text-[#A1A1A1]">{t("profile.plan")}</span>
           <span className="text-sm font-medium gradient-text">ViTrack</span>
         </div>
       </motion.div>

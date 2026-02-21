@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
 import { springs } from "@/lib/animation-config";
+import { useLanguage } from "@/lib/language-context";
 
 function AnimatedNum({ value }: { value: number }) {
   const mv = useMotionValue(value);
@@ -41,6 +42,7 @@ export default function WaterTracker({
   trackingMode = "glasses",
   onSettingsChange,
 }: WaterTrackerProps) {
+  const { t } = useLanguage();
   const [glasses, setGlasses] = useState(0);
   const [ml, setMl] = useState(0);
   const [mode, setMode] = useState<"glasses" | "ml">(trackingMode);
@@ -160,8 +162,8 @@ export default function WaterTracker({
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-base">💧</span>
-          <h3 className="text-sm font-medium">Acqua</h3>
+          <span className="text-base">{"\uD83D\uDCA7"}</span>
+          <h3 className="text-sm font-medium">{t("water.title")}</h3>
         </div>
 
         {/* Mode toggle */}
@@ -174,7 +176,7 @@ export default function WaterTracker({
                 : "text-[#666] hover:text-[#999]"
             }`}
           >
-            Bicchieri
+            {t("water.glasses")}
           </button>
           <button
             onClick={() => handleModeSwitch("ml")}
@@ -247,7 +249,7 @@ export default function WaterTracker({
                 <p className="text-lg font-bold leading-tight">
                   {mode === "glasses" ? (
                     <>
-                      <AnimatedNum value={glasses} /> <span className="text-xs text-[#666] font-normal">/ {goalGlasses} bicchieri</span>
+                      <AnimatedNum value={glasses} /> <span className="text-xs text-[#666] font-normal">/ {goalGlasses} {t("water.glassesUnit")}</span>
                     </>
                   ) : (
                     <>
@@ -275,7 +277,7 @@ export default function WaterTracker({
                     onClick={() => { setEditingGoal(true); setGoalInput(String(goalMl)); }}
                     className="text-[10px] text-[#666] hover:text-[#06B6D4] transition-colors mt-0.5"
                   >
-                    Modifica obiettivo
+                    {t("water.editGoal")}
                   </button>
                 )}
               </div>
@@ -348,7 +350,7 @@ export default function WaterTracker({
           {/* 7-day sparkline */}
           {history.length > 1 && (
             <div className="border-t border-white/[0.06] pt-2">
-              <p className="text-[10px] text-[#666] mb-1">Ultimi 7 giorni</p>
+              <p className="text-[10px] text-[#666] mb-1">{t("water.last7days")}</p>
               <ResponsiveContainer width="100%" height={32}>
                 <LineChart data={history}>
                   <Line

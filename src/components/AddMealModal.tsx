@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { springs } from "@/lib/animation-config";
 import { CloseIcon } from "./icons";
+import { useLanguage } from "@/lib/language-context";
+import type { TranslationKey } from "@/lib/translations";
 
 interface MealResult {
   description: string;
@@ -31,11 +33,11 @@ interface AddMealModalProps {
   defaultMealType?: string;
 }
 
-const mealTypes = [
-  { value: "colazione", label: "Colazione", icon: "☀️" },
-  { value: "pranzo", label: "Pranzo", icon: "🌤️" },
-  { value: "cena", label: "Cena", icon: "🌙" },
-  { value: "snack", label: "Snack", icon: "🍎" },
+const mealTypeKeys: { value: string; labelKey: TranslationKey; icon: string }[] = [
+  { value: "colazione", labelKey: "meal.colazione", icon: "\u2600\uFE0F" },
+  { value: "pranzo", labelKey: "meal.pranzo", icon: "\uD83C\uDF24\uFE0F" },
+  { value: "cena", labelKey: "meal.cena", icon: "\uD83C\uDF19" },
+  { value: "snack", labelKey: "meal.snack", icon: "\uD83C\uDF4E" },
 ];
 
 function getDefaultMealType(): string {
@@ -47,6 +49,7 @@ function getDefaultMealType(): string {
 }
 
 export default function AddMealModal({ isOpen, onClose, onSave, defaultMealType }: AddMealModalProps) {
+  const { t } = useLanguage();
   const [mealType, setMealType] = useState(defaultMealType || getDefaultMealType());
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -97,10 +100,10 @@ export default function AddMealModal({ isOpen, onClose, onSave, defaultMealType 
       } else if (data.type === "error") {
         setError(data.message);
       } else {
-        setError("Descrivi un pasto per poterlo analizzare.");
+        setError(t("addMeal.describeError"));
       }
     } catch {
-      setError("Errore di connessione. Riprova.");
+      setError(t("error.connection"));
     } finally {
       setLoading(false);
     }
@@ -147,7 +150,7 @@ export default function AddMealModal({ isOpen, onClose, onSave, defaultMealType 
             {/* Header */}
             <div className="sticky top-0 bg-[#0A0A0A]/90 backdrop-blur-xl px-6 pt-6 pb-4 border-b border-white/[0.06] z-10">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold">Aggiungi Pasto</h2>
+                <h2 className="text-lg font-bold">{t("addMeal.title")}</h2>
                 <button onClick={onClose} className="text-[#666] hover:text-white transition-colors">
                   <CloseIcon className="w-5 h-5" />
                 </button>
@@ -155,7 +158,7 @@ export default function AddMealModal({ isOpen, onClose, onSave, defaultMealType 
 
               {/* Meal type tabs */}
               <div className="flex gap-2">
-                {mealTypes.map((type) => (
+                {mealTypeKeys.map((type) => (
                   <motion.button
                     key={type.value}
                     whileTap={{ scale: 0.95 }}
@@ -167,7 +170,7 @@ export default function AddMealModal({ isOpen, onClose, onSave, defaultMealType 
                     }`}
                   >
                     <span className="block text-base mb-0.5">{type.icon}</span>
-                    {type.label}
+                    {t(type.labelKey)}
                   </motion.button>
                 ))}
               </div>
@@ -180,7 +183,7 @@ export default function AddMealModal({ isOpen, onClose, onSave, defaultMealType 
                 <textarea
                   value={text}
                   onChange={(e) => setText(e.target.value)}
-                  placeholder="Descrivi il tuo pasto...&#10;es: 100g petto di pollo con insalata mista e 10ml olio"
+                  placeholder={t("addMeal.placeholder")}
                   rows={3}
                   className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white placeholder-[#666] text-sm resize-none focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_12px_rgba(59,130,246,0.1)] transition-all"
                   onKeyDown={(e) => {
@@ -195,7 +198,7 @@ export default function AddMealModal({ isOpen, onClose, onSave, defaultMealType 
                   disabled={loading || !text.trim()}
                   className="w-full mt-2 py-2.5 rounded-xl bg-gradient-to-r from-[#3B82F6] to-[#8B5CF6] text-white text-sm font-medium disabled:opacity-40 transition-all hover:shadow-[0_0_20px_rgba(59,130,246,0.2)]"
                 >
-                  {loading ? "Analisi in corso..." : "Analizza"}
+                  {loading ? t("addMeal.analyzing") : t("addMeal.analyze")}
                 </button>
               </div>
 
@@ -211,7 +214,7 @@ export default function AddMealModal({ isOpen, onClose, onSave, defaultMealType 
               {/* Need info message */}
               {needInfo && (
                 <div className="p-4 rounded-xl bg-[#F59E0B]/10 border border-[#F59E0B]/20">
-                  <p className="text-sm text-[#F59E0B] font-medium mb-1">Informazioni mancanti</p>
+                  <p className="text-sm text-[#F59E0B] font-medium mb-1">{t("addMeal.needInfo")}</p>
                   <p className="text-sm text-[#A1A1A1]">{needInfo}</p>
                 </div>
               )}
@@ -231,7 +234,7 @@ export default function AddMealModal({ isOpen, onClose, onSave, defaultMealType 
                     animate={{ opacity: 1 }}
                     className="space-y-3"
                   >
-                    <p className="text-xs text-[#666] uppercase tracking-wider font-medium">Risultato analisi</p>
+                    <p className="text-xs text-[#666] uppercase tracking-wider font-medium">{t("addMeal.analysisResult")}</p>
 
                     {/* Items breakdown */}
                     {result.items && result.items.length > 0 && (
@@ -259,19 +262,19 @@ export default function AddMealModal({ isOpen, onClose, onSave, defaultMealType 
                     {/* Macro grid */}
                     <div className="grid grid-cols-4 gap-2">
                       <div className="p-3 rounded-xl bg-[#3B82F6]/10 text-center">
-                        <p className="text-xs text-[#3B82F6] mb-0.5">Proteine</p>
+                        <p className="text-xs text-[#3B82F6] mb-0.5">{t("macro.proteinShort")}</p>
                         <p className="text-sm font-bold">{result.protein_g}g</p>
                       </div>
                       <div className="p-3 rounded-xl bg-[#F59E0B]/10 text-center">
-                        <p className="text-xs text-[#F59E0B] mb-0.5">Carbo</p>
+                        <p className="text-xs text-[#F59E0B] mb-0.5">{t("macro.carbsShort")}</p>
                         <p className="text-sm font-bold">{result.carbs_g}g</p>
                       </div>
                       <div className="p-3 rounded-xl bg-[#EF4444]/10 text-center">
-                        <p className="text-xs text-[#EF4444] mb-0.5">Grassi</p>
+                        <p className="text-xs text-[#EF4444] mb-0.5">{t("macro.fat")}</p>
                         <p className="text-sm font-bold">{result.fat_g}g</p>
                       </div>
                       <div className="p-3 rounded-xl bg-[#22C55E]/10 text-center">
-                        <p className="text-xs text-[#22C55E] mb-0.5">Fibre</p>
+                        <p className="text-xs text-[#22C55E] mb-0.5">{t("macro.fiber")}</p>
                         <p className="text-sm font-bold">{result.fiber_g}g</p>
                       </div>
                     </div>
@@ -282,7 +285,7 @@ export default function AddMealModal({ isOpen, onClose, onSave, defaultMealType 
                       disabled={saving}
                       className="w-full py-3 rounded-xl bg-white text-black text-sm font-semibold disabled:opacity-50 hover:bg-white/90 transition-all"
                     >
-                      {saving ? "Salvataggio..." : "Salva Pasto"}
+                      {saving ? t("common.saving") : t("addMeal.saveMeal")}
                     </button>
                   </motion.div>
                 )}

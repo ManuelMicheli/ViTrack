@@ -9,17 +9,15 @@ import { PlusIcon, TrashIcon } from "@/components/icons";
 import ConfirmModal from "@/components/ConfirmModal";
 import AddMealModal from "@/components/AddMealModal";
 import { staggerContainer, staggerItem } from "@/lib/animation-config";
+import { useLanguage } from "@/lib/language-context";
+import type { TranslationKey } from "@/lib/translations";
 
 const mealTypeOrder = ["colazione", "pranzo", "cena", "snack"] as const;
 
-const mealTypeConfig: Record<string, { label: string }> = {
-  colazione: { label: "Colazione" },
-  pranzo: { label: "Pranzo" },
-  cena: { label: "Cena" },
-  snack: { label: "Snack" },
-};
-
 export default function MealsPage() {
+  const { t, language } = useLanguage();
+  const locale = language === "en" ? "en-US" : "it-IT";
+
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +27,11 @@ export default function MealsPage() {
   const [mealModalType, setMealModalType] = useState<string | undefined>();
 
   const userId = typeof window !== "undefined" ? localStorage.getItem("vitrack_user_id") : null;
+
+  const getMealTypeLabel = (type: string) => {
+    const key = `meal.${type}` as TranslationKey;
+    return t(key);
+  };
 
   const fetchMeals = useCallback(async () => {
     if (!userId) return;
@@ -78,7 +81,7 @@ export default function MealsPage() {
   // Group meals by type
   const grouped = mealTypeOrder.map((type) => ({
     type,
-    ...mealTypeConfig[type],
+    label: getMealTypeLabel(type),
     meals: meals.filter((m) => m.meal_type === type),
     totalCal: meals.filter((m) => m.meal_type === type).reduce((s, m) => s + m.calories, 0),
   }));
@@ -102,7 +105,7 @@ export default function MealsPage() {
   return (
     <motion.div className="px-4 md:px-8 py-6 space-y-4" initial="initial" animate="animate" variants={staggerContainer(0.08)}>
       <motion.div variants={staggerItem} className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">Pasti</h2>
+        <h2 className="text-xl font-bold">{t("mealsPage.title")}</h2>
         <DatePicker value={date} onChange={setDate} />
       </motion.div>
 
@@ -129,7 +132,7 @@ export default function MealsPage() {
               onClick={() => openAddForType(type)}
               className="w-full py-4 rounded-2xl border border-dashed border-white/[0.08] text-[#666] text-sm hover:border-white/[0.15] hover:text-[#A1A1A1] transition-all"
             >
-              + Aggiungi {label.toLowerCase()}
+              + {t("mealsPage.addType")} {label.toLowerCase()}
             </button>
           ) : (
             <div className="space-y-2">
@@ -139,7 +142,7 @@ export default function MealsPage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-white text-sm">{meal.description}</p>
                       <p className="text-xs text-[#666] mt-0.5">
-                        {new Date(meal.logged_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+                        {new Date(meal.logged_at).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
                       </p>
                       <div className="flex gap-2 mt-1.5 text-xs">
                         <span className="text-[#3B82F6]">P:{meal.protein_g ?? 0}g</span>
@@ -178,7 +181,7 @@ export default function MealsPage() {
       {meals.length > 0 && (
         <motion.div variants={staggerItem} className="glass-card-strong p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-[#666] uppercase tracking-wider font-medium">Totale giornata</span>
+            <span className="text-xs text-[#666] uppercase tracking-wider font-medium">{t("mealsPage.dailyTotal")}</span>
             <span className="text-sm font-bold">{totalCalories} kcal</span>
           </div>
           <MacroBar protein={totalProtein} carbs={totalCarbs} fat={totalFat} fiber={totalFiber} showLabels />
@@ -194,9 +197,9 @@ export default function MealsPage() {
 
       <ConfirmModal
         isOpen={!!deleteId}
-        title="Elimina pasto"
-        message="Vuoi eliminare questo pasto? L'azione è irreversibile."
-        confirmLabel="Elimina"
+        title={t("mealList.deleteTitle")}
+        message={t("mealList.deleteMsg")}
+        confirmLabel={t("common.delete")}
         danger
         loading={deleting}
         onConfirm={handleDelete}

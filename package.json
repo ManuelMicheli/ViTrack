@@ -19,6 +19,7 @@
     "recharts": "^3.7.0"
   },
   "devDependencies": {
+    "@fontsource/ibm-plex-mono": "^5.2.7",
     "@tailwindcss/postcss": "^4",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20",

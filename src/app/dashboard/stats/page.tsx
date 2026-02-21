@@ -8,6 +8,7 @@ import {
   Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts";
 import { staggerContainer, staggerItem } from "@/lib/animation-config";
+import { useLanguage } from "@/lib/language-context";
 
 type Period = 7 | 30;
 
@@ -18,6 +19,9 @@ interface DayData {
 }
 
 export default function StatsPage() {
+  const { t, language } = useLanguage();
+  const locale = language === "en" ? "en-US" : "it-IT";
+
   const [period, setPeriod] = useState<Period>(7);
   const [data, setData] = useState<DayData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +50,7 @@ export default function StatsPage() {
         const summary = result.status === "fulfilled" ? result.value : null;
         const d = new Date(date + "T12:00:00");
         return {
-          date, label: d.toLocaleDateString("it-IT", { day: "numeric", month: "short" }),
+          date, label: d.toLocaleDateString(locale, { day: "numeric", month: "short" }),
           calories: summary?.totals.calories ?? 0, protein: summary?.totals.protein_g ?? 0,
           carbs: summary?.totals.carbs_g ?? 0, fat: summary?.totals.fat_g ?? 0,
           fiber: summary?.totals.fiber_g ?? 0, burned: summary?.totals.calories_burned ?? 0,
@@ -57,7 +61,7 @@ export default function StatsPage() {
       setLoading(false);
     };
     fetchStats();
-  }, [userId, period]);
+  }, [userId, period, locale]);
 
   const avgCalories = data.length > 0 ? Math.round(data.reduce((s, d) => s + d.calories, 0) / data.length) : 0;
   const totalWorkouts = data.reduce((s, d) => s + d.workouts, 0);
@@ -94,7 +98,7 @@ export default function StatsPage() {
   return (
     <motion.div className="px-4 md:px-8 py-6 space-y-4" initial="initial" animate="animate" variants={staggerContainer(0.08)}>
       <motion.div variants={staggerItem}>
-        <h2 className="text-xl font-bold">Statistiche</h2>
+        <h2 className="text-xl font-bold">{t("statsPage.title")}</h2>
       </motion.div>
 
       <motion.div variants={staggerItem} className="flex gap-2">
@@ -108,17 +112,17 @@ export default function StatsPage() {
                 : "glass-card text-[#A1A1A1] hover:text-white"
             }`}
           >
-            {p} giorni
+            {p} {t("common.days")}
           </button>
         ))}
       </motion.div>
 
       <motion.div variants={staggerItem} className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: "Media calorie", value: `${avgCalories}`, unit: "kcal", color: "" },
-          { label: "Allenamenti", value: `${totalWorkouts}`, unit: "", color: "" },
-          { label: "Media proteine", value: `${avgProtein}`, unit: "g", color: "text-[#3B82F6]" },
-          { label: "Calorie bruciate", value: `${totalBurned}`, unit: "kcal", color: "text-[#F59E0B]" },
+          { label: t("statsPage.avgCalories"), value: `${avgCalories}`, unit: "kcal", color: "" },
+          { label: t("statsPage.workouts"), value: `${totalWorkouts}`, unit: "", color: "" },
+          { label: t("statsPage.avgProtein"), value: `${avgProtein}`, unit: "g", color: "text-[#3B82F6]" },
+          { label: t("statsPage.caloriesBurned"), value: `${totalBurned}`, unit: "kcal", color: "text-[#F59E0B]" },
         ].map((card) => (
           <div key={card.label} className="glass-card p-4">
             <p className="text-[10px] text-[#666] uppercase tracking-wider">{card.label}</p>
@@ -131,7 +135,7 @@ export default function StatsPage() {
 
       <motion.div variants={staggerItem} className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="glass-card p-4">
-          <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium mb-4">Trend calorie</h3>
+          <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium mb-4">{t("statsPage.calorieTrend")}</h3>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={data}>
               <CartesianGrid stroke="rgba(255,255,255,0.04)" strokeDasharray="3 3" />
@@ -140,10 +144,10 @@ export default function StatsPage() {
               <Tooltip contentStyle={tooltipStyle} />
               {calorieGoal > 0 && (
                 <ReferenceLine y={calorieGoal} stroke="#666" strokeDasharray="5 5"
-                  label={{ value: "Obiettivo", position: "insideTopRight", fill: "#666", fontSize: 11 }} />
+                  label={{ value: t("weight.objective"), position: "insideTopRight", fill: "#666", fontSize: 11 }} />
               )}
               <Line type="monotone" dataKey="calories" stroke="url(#lineGradient)" strokeWidth={2}
-                dot={{ fill: "#3B82F6", r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: "#8B5CF6" }} name="Calorie" />
+                dot={{ fill: "#3B82F6", r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: "#8B5CF6" }} name={t("statsPage.calories")} />
               <defs>
                 <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
                   <stop offset="0%" stopColor="#3B82F6" />
@@ -155,17 +159,17 @@ export default function StatsPage() {
         </div>
 
         <div className="glass-card p-4">
-          <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium mb-4">Distribuzione macro</h3>
+          <h3 className="text-xs text-[#666] uppercase tracking-wider font-medium mb-4">{t("statsPage.macroDistribution")}</h3>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={data}>
               <CartesianGrid stroke="rgba(255,255,255,0.04)" strokeDasharray="3 3" />
               <XAxis dataKey="label" stroke="#666" fontSize={11} tickLine={false} axisLine={false} />
               <YAxis stroke="#666" fontSize={11} tickLine={false} axisLine={false} width={40} unit="g" />
               <Tooltip contentStyle={tooltipStyle} />
-              <Bar dataKey="protein" stackId="macro" fill="#3B82F6" name="Proteine" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="carbs" stackId="macro" fill="#F59E0B" name="Carboidrati" />
-              <Bar dataKey="fat" stackId="macro" fill="#EF4444" name="Grassi" />
-              <Bar dataKey="fiber" stackId="macro" fill="#22C55E" name="Fibre" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="protein" stackId="macro" fill="#3B82F6" name={t("macro.protein")} radius={[0, 0, 0, 0]} />
+              <Bar dataKey="carbs" stackId="macro" fill="#F59E0B" name={t("macro.carbs")} />
+              <Bar dataKey="fat" stackId="macro" fill="#EF4444" name={t("macro.fat")} />
+              <Bar dataKey="fiber" stackId="macro" fill="#22C55E" name={t("macro.fiber")} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

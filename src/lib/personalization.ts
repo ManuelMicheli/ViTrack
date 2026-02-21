@@ -1,3 +1,6 @@
+import { getTranslation } from "./translations";
+import type { Language } from "./translations";
+
 interface MotivationData {
   calories: number;
   calorieGoal: number;
@@ -6,34 +9,40 @@ interface MotivationData {
   mealsToday: number;
 }
 
-export function getGreeting(firstName: string | null): string {
-  const name = firstName || "Utente";
+export function getGreeting(firstName: string | null, lang: Language = "it"): string {
+  const name = firstName || getTranslation("common.user", lang);
   const hour = new Date().getHours();
 
-  if (hour >= 5 && hour < 12) return `Buongiorno, ${name}`;
-  if (hour >= 12 && hour < 18) return `Buon pomeriggio, ${name}`;
-  if (hour >= 18 && hour < 22) return `Buonasera, ${name}`;
-  return `Buonanotte, ${name}`;
+  const key =
+    hour >= 5 && hour < 12
+      ? "greeting.morning"
+      : hour >= 12 && hour < 18
+      ? "greeting.afternoon"
+      : hour >= 18 && hour < 22
+      ? "greeting.evening"
+      : "greeting.night";
+
+  return `${getTranslation(key, lang)}, ${name}`;
 }
 
-export function getMotivation(data: MotivationData): string {
+export function getMotivation(data: MotivationData, lang: Language = "it"): string {
   const { calories, calorieGoal, streak, workoutsToday, mealsToday } = data;
 
   if (calories >= calorieGoal && calorieGoal > 0) {
-    return "Obiettivo raggiunto! Ottimo lavoro";
+    return getTranslation("motivation.goalReached", lang);
   }
   if (streak >= 3) {
-    return `Sei in streak da ${streak} giorni, continua cosi!`;
+    return getTranslation("motivation.streak", lang).replace("{count}", String(streak));
   }
   if (calories > 0 && calorieGoal > 0) {
     const remaining = calorieGoal - calories;
-    return `Ancora ${remaining}kcal per completare la giornata`;
+    return getTranslation("motivation.remaining", lang).replace("{count}", String(remaining));
   }
   if (workoutsToday > 0) {
-    return "Allenamento completato, bravo!";
+    return getTranslation("motivation.workoutDone", lang);
   }
   if (mealsToday === 0) {
-    return "Inizia registrando il tuo primo pasto";
+    return getTranslation("motivation.firstMeal", lang);
   }
-  return "Continua a tracciare la tua giornata";
+  return getTranslation("motivation.keepTracking", lang);
 }
