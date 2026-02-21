@@ -2,12 +2,21 @@ import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
 import {
   classifyMessage,
   classifyWithContext,
+  generateRecipe,
   type MealClassification,
   type ParsedMeal,
   type WorkoutClassification,
 } from "@/lib/openai";
 import { parseExerciseLocal, type ParsedExercise } from "@/lib/exercise-parser";
 import { lookupNutrients, type NutrientResult } from "@/lib/nutrition";
+import {
+  saveRecipe,
+  getRecipeByName,
+  listRecipes,
+  deleteRecipe,
+  findRecipeByName,
+  type Recipe,
+} from "@/lib/recipes";
 
 // ---------------------------------------------------------------------------
 // Result types — platform-agnostic responses
@@ -23,6 +32,10 @@ export type ProcessResult =
   | { kind: "session_exists"; reply: string }
   | { kind: "exercise_added"; reply: string }
   | { kind: "goal_updated"; reply: string }
+  | { kind: "recipe_saved"; reply: string; data: Recipe }
+  | { kind: "recipe_deleted"; reply: string }
+  | { kind: "recipe_list"; reply: string }
+  | { kind: "recipe_match"; reply: string; data: MealClassification }
   | { kind: "command_result"; reply: string }
   | { kind: "chat"; reply: string }
   | { kind: "error"; reply: string };
@@ -109,6 +122,201 @@ async function getUserId(userId: string): Promise<string | null> {
     .eq("id", userId)
     .single();
   return data?.id ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// /ricetta — Create, show, or delete a recipe
+// ---------------------------------------------------------------------------
+export async function processRecipe(
+  userId: string,
+  text: string
+): Promise<ProcessResult> {
+  const valid = await getUserId(userId);
+  if (!valid) return { kind: "error", reply: "Utente non trovato." };
+
+  // Extract name after "/ricetta "
+  const rest = text.replace(/^\/ricetta\s*/i, "").trim();
+
+  if (!rest) {
+    return {
+      kind: "error",
+      reply: "Formato: /ricetta <nome>\nEsempio: /ricetta pancake\n\nUsa /ricette per vedere le tue ricette.",
+    };
+  }
+
+  // /ricetta elimina <nome>
+  const eliminaMatch = rest.match(/^elimina\s+(.+)$/i);
+  if (eliminaMatch) {
+    const name = eliminaMatch[1].trim();
+    const deleted = await deleteRecipe(userId, name);
+    if (deleted) {
+      return { kind: "recipe_deleted", reply: `\u2705 Ricetta "${name}" eliminata!` };
+    }
+    return { kind: "error", reply: `Ricetta "${name}" non trovata.` };
+  }
+
+  // Check if recipe already exists
+  const existing = await getRecipeByName(userId, rest);
+  if (existing) {
+    const itemsList = existing.items
+      .map((item) => `  - ${item.name} ${item.quantity_g}g`)
+      .join("\n");
+    return {
+      kind: "recipe_saved",
+      reply:
+        `\uD83D\uDCD6 Ricetta "${existing.name}" (gi\u00e0 salvata)\n\n` +
+        `Ingredienti:\n${itemsList}\n\n` +
+        `\uD83D\uDD25 ${existing.total_calories} kcal | ` +
+        `P ${existing.total_protein_g}g | ` +
+        `C ${existing.total_carbs_g}g | ` +
+        `G ${existing.total_fat_g}g | ` +
+        `F ${existing.total_fiber_g}g\n\n` +
+        `Per eliminarla: /ricetta elimina ${existing.name}`,
+      data: existing,
+    };
+  }
+
+  // Generate recipe via AI
+  const generated = await generateRecipe(rest);
+
+  if ("error" in generated) {
+    return { kind: "error", reply: generated.error };
+  }
+
+  // Enrich with nutrition data
+  const enrichResult = await enrichWithNutrition(generated);
+
+  if (!enrichResult.meal) {
+    return {
+      kind: "error",
+      reply: "Non sono riuscito a trovare i valori nutrizionali per gli ingredienti.",
+    };
+  }
+
+  // Save recipe
+  const recipeItems = generated.items.map((item) => ({
+    name: item.name,
+    name_en: item.name_en,
+    quantity_g: item.quantity_g,
+    brand: item.brand,
+    is_branded: item.is_branded,
+  }));
+
+  const recipe = await saveRecipe(userId, rest, recipeItems, {
+    calories: enrichResult.meal.calories,
+    protein_g: enrichResult.meal.protein_g,
+    carbs_g: enrichResult.meal.carbs_g,
+    fat_g: enrichResult.meal.fat_g,
+    fiber_g: enrichResult.meal.fiber_g,
+  }, enrichResult.meal.meal_type);
+
+  if (!recipe) {
+    return { kind: "error", reply: "Errore nel salvataggio della ricetta." };
+  }
+
+  const itemsList = recipe.items
+    .map((item) => `  - ${item.name} ${item.quantity_g}g`)
+    .join("\n");
+
+  let msg =
+    `\u2705 Ricetta "${recipe.name}" salvata!\n\n` +
+    `Ingredienti:\n${itemsList}\n\n` +
+    `\uD83D\uDD25 ${recipe.total_calories} kcal | ` +
+    `P ${recipe.total_protein_g}g | ` +
+    `C ${recipe.total_carbs_g}g | ` +
+    `G ${recipe.total_fat_g}g | ` +
+    `F ${recipe.total_fiber_g}g`;
+
+  if (enrichResult.failedItems.length > 0) {
+    msg += `\n\nAttenzione: non ho trovato i valori per ${enrichResult.failedItems.join(", ")}`;
+  }
+
+  msg += `\n\nOra scrivi "${rest}" per loggare il pasto istantaneamente!`;
+
+  return { kind: "recipe_saved", reply: msg, data: recipe };
+}
+
+// ---------------------------------------------------------------------------
+// /ricette — List all saved recipes
+// ---------------------------------------------------------------------------
+export async function processRecipeList(
+  userId: string
+): Promise<ProcessResult> {
+  const valid = await getUserId(userId);
+  if (!valid) return { kind: "error", reply: "Utente non trovato." };
+
+  const recipes = await listRecipes(userId);
+
+  if (recipes.length === 0) {
+    return {
+      kind: "recipe_list",
+      reply: "Nessuna ricetta salvata.\n\nUsa /ricetta <nome> per crearne una!\nEsempio: /ricetta pancake",
+    };
+  }
+
+  const lines = recipes.map(
+    (r) =>
+      `\uD83D\uDCD6 ${r.name} — ${r.total_calories} kcal (P ${r.total_protein_g}g | C ${r.total_carbs_g}g | G ${r.total_fat_g}g)`
+  );
+
+  return {
+    kind: "recipe_list",
+    reply:
+      `\uD83D\uDCD6 Le tue ricette (${recipes.length}):\n\n` +
+      lines.join("\n") +
+      `\n\nScrivi il nome di una ricetta per loggarla istantaneamente!`,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Recipe match → instant meal logging (no AI)
+// ---------------------------------------------------------------------------
+export async function processRecipeMatch(
+  userId: string,
+  recipe: Recipe,
+  portions: number
+): Promise<ProcessResult> {
+  const cal = Math.round(recipe.total_calories * portions);
+  const prot = parseFloat((recipe.total_protein_g * portions).toFixed(1));
+  const carbs = parseFloat((recipe.total_carbs_g * portions).toFixed(1));
+  const fat = parseFloat((recipe.total_fat_g * portions).toFixed(1));
+  const fiber = parseFloat((recipe.total_fiber_g * portions).toFixed(1));
+
+  const portionStr = portions > 1 ? ` x${portions}` : "";
+  const description = `${recipe.name}${portionStr}`;
+
+  const { error } = await supabase.from("meals").insert({
+    user_id: userId,
+    description,
+    calories: cal,
+    protein_g: prot,
+    carbs_g: carbs,
+    fat_g: fat,
+    fiber_g: fiber,
+    meal_type: recipe.meal_type,
+  });
+
+  if (error) return { kind: "error", reply: "Errore nel salvataggio del pasto." };
+
+  const meal: MealClassification = {
+    type: "meal",
+    description,
+    calories: cal,
+    protein_g: prot,
+    carbs_g: carbs,
+    fat_g: fat,
+    fiber_g: fiber,
+    meal_type: recipe.meal_type as MealClassification["meal_type"],
+    items: [],
+  };
+
+  const msg =
+    `\u26A1 Pasto registrato da ricetta!\n\n` +
+    `${description}\n\n` +
+    `\uD83D\uDD25 ${cal} kcal | P ${prot}g | C ${carbs}g | G ${fat}g | F ${fiber}g\n\n` +
+    `Tipo: ${recipe.meal_type}`;
+
+  return { kind: "recipe_match", reply: msg, data: meal };
 }
 
 // ---------------------------------------------------------------------------
@@ -404,6 +612,12 @@ export async function processFreeText(
   text: string,
   conversationHistory?: { role: string; content: string }[]
 ): Promise<ProcessResult> {
+  // Check saved recipes BEFORE AI classification (zero AI cost)
+  const recipeMatch = await findRecipeByName(userId, text);
+  if (recipeMatch) {
+    return processRecipeMatch(userId, recipeMatch.recipe, recipeMatch.portions);
+  }
+
   const result = conversationHistory
     ? await classifyWithContext(conversationHistory)
     : await classifyMessage(text);
@@ -627,6 +841,8 @@ export async function processMessage(
   // Commands
   if (text === "/oggi") return processToday(userId);
   if (text.startsWith("/obiettivo")) return processGoal(userId, text);
+  if (text.startsWith("/ricetta")) return processRecipe(userId, text);
+  if (text === "/ricette") return processRecipeList(userId);
   if (text === "/sessione") return processSessionStart(userId);
   if (text === "/fine") return processSessionEnd(userId);
   if (text === "/annulla") return processSessionCancel(userId);
@@ -690,6 +906,7 @@ export function resultToMessageType(
 ): string {
   switch (kind) {
     case "meal_saved":
+    case "recipe_match":
       return "meal_saved";
     case "workout_saved":
       return "workout_saved";
@@ -705,6 +922,9 @@ export function resultToMessageType(
     case "session_cancelled":
     case "session_exists":
     case "exercise_added":
+    case "recipe_saved":
+    case "recipe_deleted":
+    case "recipe_list":
       return "command_result";
     case "chat":
       return "text";

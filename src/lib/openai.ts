@@ -433,6 +433,68 @@ export async function classifyStream(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Recipe generation — decompose recipe name into ingredients
+// ---------------------------------------------------------------------------
+const RECIPE_SYSTEM_PROMPT = `Sei un esperto di cucina italiana. Il tuo compito è scomporre il nome di una ricetta nei suoi ingredienti con grammature per UNA porzione.
+
+Rispondi SEMPRE con JSON valido, senza markdown, senza commenti fuori dal JSON.
+
+REGOLE:
+- Scomponi la ricetta in ingredienti singoli con grammature realistiche per 1 porzione italiana.
+- Ogni ingrediente deve avere: name (italiano), name_en (traduzione USDA in inglese, specifico: "all purpose flour" non "flour"), quantity_g, brand: null, is_branded: false.
+- Se la ricetta non è riconoscibile come piatto, rispondi con {"error": "Non riconosco questa ricetta."}.
+- Usa grammature da crudo.
+- Includi condimenti base della ricetta (olio, burro se fondamentali).
+- Deduci il meal_type più probabile: colazione, pranzo, cena, snack.
+
+FORMATO RISPOSTA:
+{"type":"meal","items":[{"name":"farina","name_en":"all purpose flour","quantity_g":50,"brand":null,"is_branded":false}],"meal_type":"colazione"}
+
+OPPURE:
+{"error":"Non riconosco questa ricetta."}`;
+
+export async function generateRecipe(
+  recipeName: string
+): Promise<ParsedMeal | { error: string }> {
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-5-mini",
+        max_completion_tokens: 2048,
+        messages: [
+          { role: "developer", content: RECIPE_SYSTEM_PROMPT },
+          { role: "user", content: recipeName },
+        ],
+      }),
+    });
+
+    if (!res.ok) {
+      console.error("OpenAI recipe error:", res.status, await res.text());
+      return { error: "Errore nella generazione della ricetta." };
+    }
+
+    const data = await res.json();
+    const content = data.choices?.[0]?.message?.content ?? "";
+    if (!content) return { error: "Risposta vuota dall'AI." };
+
+    const cleaned = content
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .trim();
+
+    return JSON.parse(cleaned);
+  } catch (err) {
+    console.error("generateRecipe error:", err);
+    return { error: "Errore nella generazione della ricetta." };
+  }
+}
+
 export async function transcribeAudio(
   audioBuffer: Buffer,
   filename: string = "voice.ogg"

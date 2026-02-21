@@ -14,6 +14,15 @@ import { buildUserContext } from "@/lib/user-context";
 import { warmupCache, type NutrientResult } from "@/lib/nutrition";
 import { enrichWithNutrition } from "@/lib/chat-processor";
 import { analyzePhoto, lookupByBarcode, labelToNutrients } from "@/lib/vision";
+import { generateRecipe } from "@/lib/openai";
+import {
+  saveRecipe,
+  getRecipeByName,
+  listRecipes,
+  deleteRecipe,
+  findRecipeByName,
+  type Recipe,
+} from "@/lib/recipes";
 
 // ---------------------------------------------------------------------------
 // In-memory state
@@ -171,6 +180,10 @@ export async function POST(request: Request) {
         await handleToday(chatId, telegramId, uid);
       } else if (text.startsWith("/obiettivo")) {
         await handleGoal(chatId, telegramId, text, uid);
+      } else if (text.startsWith("/ricetta")) {
+        await handleRecipe(chatId, telegramId, text, uid);
+      } else if (text === "/ricette") {
+        await handleRecipeList(chatId, telegramId, uid);
       } else if (text === "/sessione") {
         await handleSessionStart(chatId, telegramId, uid);
       } else if (text === "/fine") {
@@ -367,6 +380,13 @@ async function handleFreeText(
 
   warmupCache();
 
+  // Check saved recipes BEFORE AI (zero AI cost, instant response)
+  const recipeMatch = await findRecipeByName(userId, text);
+  if (recipeMatch) {
+    await handleRecipeMatch(chatId, userId, recipeMatch.recipe, recipeMatch.portions);
+    return;
+  }
+
   const t0 = performance.now();
 
   // Send placeholder, typing, and load user context in parallel — zero added latency
@@ -481,6 +501,226 @@ async function handleFreeText(
     anim?.stop();
     throw err;
   }
+}
+
+// ---------------------------------------------------------------------------
+// /ricetta — Create, show, or delete a recipe
+// ---------------------------------------------------------------------------
+async function handleRecipe(
+  chatId: number,
+  telegramId: number,
+  text: string,
+  uid: string | null
+) {
+  const userId = uid ?? await getUserId(telegramId);
+  if (!userId) {
+    await sendMessage(chatId, "Invia prima /start per registrarti.");
+    return;
+  }
+
+  const rest = text.replace(/^\/ricetta\s*/i, "").trim();
+
+  if (!rest) {
+    await sendAndSave(
+      chatId,
+      "Formato: <code>/ricetta &lt;nome&gt;</code>\nEsempio: <code>/ricetta pancake</code>\n\nUsa /ricette per vedere le tue ricette.",
+      userId,
+      "command_result"
+    );
+    return;
+  }
+
+  // /ricetta elimina <nome>
+  const eliminaMatch = rest.match(/^elimina\s+(.+)$/i);
+  if (eliminaMatch) {
+    const name = eliminaMatch[1].trim();
+    const deleted = await deleteRecipe(userId, name);
+    if (deleted) {
+      await sendAndSave(chatId, `\u2705 Ricetta "<b>${name}</b>" eliminata!`, userId, "command_result");
+    } else {
+      await sendAndSave(chatId, `Ricetta "${name}" non trovata.`, userId, "error");
+    }
+    return;
+  }
+
+  // Check if recipe already exists
+  const existing = await getRecipeByName(userId, rest);
+  if (existing) {
+    const itemsList = existing.items
+      .map((item) => `  \u2022 ${item.name} ${item.quantity_g}g`)
+      .join("\n");
+    await sendAndSave(
+      chatId,
+      `\uD83D\uDCD6 Ricetta "<b>${existing.name}</b>" (gi\u00e0 salvata)\n\n` +
+        `<b>Ingredienti:</b>\n${itemsList}\n\n` +
+        `\uD83D\uDD25 ${existing.total_calories} kcal | P ${existing.total_protein_g}g | C ${existing.total_carbs_g}g | G ${existing.total_fat_g}g | F ${existing.total_fiber_g}g\n\n` +
+        `Per eliminarla: <code>/ricetta elimina ${existing.name}</code>`,
+      userId,
+      "command_result"
+    );
+    return;
+  }
+
+  // Generate recipe via AI
+  const [thinkingId] = await Promise.all([
+    sendMessage(chatId, "\u23F3 Creo la ricetta..."),
+    sendTyping(chatId),
+  ]);
+  const anim = thinkingId ? startHourglassAnimation(chatId, thinkingId) : null;
+
+  try {
+    const generated = await generateRecipe(rest);
+
+    if ("error" in generated) {
+      anim?.stop();
+      if (thinkingId) await editMessage(chatId, thinkingId, generated.error);
+      else await sendMessage(chatId, generated.error);
+      saveChatMsg(userId, "assistant", generated.error, "error");
+      return;
+    }
+
+    if (thinkingId) await editMessage(chatId, thinkingId, "\uD83D\uDD0D Cerco i valori nutrizionali...");
+    anim?.stop();
+
+    const enrichResult = await enrichWithNutrition(generated);
+
+    if (!enrichResult.meal) {
+      const reply = "Non sono riuscito a trovare i valori nutrizionali per gli ingredienti.";
+      if (thinkingId) await editMessage(chatId, thinkingId, reply);
+      else await sendMessage(chatId, reply);
+      saveChatMsg(userId, "assistant", reply, "error");
+      return;
+    }
+
+    const recipeItems = generated.items.map((item) => ({
+      name: item.name,
+      name_en: item.name_en,
+      quantity_g: item.quantity_g,
+      brand: item.brand,
+      is_branded: item.is_branded,
+    }));
+
+    const recipe = await saveRecipe(userId, rest, recipeItems, {
+      calories: enrichResult.meal.calories,
+      protein_g: enrichResult.meal.protein_g,
+      carbs_g: enrichResult.meal.carbs_g,
+      fat_g: enrichResult.meal.fat_g,
+      fiber_g: enrichResult.meal.fiber_g,
+    }, enrichResult.meal.meal_type);
+
+    if (!recipe) {
+      const reply = "Errore nel salvataggio della ricetta.";
+      if (thinkingId) await editMessage(chatId, thinkingId, reply);
+      else await sendMessage(chatId, reply);
+      saveChatMsg(userId, "assistant", reply, "error");
+      return;
+    }
+
+    const itemsList = recipe.items
+      .map((item) => `  \u2022 ${item.name} ${item.quantity_g}g`)
+      .join("\n");
+
+    let msg =
+      `\u2705 Ricetta "<b>${recipe.name}</b>" salvata!\n\n` +
+      `<b>Ingredienti:</b>\n${itemsList}\n\n` +
+      `\uD83D\uDD25 ${recipe.total_calories} kcal | P ${recipe.total_protein_g}g | C ${recipe.total_carbs_g}g | G ${recipe.total_fat_g}g | F ${recipe.total_fiber_g}g`;
+
+    if (enrichResult.failedItems.length > 0) {
+      msg += `\n\n\u26A0 Non ho trovato i valori per: ${enrichResult.failedItems.join(", ")}`;
+    }
+
+    msg += `\n\nOra scrivi "<b>${rest}</b>" per loggare il pasto istantaneamente!`;
+
+    if (thinkingId) await editMessage(chatId, thinkingId, msg);
+    else await sendMessage(chatId, msg);
+    saveChatMsg(userId, "assistant", msg, "command_result");
+  } catch (err) {
+    anim?.stop();
+    throw err;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// /ricette — List all saved recipes
+// ---------------------------------------------------------------------------
+async function handleRecipeList(
+  chatId: number,
+  telegramId: number,
+  uid: string | null
+) {
+  const userId = uid ?? await getUserId(telegramId);
+  if (!userId) {
+    await sendMessage(chatId, "Invia prima /start per registrarti.");
+    return;
+  }
+
+  const recipes = await listRecipes(userId);
+
+  if (recipes.length === 0) {
+    await sendAndSave(
+      chatId,
+      "Nessuna ricetta salvata.\n\nUsa <code>/ricetta &lt;nome&gt;</code> per crearne una!\nEsempio: <code>/ricetta pancake</code>",
+      userId,
+      "command_result"
+    );
+    return;
+  }
+
+  const lines = recipes.map(
+    (r) => `\uD83D\uDCD6 <b>${r.name}</b> \u2014 ${r.total_calories} kcal (P ${r.total_protein_g}g | C ${r.total_carbs_g}g | G ${r.total_fat_g}g)`
+  );
+
+  await sendAndSave(
+    chatId,
+    `\uD83D\uDCD6 <b>Le tue ricette (${recipes.length}):</b>\n\n` +
+      lines.join("\n") +
+      `\n\nScrivi il nome di una ricetta per loggarla istantaneamente!`,
+    userId,
+    "command_result"
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Recipe match — instant meal logging from saved recipe
+// ---------------------------------------------------------------------------
+async function handleRecipeMatch(
+  chatId: number,
+  userId: string,
+  recipe: Recipe,
+  portions: number
+) {
+  const cal = Math.round(recipe.total_calories * portions);
+  const prot = parseFloat((recipe.total_protein_g * portions).toFixed(1));
+  const carbs = parseFloat((recipe.total_carbs_g * portions).toFixed(1));
+  const fat = parseFloat((recipe.total_fat_g * portions).toFixed(1));
+  const fiber = parseFloat((recipe.total_fiber_g * portions).toFixed(1));
+
+  const portionStr = portions > 1 ? ` x${portions}` : "";
+  const description = `${recipe.name}${portionStr}`;
+
+  const [, dbResult] = await Promise.all([
+    sendAndSave(
+      chatId,
+      `\u26A1 <b>Pasto registrato da ricetta!</b>\n\n` +
+        `${description}\n\n` +
+        `\uD83D\uDD25 ${cal} kcal | P ${prot}g | C ${carbs}g | G ${fat}g | F ${fiber}g\n\n` +
+        `Tipo: ${recipe.meal_type}`,
+      userId,
+      "meal_saved"
+    ),
+    supabase.from("meals").insert({
+      user_id: userId,
+      description,
+      calories: cal,
+      protein_g: prot,
+      carbs_g: carbs,
+      fat_g: fat,
+      fiber_g: fiber,
+      meal_type: recipe.meal_type,
+    }),
+  ]);
+
+  if (dbResult.error) console.error("Recipe meal save error:", dbResult.error);
 }
 
 // ---------------------------------------------------------------------------
