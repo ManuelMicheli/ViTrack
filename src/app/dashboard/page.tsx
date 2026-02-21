@@ -30,7 +30,8 @@ export default function DashboardPage() {
   const { sectionOrder, layoutMode } = usePreferences();
   const isCompact = layoutMode === "compact";
 
-  const userId = typeof window !== "undefined" ? localStorage.getItem("vitrack_user_id") : null;
+  const localUserId = typeof window !== "undefined" ? localStorage.getItem("vitrack_user_id") : null;
+  const userId = user?.id || localUserId;
 
   // Celebration trigger for calorie goal
   useEffect(() => {
@@ -42,9 +43,24 @@ export default function DashboardPage() {
 
   // Fetch user settings
   useEffect(() => {
-    const telegramId = typeof window !== "undefined" ? localStorage.getItem("vitrack_telegram_id") : null;
-    if (!telegramId) return;
     const fetchUser = async () => {
+      // Try Supabase session first (email-registered users)
+      const supabase = (await import("@/lib/supabase-browser")).createSupabaseBrowser();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        try {
+          const res = await fetch(`/api/user?id=${session.user.id}`);
+          if (res.ok) {
+            const data = await res.json();
+            setUser(data);
+            return;
+          }
+        } catch { /* fall through */ }
+      }
+
+      // Legacy: Telegram-only users
+      const telegramId = typeof window !== "undefined" ? localStorage.getItem("vitrack_telegram_id") : null;
+      if (!telegramId) return;
       try {
         const res = await fetch(`/api/user?telegram_id=${encodeURIComponent(telegramId)}`);
         if (res.ok) {
