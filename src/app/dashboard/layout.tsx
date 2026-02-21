@@ -87,7 +87,14 @@ export default function DashboardLayout({
   }
 
   return (
-    <PreferencesProvider>
+    <PreferencesProvider
+      userId={user?.id}
+      initialPreferences={user ? {
+        accent_color: user.accent_color,
+        layout_mode: user.layout_mode,
+        section_order: user.section_order,
+      } : undefined}
+    >
       <Celebration>
         <ChatProvider>
           <div className="min-h-screen">

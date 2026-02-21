@@ -21,6 +21,9 @@ export interface User {
   water_tracking_mode: "glasses" | "ml";
   weight_goal_kg: number | null;
   height_cm: number | null;
+  accent_color: "blue" | "violet" | "cyan" | "green" | "orange" | "pink";
+  layout_mode: "compact" | "expanded";
+  section_order: string[];
   created_at: string;
 }
 

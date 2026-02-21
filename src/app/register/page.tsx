@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 
@@ -12,7 +11,7 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
+  const [emailSent, setEmailSent] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +37,7 @@ export default function RegisterPage() {
           data: {
             first_name: firstName,
           },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
 
@@ -46,7 +46,7 @@ export default function RegisterPage() {
         return;
       }
 
-      router.push("/dashboard");
+      setEmailSent(true);
     } catch {
       setError("Errore di connessione. Riprova.");
     } finally {
@@ -70,88 +70,110 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        <form onSubmit={handleRegister} className="glass-card-strong p-6 space-y-4">
-          <div>
-            <label htmlFor="first_name" className="block text-xs text-white/60 uppercase tracking-wider font-medium mb-2">
-              Nome
-            </label>
-            <input
-              id="first_name"
-              type="text"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              placeholder="Il tuo nome"
-              className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_15px_rgba(59,130,246,0.1)] text-white placeholder-[#444] transition-all"
-              required
-            />
+        {emailSent ? (
+          <div className="glass-card-strong p-6 space-y-4 text-center">
+            <div className="text-4xl mb-2">&#9993;</div>
+            <h2 className="text-lg font-semibold text-white">Controlla la tua email</h2>
+            <p className="text-sm text-white/60">
+              Abbiamo inviato un link di conferma a <span className="text-white font-medium">{email}</span>.
+              Clicca il link nell&apos;email per attivare il tuo account.
+            </p>
+            <p className="text-xs text-white/40 mt-2">
+              Non trovi l&apos;email? Controlla la cartella spam.
+            </p>
+            <Link
+              href="/"
+              className="inline-block mt-4 text-sm text-[#3B82F6] hover:text-[#60A5FA] transition-colors"
+            >
+              Torna al login
+            </Link>
           </div>
+        ) : (
+          <>
+            <form onSubmit={handleRegister} className="glass-card-strong p-6 space-y-4">
+              <div>
+                <label htmlFor="first_name" className="block text-xs text-white/60 uppercase tracking-wider font-medium mb-2">
+                  Nome
+                </label>
+                <input
+                  id="first_name"
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Il tuo nome"
+                  className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_15px_rgba(59,130,246,0.1)] text-white placeholder-[#444] transition-all"
+                  required
+                />
+              </div>
 
-          <div>
-            <label htmlFor="email" className="block text-xs text-white/60 uppercase tracking-wider font-medium mb-2">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="nome@esempio.com"
-              className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_15px_rgba(59,130,246,0.1)] text-white placeholder-[#444] transition-all"
-              required
-            />
-          </div>
+              <div>
+                <label htmlFor="email" className="block text-xs text-white/60 uppercase tracking-wider font-medium mb-2">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="nome@esempio.com"
+                  className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_15px_rgba(59,130,246,0.1)] text-white placeholder-[#444] transition-all"
+                  required
+                />
+              </div>
 
-          <div>
-            <label htmlFor="password" className="block text-xs text-white/60 uppercase tracking-wider font-medium mb-2">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Minimo 6 caratteri"
-              className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_15px_rgba(59,130,246,0.1)] text-white placeholder-[#444] transition-all"
-              required
-            />
-          </div>
+              <div>
+                <label htmlFor="password" className="block text-xs text-white/60 uppercase tracking-wider font-medium mb-2">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Minimo 6 caratteri"
+                  className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_15px_rgba(59,130,246,0.1)] text-white placeholder-[#444] transition-all"
+                  required
+                />
+              </div>
 
-          <div>
-            <label htmlFor="confirm_password" className="block text-xs text-white/60 uppercase tracking-wider font-medium mb-2">
-              Conferma Password
-            </label>
-            <input
-              id="confirm_password"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Ripeti la password"
-              className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_15px_rgba(59,130,246,0.1)] text-white placeholder-[#444] transition-all"
-              required
-            />
-          </div>
+              <div>
+                <label htmlFor="confirm_password" className="block text-xs text-white/60 uppercase tracking-wider font-medium mb-2">
+                  Conferma Password
+                </label>
+                <input
+                  id="confirm_password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Ripeti la password"
+                  className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_15px_rgba(59,130,246,0.1)] text-white placeholder-[#444] transition-all"
+                  required
+                />
+              </div>
 
-          {error && (
-            <div className="p-3 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/20">
-              <p className="text-sm text-[#EF4444]">{error}</p>
-            </div>
-          )}
+              {error && (
+                <div className="p-3 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/20">
+                  <p className="text-sm text-[#EF4444]">{error}</p>
+                </div>
+              )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-gradient-to-r from-[#3B82F6] to-[#8B5CF6] text-white rounded-xl font-medium transition-all disabled:opacity-50 hover:shadow-[0_0_25px_rgba(59,130,246,0.25)] active:scale-[0.98]"
-          >
-            {loading ? "Registrazione..." : "Registrati"}
-          </button>
-        </form>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 bg-gradient-to-r from-[#3B82F6] to-[#8B5CF6] text-white rounded-xl font-medium transition-all disabled:opacity-50 hover:shadow-[0_0_25px_rgba(59,130,246,0.25)] active:scale-[0.98]"
+              >
+                {loading ? "Registrazione..." : "Registrati"}
+              </button>
+            </form>
 
-        <p className="text-center text-sm text-white/50 mt-6">
-          Hai gia un account?{" "}
-          <Link href="/" className="text-[#3B82F6] hover:text-[#60A5FA] transition-colors">
-            Accedi
-          </Link>
-        </p>
+            <p className="text-center text-sm text-white/50 mt-6">
+              Hai gia un account?{" "}
+              <Link href="/" className="text-[#3B82F6] hover:text-[#60A5FA] transition-colors">
+                Accedi
+              </Link>
+            </p>
+          </>
+        )}
       </div>
     </div>
   );

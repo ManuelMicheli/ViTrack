@@ -59,6 +59,9 @@ export async function PATCH(request: NextRequest) {
     "weight_goal_kg",
     "height_cm",
     "telegram_id",
+    "accent_color",
+    "layout_mode",
+    "section_order",
   ];
   const updates: Record<string, unknown> = {};
   for (const field of allowedFields) {
