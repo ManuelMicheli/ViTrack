@@ -584,51 +584,67 @@ export default function SettingsPage() {
         <h3 className="font-mono-label text-text-tertiary mb-4">{t("settings.goals")}</h3>
         <div className="space-y-0 divide-y divide-border">
           {/* Calorie goal */}
-          <div className="py-3 flex justify-between items-center">
-            <span className="font-body text-sm text-text-secondary">{t("settings.calorieGoal")}</span>
-            {editGoal ? (
+          <div className="py-3 space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="font-body text-sm text-text-secondary">{t("settings.calorieGoal")}</span>
+              {!editGoal && (
+                <button
+                  onClick={() => setEditGoal(true)}
+                  className="font-body text-sm text-text-primary hover:text-[var(--color-accent-dynamic)] transition-colors"
+                >
+                  {user?.daily_calorie_goal} kcal
+                </button>
+              )}
+            </div>
+            {editGoal && (
               <div className="flex items-center gap-2">
                 <input
                   type="number"
                   value={goalValue}
                   onChange={(e) => setGoalValue(e.target.value)}
-                  className="w-20 bg-transparent border-b border-border text-sm text-right py-0.5 focus:outline-none focus:border-[var(--color-accent-dynamic)] text-text-primary font-body"
+                  className="flex-1 min-w-0 bg-transparent border-b border-border text-sm py-0.5 focus:outline-none focus:border-[var(--color-accent-dynamic)] text-text-primary font-body"
                   autoFocus
                 />
-                <span className="text-xs text-text-tertiary">kcal</span>
-                <button onClick={handleSaveGoal} disabled={savingGoal} className="font-mono-label text-[var(--color-accent-dynamic)]">
+                <span className="text-xs text-text-tertiary shrink-0">kcal</span>
+                <button onClick={handleSaveGoal} disabled={savingGoal} className="font-mono-label text-[var(--color-accent-dynamic)] shrink-0">
                   {savingGoal ? t("settings.saving") : t("settings.save")}
                 </button>
-                <button onClick={() => setEditGoal(false)} className="font-mono-label text-text-tertiary">
+                <button onClick={() => setEditGoal(false)} className="font-mono-label text-text-tertiary shrink-0">
                   {t("settings.cancel")}
                 </button>
               </div>
-            ) : (
-              <button
-                onClick={() => setEditGoal(true)}
-                className="font-body text-sm text-text-primary hover:text-[var(--color-accent-dynamic)] transition-colors"
-              >
-                {user?.daily_calorie_goal} kcal
-              </button>
             )}
           </div>
 
           {/* Water goal */}
-          <div className="py-3 flex justify-between items-center">
-            <div>
-              <span className="font-body text-sm text-text-secondary">{t("settings.waterGoal")}</span>
-              <p className="text-[10px] text-text-tertiary mt-0.5">{t("settings.waterGoalDesc")}</p>
+          <div className="py-3 space-y-2">
+            <div className="flex justify-between items-center">
+              <div>
+                <span className="font-body text-sm text-text-secondary">{t("settings.waterGoal")}</span>
+                <p className="text-[10px] text-text-tertiary mt-0.5">{t("settings.waterGoalDesc")}</p>
+              </div>
+              {!editWaterGoal && (
+                <button
+                  onClick={() => {
+                    setEditWaterGoal(true);
+                    setWaterGoalValue(String(user?.water_goal_ml ?? 2000));
+                  }}
+                  className="font-body text-sm text-text-primary hover:text-[var(--color-accent-dynamic)] transition-colors shrink-0 ml-4"
+                >
+                  {user?.water_goal_ml ?? 2000} ml
+                </button>
+              )}
             </div>
-            {editWaterGoal ? (
+            {editWaterGoal && (
               <div className="flex items-center gap-2">
                 <input
                   type="number"
                   value={waterGoalValue}
                   onChange={(e) => setWaterGoalValue(e.target.value)}
-                  className="w-20 bg-transparent border-b border-border text-sm text-right py-0.5 focus:outline-none focus:border-[var(--color-accent-dynamic)] text-text-primary font-body"
+                  className="flex-1 min-w-0 bg-transparent border-b border-border text-sm py-0.5 focus:outline-none focus:border-[var(--color-accent-dynamic)] text-text-primary font-body"
                   autoFocus
                 />
-                <span className="text-xs text-text-tertiary">ml</span>
+                <span className="text-xs text-text-tertiary shrink-0">ml</span>
                 <button
                   onClick={async () => {
                     const val = parseInt(waterGoalValue);
@@ -640,24 +656,14 @@ export default function SettingsPage() {
                     }
                   }}
                   disabled={savingField === "water_goal_ml"}
-                  className="font-mono-label text-[var(--color-accent-dynamic)]"
+                  className="font-mono-label text-[var(--color-accent-dynamic)] shrink-0"
                 >
                   {savingField === "water_goal_ml" ? t("settings.saving") : t("settings.save")}
                 </button>
-                <button onClick={() => setEditWaterGoal(false)} className="font-mono-label text-text-tertiary">
+                <button onClick={() => setEditWaterGoal(false)} className="font-mono-label text-text-tertiary shrink-0">
                   {t("settings.cancel")}
                 </button>
               </div>
-            ) : (
-              <button
-                onClick={() => {
-                  setEditWaterGoal(true);
-                  setWaterGoalValue(String(user?.water_goal_ml ?? 2000));
-                }}
-                className="font-body text-sm text-text-primary hover:text-[var(--color-accent-dynamic)] transition-colors"
-              >
-                {user?.water_goal_ml ?? 2000} ml
-              </button>
             )}
           </div>
 
@@ -694,22 +700,35 @@ export default function SettingsPage() {
           </div>
 
           {/* Weight goal */}
-          <div className="py-3 flex justify-between items-center">
-            <div>
-              <span className="font-body text-sm text-text-secondary">{t("settings.weightGoal")}</span>
-              <p className="text-[10px] text-text-tertiary mt-0.5">{t("settings.weightGoalDesc")}</p>
+          <div className="py-3 space-y-2">
+            <div className="flex justify-between items-center">
+              <div>
+                <span className="font-body text-sm text-text-secondary">{t("settings.weightGoal")}</span>
+                <p className="text-[10px] text-text-tertiary mt-0.5">{t("settings.weightGoalDesc")}</p>
+              </div>
+              {!editWeightGoal && (
+                <button
+                  onClick={() => {
+                    setEditWeightGoal(true);
+                    setWeightGoalValue(user?.weight_goal_kg ? String(user.weight_goal_kg) : "");
+                  }}
+                  className="font-body text-sm text-text-primary hover:text-[var(--color-accent-dynamic)] transition-colors shrink-0 ml-4"
+                >
+                  {user?.weight_goal_kg ? `${user.weight_goal_kg} kg` : t("settings.notSet")}
+                </button>
+              )}
             </div>
-            {editWeightGoal ? (
+            {editWeightGoal && (
               <div className="flex items-center gap-2">
                 <input
                   type="number"
                   step="0.1"
                   value={weightGoalValue}
                   onChange={(e) => setWeightGoalValue(e.target.value)}
-                  className="w-20 bg-transparent border-b border-border text-sm text-right py-0.5 focus:outline-none focus:border-[var(--color-accent-dynamic)] text-text-primary font-body"
+                  className="flex-1 min-w-0 bg-transparent border-b border-border text-sm py-0.5 focus:outline-none focus:border-[var(--color-accent-dynamic)] text-text-primary font-body"
                   autoFocus
                 />
-                <span className="text-xs text-text-tertiary">kg</span>
+                <span className="text-xs text-text-tertiary shrink-0">kg</span>
                 <button
                   onClick={async () => {
                     const val = parseFloat(weightGoalValue);
@@ -721,43 +740,46 @@ export default function SettingsPage() {
                     }
                   }}
                   disabled={savingField === "weight_goal_kg"}
-                  className="font-mono-label text-[var(--color-accent-dynamic)]"
+                  className="font-mono-label text-[var(--color-accent-dynamic)] shrink-0"
                 >
                   {savingField === "weight_goal_kg" ? t("settings.saving") : t("settings.save")}
                 </button>
-                <button onClick={() => setEditWeightGoal(false)} className="font-mono-label text-text-tertiary">
+                <button onClick={() => setEditWeightGoal(false)} className="font-mono-label text-text-tertiary shrink-0">
                   {t("settings.cancel")}
                 </button>
               </div>
-            ) : (
-              <button
-                onClick={() => {
-                  setEditWeightGoal(true);
-                  setWeightGoalValue(user?.weight_goal_kg ? String(user.weight_goal_kg) : "");
-                }}
-                className="font-body text-sm text-text-primary hover:text-[var(--color-accent-dynamic)] transition-colors"
-              >
-                {user?.weight_goal_kg ? `${user.weight_goal_kg} kg` : t("settings.notSet")}
-              </button>
             )}
           </div>
 
           {/* Height */}
-          <div className="py-3 flex justify-between items-center">
-            <div>
-              <span className="font-body text-sm text-text-secondary">{t("settings.height")}</span>
-              <p className="text-[10px] text-text-tertiary mt-0.5">{t("settings.heightDesc")}</p>
+          <div className="py-3 space-y-2">
+            <div className="flex justify-between items-center">
+              <div>
+                <span className="font-body text-sm text-text-secondary">{t("settings.height")}</span>
+                <p className="text-[10px] text-text-tertiary mt-0.5">{t("settings.heightDesc")}</p>
+              </div>
+              {!editHeight && (
+                <button
+                  onClick={() => {
+                    setEditHeight(true);
+                    setHeightValue(user?.height_cm ? String(user.height_cm) : "");
+                  }}
+                  className="font-body text-sm text-text-primary hover:text-[var(--color-accent-dynamic)] transition-colors shrink-0 ml-4"
+                >
+                  {user?.height_cm ? `${user.height_cm} cm` : t("settings.notSet")}
+                </button>
+              )}
             </div>
-            {editHeight ? (
+            {editHeight && (
               <div className="flex items-center gap-2">
                 <input
                   type="number"
                   value={heightValue}
                   onChange={(e) => setHeightValue(e.target.value)}
-                  className="w-20 bg-transparent border-b border-border text-sm text-right py-0.5 focus:outline-none focus:border-[var(--color-accent-dynamic)] text-text-primary font-body"
+                  className="flex-1 min-w-0 bg-transparent border-b border-border text-sm py-0.5 focus:outline-none focus:border-[var(--color-accent-dynamic)] text-text-primary font-body"
                   autoFocus
                 />
-                <span className="text-xs text-text-tertiary">cm</span>
+                <span className="text-xs text-text-tertiary shrink-0">cm</span>
                 <button
                   onClick={async () => {
                     const val = parseInt(heightValue);
@@ -769,24 +791,14 @@ export default function SettingsPage() {
                     }
                   }}
                   disabled={savingField === "height_cm"}
-                  className="font-mono-label text-[var(--color-accent-dynamic)]"
+                  className="font-mono-label text-[var(--color-accent-dynamic)] shrink-0"
                 >
                   {savingField === "height_cm" ? t("settings.saving") : t("settings.save")}
                 </button>
-                <button onClick={() => setEditHeight(false)} className="font-mono-label text-text-tertiary">
+                <button onClick={() => setEditHeight(false)} className="font-mono-label text-text-tertiary shrink-0">
                   {t("settings.cancel")}
                 </button>
               </div>
-            ) : (
-              <button
-                onClick={() => {
-                  setEditHeight(true);
-                  setHeightValue(user?.height_cm ? String(user.height_cm) : "");
-                }}
-                className="font-body text-sm text-text-primary hover:text-[var(--color-accent-dynamic)] transition-colors"
-              >
-                {user?.height_cm ? `${user.height_cm} cm` : t("settings.notSet")}
-              </button>
             )}
           </div>
         </div>

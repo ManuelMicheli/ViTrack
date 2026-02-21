@@ -27,7 +27,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  return NextResponse.json(data);
+  return NextResponse.json(data, {
+    headers: { "Cache-Control": "no-store" },
+  });
 }
 
 export async function PATCH(request: NextRequest) {
@@ -46,6 +48,7 @@ export async function PATCH(request: NextRequest) {
     "activity_level",
     "dietary_preferences",
     "avatar_url",
+    "theme",
     "unit_system",
     "language",
     "notifications_enabled",
