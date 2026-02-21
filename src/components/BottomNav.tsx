@@ -19,6 +19,7 @@ export default function BottomNav({ currentPath }: BottomNavProps) {
     { href: "/dashboard/meals", label: "PASTI" },
     { href: "/dashboard/workouts", label: "WORKOUT" },
     { href: "/dashboard/stats", label: "STATS" },
+    { href: "/dashboard/settings", label: "INFO" },
   ];
 
   return (
