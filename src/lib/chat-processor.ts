@@ -412,7 +412,7 @@ export async function processFreeText(
     : await classifyMessage(text);
 
   if (result.type === "meal") {
-    const enriched = await enrichWithNutrition(result);
+    const enriched = await enrichWithNutrition(result as MealClassification);
 
     const { error } = await supabase.from("meals").insert({
       user_id: userId,

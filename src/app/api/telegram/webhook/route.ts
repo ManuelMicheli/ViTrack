@@ -382,7 +382,7 @@ async function handleFreeText(
 
   try {
     if (result.type === "meal") {
-      const enriched = await enrichWithNutrition(result);
+      const enriched = await enrichWithNutrition(result as MealClassification);
       console.log(`[Perf] Nutrition enriched: ${(performance.now() - t0).toFixed(0)}ms`);
       await saveMealWithEdit(chatId, userId, enriched, thinkingId);
     } else if (result.type === "need_info") {
@@ -466,7 +466,7 @@ async function handlePendingMealResponse(
   try {
     if (result.type === "meal") {
       pendingMeals.delete(telegramId);
-      const enriched = await enrichWithNutrition(result);
+      const enriched = await enrichWithNutrition(result as MealClassification);
       await saveMealWithEdit(chatId, userId, enriched, thinkingId);
     } else if (result.type === "need_info") {
       pending.history.push({ role: "assistant", content: JSON.stringify(result) });
