@@ -1,22 +1,55 @@
 # ViTrack
 
-Tracker per calorie, valori nutrizionali e allenamenti con bot Telegram e dashboard web.
+Tracker per calorie, valori nutrizionali e allenamenti con bot Telegram e dashboard web. Supporta italiano e inglese.
 
 ## Architettura
 
 ```
-Utente → Telegram Bot → N8N Workflow → Claude API → Supabase
-                                                       ↓
-                                         Web Dashboard (Next.js su Vercel)
+Telegram Bot ──→ /api/telegram/webhook ──→ chat-processor.ts ──→ Supabase
+                                               ↑
+Web Chat UI  ──→ /api/chat ────────────────────┘
+                                               ↓
+Dashboard    ──→ /api/{meals,workouts,water,weight,user,summary} ← Supabase
+
+Nutrizione:  CREA (locale) → USDA + OpenFoodFacts + FatSecret (parallelo)
+AI:          OpenAI gpt-5-mini (classificazione) · gpt-4o (vision) · Whisper (audio)
 ```
+
+### Flusso messaggi
+
+1. L'utente invia un messaggio (Telegram o web chat)
+2. `chat-processor.ts` gestisce comandi (`/oggi`, `/sessione`, ecc.) oppure passa il testo libero a OpenAI
+3. OpenAI classifica il messaggio come `meal`, `workout`, `need_info` o `chat`
+4. Per i pasti: lookup nutrizionale multi-sorgente (CREA locale → USDA/OFF/FatSecret in parallelo) con validazione Atwater
+5. Risultato salvato su Supabase
+
+### Fonti nutrizionali
+
+| Sorgente | Tipo | Latenza |
+|----------|------|---------|
+| CREA/INRAN (~375 cibi italiani) | Database locale | Istantaneo |
+| USDA FoodData Central | API | ~1-3s |
+| OpenFoodFacts | API | ~1-3s |
+| FatSecret | API (OAuth2) | ~1-3s |
+
+Le 3 API esterne vengono interrogate in parallelo con cross-validazione (±15% calorie) e cache 24h per-100g con deduplicazione in-flight.
 
 ## Setup
 
 ### 1. Supabase
 
 1. Crea un progetto su [supabase.com](https://supabase.com)
-2. Apri il SQL Editor ed esegui il file `supabase/migrations/001_initial_schema.sql`
-3. Copia URL e anon key dalle impostazioni del progetto
+2. Apri il SQL Editor ed esegui le migrazioni in ordine:
+   ```
+   supabase/migrations/001_initial_schema.sql
+   supabase/migrations/002_chat_messages.sql
+   supabase/migrations/002_water_weight_tables.sql
+   supabase/migrations/003_water_weight_goals.sql
+   supabase/migrations/004_auth_profiles.sql
+   supabase/migrations/005_user_preferences.sql
+   supabase/migrations/008_recipes.sql
+   ```
+3. Copia URL, anon key e service role key dalle impostazioni del progetto
 
 ### 2. Telegram Bot
 
@@ -25,19 +58,29 @@ Utente → Telegram Bot → N8N Workflow → Claude API → Supabase
 3. Salva il token del bot
 4. Imposta i comandi con `/setcommands`:
    ```
-   start - Registrazione
    oggi - Riepilogo giornaliero
    obiettivo - Imposta obiettivo calorico (es. /obiettivo 2000)
+   sessione - Avvia sessione palestra
+   fine - Termina sessione palestra
+   annulla - Annulla sessione palestra
+   crearicetta - Crea una ricetta (es. /crearicetta pancake proteico)
+   ricetta - Mostra/elimina ricetta (es. /ricetta pancake)
+   ricette - Lista ricette salvate
+   ```
+5. Imposta il webhook verso il tuo dominio:
+   ```
+   https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<DOMINIO>/api/telegram/webhook
    ```
 
-### 3. N8N
+### 3. API Keys
 
-1. Importa il workflow da `n8n/vitrack-workflow.json` nella tua istanza N8N
-2. Configura le credenziali:
-   - **Telegram Bot API**: inserisci il token del bot
-   - **Supabase**: aggiorna URL e API key nei nodi HTTP Request
-   - **Anthropic API**: inserisci la tua API key Claude
-3. Attiva il workflow
+| Servizio | Dove ottenerla |
+|----------|----------------|
+| OpenAI API Key | [platform.openai.com](https://platform.openai.com) |
+| Telegram Bot Token | [@BotFather](https://t.me/BotFather) |
+| Supabase URL + Keys | Dashboard progetto Supabase |
+| USDA API Key | [fdc.nal.usda.gov](https://fdc.nal.usda.gov/api-key-signup.html) |
+| FatSecret Client ID/Secret | [platform.fatsecret.com](https://platform.fatsecret.com) |
 
 ### 4. Dashboard Web
 
@@ -47,8 +90,22 @@ npm install
 
 # Configura le variabili d'ambiente
 cp .env.example .env.local
-# Modifica .env.local con URL e key di Supabase
+```
 
+Variabili richieste in `.env.local`:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+OPENAI_API_KEY=
+TELEGRAM_BOT_TOKEN=
+USDA_API_KEY=
+FATSECRET_CLIENT_ID=
+FATSECRET_CLIENT_SECRET=
+```
+
+```bash
 # Avvia in sviluppo
 npm run dev
 
@@ -60,42 +117,46 @@ npm run build
 
 1. Push del repository su GitHub
 2. Importa il progetto su [vercel.com](https://vercel.com)
-3. Aggiungi le variabili d'ambiente:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+3. Aggiungi tutte le variabili d'ambiente elencate sopra
 
 ## Utilizzo
 
 ### Bot Telegram
 
-- **Messaggi liberi**: scrivi cosa hai mangiato o che allenamento hai fatto
-  - `"Ho mangiato 200g di pasta al pomodoro a pranzo"`
-  - `"Ho fatto 30 minuti di corsa"`
-  - `"Colazione: yogurt greco con miele e noci"`
-- **`/start`** - Registra il tuo account
-- **`/oggi`** - Mostra il riepilogo del giorno
-- **`/obiettivo 2500`** - Imposta l'obiettivo calorico giornaliero
+**Messaggi liberi** — scrivi cosa hai mangiato o che allenamento hai fatto:
+- `"Ho mangiato 200g di pasta al pomodoro a pranzo"`
+- `"Ho fatto 30 minuti di corsa"`
+- `"Colazione: yogurt greco con miele e noci"`
+
+Supporta anche messaggi vocali (trascrizione Whisper) e foto di etichette nutrizionali (analisi GPT-4o Vision).
+
+**Comandi:**
+| Comando | Descrizione |
+|---------|-------------|
+| `/oggi` | Riepilogo giornaliero (calorie, macro, allenamenti) |
+| `/obiettivo 2500` | Imposta obiettivo calorico giornaliero |
+| `/sessione` | Avvia sessione palestra — poi invia esercizi come `panca piana 4x8 80kg` |
+| `/fine` | Termina sessione e salva allenamento |
+| `/annulla` | Annulla sessione senza salvare |
+| `/crearicetta <nome>` | Crea una ricetta (l'AI genera gli ingredienti) |
+| `/ricetta <nome>` | Mostra o elimina una ricetta salvata |
+| `/ricette` | Lista tutte le ricette |
+
+Le ricette salvate vengono riconosciute automaticamente nel testo libero per logging istantaneo (senza chiamata AI).
 
 ### Dashboard Web
 
-1. Accedi con il tuo Telegram ID
-2. Visualizza il riepilogo giornaliero con calorie, macro e allenamenti
-3. Naviga tra i giorni con il selettore data
-
-## Credenziali necessarie
-
-| Servizio | Dove ottenerla |
-|----------|----------------|
-| Telegram Bot Token | [@BotFather](https://t.me/BotFather) |
-| Supabase URL + Key | Dashboard progetto Supabase |
-| Anthropic API Key | [console.anthropic.com](https://console.anthropic.com) |
-| N8N | Istanza self-hosted o [n8n.cloud](https://n8n.cloud) |
+1. Registrati con email/password o accedi con Telegram ID
+2. Dashboard con riepilogo calorie, macro e allenamenti
+3. Chat AI integrata in ogni pagina
+4. Pagine: Dashboard, Pasti, Allenamenti, Statistiche, Profilo, Impostazioni
 
 ## Tech Stack
 
-- **Next.js** - Dashboard web
-- **Tailwind CSS** - Styling
-- **Supabase** - Database PostgreSQL
-- **N8N** - Orchestrazione workflow
-- **Claude API** - Interpretazione linguaggio naturale
-- **Telegram Bot API** - Interfaccia utente
+- **Next.js 16** — App Router, API Routes, React 19
+- **Tailwind CSS v4** — Dark theme
+- **Supabase** — PostgreSQL + Auth + RLS
+- **OpenAI** — gpt-5-mini (classificazione NL), gpt-4o (vision), Whisper (trascrizione)
+- **Recharts** — Grafici peso/statistiche
+- **Framer Motion** — Animazioni
+- **Telegram Bot API** — Interfaccia bot
