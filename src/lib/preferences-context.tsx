@@ -38,6 +38,8 @@ interface PreferencesContextType {
   setLayoutMode: (mode: LayoutMode) => void;
   sectionOrder: string[];
   setSectionOrder: (order: string[]) => void;
+  saveError: string | null;
+  clearSaveError: () => void;
 }
 
 const PreferencesContext = createContext<PreferencesContextType>({
@@ -48,6 +50,8 @@ const PreferencesContext = createContext<PreferencesContextType>({
   setLayoutMode: () => {},
   sectionOrder: DEFAULT_SECTION_ORDER,
   setSectionOrder: () => {},
+  saveError: null,
+  clearSaveError: () => {},
 });
 
 export function usePreferences() {
@@ -91,7 +95,17 @@ export function PreferencesProvider({ children, userId, initialPreferences }: Pr
   const [accentColor, setAccentColorState] = useState<AccentColor>(() => loadAccentColor(initialPreferences?.accent_color));
   const [layoutMode, setLayoutModeState] = useState<LayoutMode>(() => loadLayoutMode(initialPreferences?.layout_mode));
   const [sectionOrder, setSectionOrderState] = useState<string[]>(() => loadSectionOrder(initialPreferences?.section_order));
+  const [saveError, setSaveError] = useState<string | null>(null);
   const sectionOrderDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearSaveError = useCallback(() => setSaveError(null), []);
+
+  const showError = useCallback((msg: string) => {
+    setSaveError(msg);
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    errorTimerRef.current = setTimeout(() => setSaveError(null), 4000);
+  }, []);
 
   // Sync localStorage from DB values on mount
   useEffect(() => {
@@ -116,8 +130,12 @@ export function PreferencesProvider({ children, userId, initialPreferences }: Pr
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ [field]: value }),
-    }).catch(() => { /* localStorage remains as fallback */ });
-  }, [userId]);
+    }).then((res) => {
+      if (!res.ok) showError("Errore nel salvare la personalizzazione");
+    }).catch(() => {
+      showError("Errore di connessione. Riprova.");
+    });
+  }, [userId, showError]);
 
   const setAccentColor = useCallback((color: AccentColor) => {
     setAccentColorState(color);
@@ -143,12 +161,11 @@ export function PreferencesProvider({ children, userId, initialPreferences }: Pr
     }, 500);
   }, [saveToDb]);
 
-  // Cleanup debounce on unmount
+  // Cleanup timers on unmount
   useEffect(() => {
     return () => {
-      if (sectionOrderDebounceRef.current) {
-        clearTimeout(sectionOrderDebounceRef.current);
-      }
+      if (sectionOrderDebounceRef.current) clearTimeout(sectionOrderDebounceRef.current);
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     };
   }, []);
 
@@ -162,6 +179,8 @@ export function PreferencesProvider({ children, userId, initialPreferences }: Pr
         setLayoutMode,
         sectionOrder,
         setSectionOrder,
+        saveError,
+        clearSaveError,
       }}
     >
       {children}

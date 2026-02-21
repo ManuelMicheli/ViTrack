@@ -20,7 +20,7 @@ const sectionLabels: Record<string, string> = {
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { accentColor, accentHex, setAccentColor, layoutMode, setLayoutMode, sectionOrder, setSectionOrder } = usePreferences();
+  const { accentColor, accentHex, setAccentColor, layoutMode, setLayoutMode, sectionOrder, setSectionOrder, saveError: prefSaveError } = usePreferences();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -58,6 +58,16 @@ export default function SettingsPage() {
   // Personalization save feedback
   const [prefSaved, setPrefSaved] = useState(false);
   const prefSavedTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Global save toast (success/error for any setting)
+  const [saveToast, setSaveToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const saveToastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const showSaveToast = useCallback((type: "success" | "error", text: string) => {
+    setSaveToast({ type, text });
+    if (saveToastTimer.current) clearTimeout(saveToastTimer.current);
+    saveToastTimer.current = setTimeout(() => setSaveToast(null), 4000);
+  }, []);
 
   const showPrefSaved = useCallback(() => {
     setPrefSaved(true);
@@ -121,9 +131,11 @@ export default function SettingsPage() {
         const updated = await res.json();
         setUser(updated);
         setEditGoal(false);
+      } else {
+        showSaveToast("error", "Errore nel salvare l'obiettivo calorie");
       }
     } catch {
-      /* ignore */
+      showSaveToast("error", "Errore di connessione. Riprova.");
     } finally {
       setSavingGoal(false);
     }
@@ -141,9 +153,11 @@ export default function SettingsPage() {
       if (res.ok) {
         const updated = await res.json();
         setUser(updated);
+      } else {
+        showSaveToast("error", "Errore nel salvare l'impostazione");
       }
     } catch {
-      /* ignore */
+      showSaveToast("error", "Errore di connessione. Riprova.");
     } finally {
       setSavingField("");
     }
@@ -160,9 +174,11 @@ export default function SettingsPage() {
       if (res.ok) {
         const updated = await res.json();
         setUser(updated);
+      } else {
+        showSaveToast("error", "Errore nel salvare l'impostazione");
       }
     } catch {
-      /* ignore */
+      showSaveToast("error", "Errore di connessione. Riprova.");
     }
   };
 
@@ -324,6 +340,22 @@ export default function SettingsPage() {
       {resetError && (
         <div className="p-3 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#EF4444] text-sm text-center animate-slide-up">
           {resetError}
+        </div>
+      )}
+      {saveToast && (
+        <div
+          className={`p-3 rounded-xl text-sm text-center animate-slide-up ${
+            saveToast.type === "error"
+              ? "bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#EF4444]"
+              : "bg-[#22C55E]/10 border border-[#22C55E]/20 text-[#22C55E]"
+          }`}
+        >
+          {saveToast.text}
+        </div>
+      )}
+      {prefSaveError && (
+        <div className="p-3 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#EF4444] text-sm text-center animate-slide-up">
+          {prefSaveError}
         </div>
       )}
       {/* ──────────── 1. Account Section ──────────── */}
