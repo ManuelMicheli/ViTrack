@@ -4,6 +4,7 @@ import {
   classifyWithContext,
   parseExercise,
   type MealClassification,
+  type ParsedMeal,
   type ParsedExercise,
   type WorkoutClassification,
 } from "@/lib/openai";
@@ -28,28 +29,34 @@ export type ProcessResult =
   | { kind: "error"; reply: string };
 
 // ---------------------------------------------------------------------------
-// Nutrition enrichment (moved from webhook — no Telegram dependency)
+// Nutrition enrichment — accepts ParsedMeal, builds MealClassification
+// from API lookup results only (no AI fallback).
 // ---------------------------------------------------------------------------
+export interface EnrichmentResult {
+  meal: MealClassification | null;
+  failedItems: string[];
+}
+
 export async function enrichWithNutrition(
-  meal: MealClassification
-): Promise<MealClassification> {
-  if (!meal.items || meal.items.length === 0) return meal;
+  parsed: ParsedMeal
+): Promise<EnrichmentResult> {
+  if (!parsed.items || parsed.items.length === 0) {
+    return { meal: null, failedItems: [] };
+  }
 
   const results: (NutrientResult | null)[] = await Promise.all(
-    meal.items.map((item) =>
-      lookupNutrients(item.name, item.name_en ?? item.name, item.quantity_g)
+    parsed.items.map((item) =>
+      lookupNutrients(item.name, item.name_en, item.quantity_g, item.brand)
     )
   );
 
-  let totCal = 0,
-    totProt = 0,
-    totCarbs = 0,
-    totFat = 0,
-    totFiber = 0;
+  const failedItems: string[] = [];
+  let totCal = 0, totProt = 0, totCarbs = 0, totFat = 0, totFiber = 0;
+  const enrichedItems: MealClassification["items"] = [];
   const descParts: string[] = [];
 
-  for (let i = 0; i < meal.items.length; i++) {
-    const item = meal.items[i];
+  for (let i = 0; i < parsed.items.length; i++) {
+    const item = parsed.items[i];
     const result = results[i];
 
     if (result) {
@@ -58,48 +65,39 @@ export async function enrichWithNutrition(
       totCarbs += result.carbs_g;
       totFat += result.fat_g;
       totFiber += result.fiber_g;
+      enrichedItems.push({
+        name: item.name,
+        name_en: item.name_en,
+        quantity_g: item.quantity_g,
+        calories: result.calories,
+        protein_g: result.protein_g,
+        carbs_g: result.carbs_g,
+        fat_g: result.fat_g,
+        fiber_g: result.fiber_g,
+      });
       descParts.push(`${item.name}(${item.quantity_g}g)`);
-    } else if (typeof item.calories === "number" && !isNaN(item.calories)) {
-      const aiP = item.protein_g ?? 0;
-      const aiC = item.carbs_g ?? 0;
-      const aiF = item.fat_g ?? 0;
-      const aiFib = item.fiber_g ?? 0;
-      const atwaterCal = Math.round(4 * aiP + 4 * aiC + 9 * aiF);
-      const aiCal = item.calories;
-      const useCal =
-        aiCal > 0 && Math.abs(atwaterCal - aiCal) / aiCal > 0.15
-          ? atwaterCal
-          : aiCal;
-      totCal += useCal;
-      totProt += aiP;
-      totCarbs += aiC;
-      totFat += aiF;
-      totFiber += aiFib;
-      descParts.push(`${item.name}(${item.quantity_g}g)*`);
     } else {
-      const aiTotal = meal.items.reduce((s, it) => s + it.quantity_g, 0);
-      const ratio = aiTotal > 0 ? item.quantity_g / aiTotal : 0;
-      totCal += Math.round(meal.calories * ratio);
-      totProt += parseFloat((meal.protein_g * ratio).toFixed(1));
-      totCarbs += parseFloat((meal.carbs_g * ratio).toFixed(1));
-      totFat += parseFloat((meal.fat_g * ratio).toFixed(1));
-      totFiber += parseFloat((meal.fiber_g * ratio).toFixed(1));
-      descParts.push(`${item.name}(${item.quantity_g}g)*`);
+      failedItems.push(item.brand ? `${item.brand} ${item.name}` : item.name);
     }
   }
 
-  const hasFallback = results.some((r) => r === null);
+  if (enrichedItems.length === 0) {
+    return { meal: null, failedItems };
+  }
 
-  return {
-    ...meal,
+  const meal: MealClassification = {
+    type: "meal",
+    description: descParts.join(", "),
     calories: Math.round(totCal),
     protein_g: parseFloat(totProt.toFixed(1)),
     carbs_g: parseFloat(totCarbs.toFixed(1)),
     fat_g: parseFloat(totFat.toFixed(1)),
     fiber_g: parseFloat(totFiber.toFixed(1)),
-    description:
-      descParts.join(", ") + (hasFallback ? "\n(* = stima AI)" : ""),
+    meal_type: parsed.meal_type,
+    items: enrichedItems,
   };
+
+  return { meal, failedItems };
 }
 
 // ---------------------------------------------------------------------------
@@ -412,34 +410,82 @@ export async function processFreeText(
     : await classifyMessage(text);
 
   if (result.type === "meal") {
-    const enriched = await enrichWithNutrition(result as MealClassification);
+    // ParsedMeal has no "calories" field — detect by checking
+    const isParsedMeal = !("calories" in result);
 
+    if (isParsedMeal) {
+      const enrichResult = await enrichWithNutrition(result as ParsedMeal);
+
+      if (enrichResult.failedItems.length > 0 && !enrichResult.meal) {
+        // All items failed — ask for photo
+        const itemNames = enrichResult.failedItems.join(", ");
+        return {
+          kind: "need_info",
+          reply: `Non ho trovato i valori nutrizionali per ${itemNames}. Puoi mandarmi una foto dell'etichetta nutrizionale o del codice a barre?`,
+        };
+      }
+
+      if (!enrichResult.meal) {
+        return { kind: "error", reply: "Errore nell'elaborazione del pasto." };
+      }
+
+      const { error } = await supabase.from("meals").insert({
+        user_id: userId,
+        description: enrichResult.meal.description,
+        calories: enrichResult.meal.calories,
+        protein_g: enrichResult.meal.protein_g,
+        carbs_g: enrichResult.meal.carbs_g,
+        fat_g: enrichResult.meal.fat_g,
+        fiber_g: enrichResult.meal.fiber_g,
+        meal_type: enrichResult.meal.meal_type,
+      });
+
+      if (error) return { kind: "error", reply: "Errore nel salvataggio del pasto." };
+
+      let msg =
+        `Pasto registrato!\n\n` +
+        `${enrichResult.meal.description}\n\n` +
+        `Calorie: ${enrichResult.meal.calories} kcal\n` +
+        `Proteine: ${enrichResult.meal.protein_g}g\n` +
+        `Carboidrati: ${enrichResult.meal.carbs_g}g\n` +
+        `Grassi: ${enrichResult.meal.fat_g}g\n` +
+        `Fibre: ${enrichResult.meal.fiber_g}g\n\n` +
+        `Tipo: ${enrichResult.meal.meal_type}`;
+
+      if (enrichResult.failedItems.length > 0) {
+        const itemNames = enrichResult.failedItems.join(", ");
+        msg += `\n\nNon ho trovato i valori per: ${itemNames}\nMandami una foto dell'etichetta per aggiungerli.`;
+      }
+
+      return { kind: "meal_saved", reply: msg, data: enrichResult.meal };
+    }
+
+    // Legacy MealClassification (shouldn't happen with new prompt, but safe fallback)
+    const legacyMeal = result as MealClassification;
     const { error } = await supabase.from("meals").insert({
       user_id: userId,
-      description: enriched.description,
-      calories: enriched.calories,
-      protein_g: enriched.protein_g,
-      carbs_g: enriched.carbs_g,
-      fat_g: enriched.fat_g,
-      fiber_g: enriched.fiber_g,
-      meal_type: enriched.meal_type,
+      description: legacyMeal.description,
+      calories: legacyMeal.calories,
+      protein_g: legacyMeal.protein_g,
+      carbs_g: legacyMeal.carbs_g,
+      fat_g: legacyMeal.fat_g,
+      fiber_g: legacyMeal.fiber_g,
+      meal_type: legacyMeal.meal_type,
     });
 
-    if (error) {
-      return { kind: "error", reply: "Errore nel salvataggio del pasto." };
-    }
+    if (error) return { kind: "error", reply: "Errore nel salvataggio del pasto." };
 
     const msg =
       `Pasto registrato!\n\n` +
-      `${enriched.description}\n\n` +
-      `Calorie: ${enriched.calories} kcal\n` +
-      `Proteine: ${enriched.protein_g}g\n` +
-      `Carboidrati: ${enriched.carbs_g}g\n` +
-      `Grassi: ${enriched.fat_g}g\n` +
-      `Fibre: ${enriched.fiber_g}g\n\n` +
-      `Tipo: ${enriched.meal_type}`;
+      `${legacyMeal.description}\n\n` +
+      `Calorie: ${legacyMeal.calories} kcal\n` +
+      `Proteine: ${legacyMeal.protein_g}g\n` +
+      `Carboidrati: ${legacyMeal.carbs_g}g\n` +
+      `Grassi: ${legacyMeal.fat_g}g\n` +
+      `Fibre: ${legacyMeal.fiber_g}g\n\n` +
+      `Tipo: ${legacyMeal.meal_type}`;
 
-    return { kind: "meal_saved", reply: msg, data: enriched };
+    return { kind: "meal_saved", reply: msg, data: legacyMeal };
   }
 
   if (result.type === "need_info") {

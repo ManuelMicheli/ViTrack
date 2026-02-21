@@ -6,6 +6,7 @@ import {
   parseExercise,
   transcribeAudio,
   type MealClassification,
+  type ParsedMeal,
   type WorkoutClassification,
   type ParsedExercise,
 } from "@/lib/openai";
@@ -382,9 +383,36 @@ async function handleFreeText(
 
   try {
     if (result.type === "meal") {
-      const enriched = await enrichWithNutrition(result as MealClassification);
-      console.log(`[Perf] Nutrition enriched: ${(performance.now() - t0).toFixed(0)}ms`);
-      await saveMealWithEdit(chatId, userId, enriched, thinkingId);
+      const isParsedMeal = !("calories" in result);
+      if (isParsedMeal) {
+        const enrichResult = await enrichWithNutrition(result as ParsedMeal);
+        console.log(`[Perf] Nutrition enriched: ${(performance.now() - t0).toFixed(0)}ms`);
+
+        if (enrichResult.failedItems.length > 0 && !enrichResult.meal) {
+          const itemNames = enrichResult.failedItems.join(", ");
+          const reply = `Non ho trovato i valori nutrizionali per ${itemNames}. Puoi mandarmi una foto dell'etichetta nutrizionale o del codice a barre?`;
+          if (thinkingId) await editMessage(chatId, thinkingId, reply);
+          else await sendMessage(chatId, reply);
+          saveChatMsg(userId, "assistant", reply, "need_info");
+        } else if (enrichResult.meal) {
+          let extraMsg = "";
+          if (enrichResult.failedItems.length > 0) {
+            const itemNames = enrichResult.failedItems.join(", ");
+            extraMsg = `\n\nNon ho trovato i valori per: ${itemNames}\nMandami una foto dell'etichetta per aggiungerli.`;
+          }
+          await saveMealWithEdit(chatId, userId, enrichResult.meal, thinkingId, extraMsg);
+        } else {
+          const reply = "Errore nell'elaborazione del pasto.";
+          if (thinkingId) await editMessage(chatId, thinkingId, reply);
+          else await sendMessage(chatId, reply);
+          saveChatMsg(userId, "assistant", reply, "error");
+        }
+      } else {
+        // Legacy MealClassification fallback
+        const legacyMeal = result as MealClassification;
+        console.log(`[Perf] Nutrition enriched (legacy): ${(performance.now() - t0).toFixed(0)}ms`);
+        await saveMealWithEdit(chatId, userId, legacyMeal, thinkingId);
+      }
     } else if (result.type === "need_info") {
       pendingMeals.set(telegramId, {
         history: [
@@ -466,8 +494,32 @@ async function handlePendingMealResponse(
   try {
     if (result.type === "meal") {
       pendingMeals.delete(telegramId);
-      const enriched = await enrichWithNutrition(result as MealClassification);
-      await saveMealWithEdit(chatId, userId, enriched, thinkingId);
+      const isParsedMeal = !("calories" in result);
+      if (isParsedMeal) {
+        const enrichResult = await enrichWithNutrition(result as ParsedMeal);
+        if (enrichResult.failedItems.length > 0 && !enrichResult.meal) {
+          const itemNames = enrichResult.failedItems.join(", ");
+          const reply = `Non ho trovato i valori nutrizionali per ${itemNames}. Puoi mandarmi una foto dell'etichetta nutrizionale o del codice a barre?`;
+          if (thinkingId) await editMessage(chatId, thinkingId, reply);
+          else await sendMessage(chatId, reply);
+          saveChatMsg(userId, "assistant", reply, "need_info");
+        } else if (enrichResult.meal) {
+          let extraMsg = "";
+          if (enrichResult.failedItems.length > 0) {
+            const itemNames = enrichResult.failedItems.join(", ");
+            extraMsg = `\n\nNon ho trovato i valori per: ${itemNames}\nMandami una foto dell'etichetta per aggiungerli.`;
+          }
+          await saveMealWithEdit(chatId, userId, enrichResult.meal, thinkingId, extraMsg);
+        } else {
+          const reply = "Errore nell'elaborazione del pasto.";
+          if (thinkingId) await editMessage(chatId, thinkingId, reply);
+          else await sendMessage(chatId, reply);
+          saveChatMsg(userId, "assistant", reply, "error");
+        }
+      } else {
+        // Legacy MealClassification fallback
+        await saveMealWithEdit(chatId, userId, result as MealClassification, thinkingId);
+      }
     } else if (result.type === "need_info") {
       pending.history.push({ role: "assistant", content: JSON.stringify(result) });
       const reply = result.message;
@@ -674,7 +726,8 @@ async function saveMealWithEdit(
   chatId: number,
   userId: string,
   meal: MealClassification,
-  thinkingId: number | null
+  thinkingId: number | null,
+  extraMsg: string = ""
 ) {
   const msg =
     `<b>Pasto registrato!</b>\n\n` +
@@ -684,7 +737,8 @@ async function saveMealWithEdit(
     `Carboidrati: ${meal.carbs_g}g\n` +
     `Grassi: ${meal.fat_g}g\n` +
     `Fibre: ${meal.fiber_g}g\n\n` +
-    `Tipo: ${meal.meal_type}`;
+    `Tipo: ${meal.meal_type}` +
+    extraMsg;
 
   // Show result to user AND save to DB in parallel — user sees response instantly
   const [, dbResult] = await Promise.all([
