@@ -8,6 +8,7 @@ import MacroBar from "@/components/MacroBar";
 import { PlusIcon, TrashIcon } from "@/components/icons";
 import ConfirmModal from "@/components/ConfirmModal";
 import AddMealModal from "@/components/AddMealModal";
+import FoodSearch from "@/components/FoodSearch";
 import { staggerContainer, staggerItem } from "@/lib/animation-config";
 import { useLanguage } from "@/lib/language-context";
 import type { TranslationKey } from "@/lib/translations";
@@ -107,6 +108,10 @@ export default function MealsPage() {
       <motion.div variants={staggerItem} className="flex items-center justify-between">
         <h1 className="font-display text-2xl font-bold text-text-primary">{t("mealsPage.title")}</h1>
         <DatePicker value={date} onChange={setDate} />
+      </motion.div>
+
+      <motion.div variants={staggerItem}>
+        <FoodSearch onSave={handleSaveMeal} />
       </motion.div>
 
       {/* Grouped meal sections */}

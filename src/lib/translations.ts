@@ -100,6 +100,20 @@ const translations = {
   "mealsPage.addType": { it: "Aggiungi", en: "Add" },
   "mealsPage.dailyTotal": { it: "Totale giornata", en: "Daily total" },
 
+  // -- Food Search --
+  "foodSearch.placeholder": { it: "Cerca alimento...", en: "Search food..." },
+  "foodSearch.searching": { it: "Ricerca...", en: "Searching..." },
+  "foodSearch.noResults": { it: "Nessun risultato", en: "No results" },
+  "foodSearch.per100g": { it: "per 100g", en: "per 100g" },
+  "foodSearch.grams": { it: "Grammi", en: "Grams" },
+  "foodSearch.addToCart": { it: "Aggiungi", en: "Add" },
+  "foodSearch.cart": { it: "Alimenti selezionati", en: "Selected foods" },
+  "foodSearch.total": { it: "Totale", en: "Total" },
+  "foodSearch.logMeal": { it: "Registra pasto", en: "Log meal" },
+  "foodSearch.emptyCart": { it: "Cerca e aggiungi alimenti per comporre il pasto", en: "Search and add foods to build your meal" },
+  "foodSearch.selectMealType": { it: "Tipo di pasto", en: "Meal type" },
+  "foodSearch.remove": { it: "Rimuovi", en: "Remove" },
+
   // ── Workouts page ──
   "workoutsPage.title": { it: "Allenamenti", en: "Workouts" },
   "workoutsPage.sessions": { it: "Sessioni", en: "Sessions" },
