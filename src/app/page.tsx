@@ -73,34 +73,29 @@ export default function LoginPage() {
   };
 
   const tabClass = (tab: Tab) =>
-    `flex-1 pb-3 text-sm font-medium transition-all cursor-pointer ${
+    `flex-1 pb-3 text-sm transition-all cursor-pointer font-mono-label text-[11px] ${
       activeTab === tab
-        ? "text-white border-b-2 border-transparent"
-        : "text-white/40 hover:text-white/60"
+        ? "text-text-primary border-b-2"
+        : "text-text-tertiary hover:text-text-secondary border-b-2 border-transparent"
     }`;
 
   const tabStyle = (tab: Tab) =>
     activeTab === tab
-      ? { borderImage: "linear-gradient(to right, #3B82F6, #8B5CF6) 1" }
+      ? { borderBottomColor: 'var(--color-accent-dynamic)' }
       : undefined;
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative">
-      {/* Background gradient */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#3B82F6]/[0.04] rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/4 left-1/3 w-[400px] h-[400px] bg-[#8B5CF6]/[0.03] rounded-full blur-[100px]" />
-      </div>
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-[360px] space-y-8">
+        <h1 className="font-display text-5xl font-bold text-text-primary text-center">
+          VITRACK
+        </h1>
 
-      <div className="w-full max-w-sm relative z-10 animate-fade-in">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white">ViTrack</h1>
-          <p className="text-white/60 mt-2 text-sm">
-            Tracker calorie e allenamenti
+        <div className="bg-surface border border-border rounded-lg p-6">
+          <p className="font-body text-sm text-text-tertiary text-center mb-6">
+            Track. Train. Transform.
           </p>
-        </div>
 
-        <div className="glass-card-strong p-6">
           {/* Tabs */}
           <div className="flex text-center mb-6">
             <button
@@ -133,7 +128,7 @@ export default function LoginPage() {
               <div>
                 <label
                   htmlFor="email"
-                  className="block text-xs text-white/60 uppercase tracking-wider font-medium mb-2"
+                  className="block font-mono-label text-text-tertiary mb-2"
                 >
                   Email
                 </label>
@@ -143,7 +138,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="nome@esempio.com"
-                  className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_15px_rgba(59,130,246,0.1)] text-white placeholder-[#444] transition-all"
+                  className="w-full px-4 py-3 rounded-lg bg-transparent border border-border focus:outline-none focus:border-[var(--color-accent-dynamic)] text-text-primary placeholder-text-tertiary transition-all font-body"
                   required
                 />
               </div>
@@ -151,7 +146,7 @@ export default function LoginPage() {
               <div>
                 <label
                   htmlFor="password"
-                  className="block text-xs text-white/60 uppercase tracking-wider font-medium mb-2"
+                  className="block font-mono-label text-text-tertiary mb-2"
                 >
                   Password
                 </label>
@@ -161,21 +156,21 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="La tua password"
-                  className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_15px_rgba(59,130,246,0.1)] text-white placeholder-[#444] transition-all"
+                  className="w-full px-4 py-3 rounded-lg bg-transparent border border-border focus:outline-none focus:border-[var(--color-accent-dynamic)] text-text-primary placeholder-text-tertiary transition-all font-body"
                   required
                 />
               </div>
 
               {error && (
-                <div className="p-3 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/20">
-                  <p className="text-sm text-[#EF4444]">{error}</p>
+                <div className="p-3 rounded-lg bg-danger/10 border border-danger/20">
+                  <p className="text-sm text-danger">{error}</p>
                 </div>
               )}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-gradient-to-r from-[#3B82F6] to-[#8B5CF6] text-white rounded-xl font-medium transition-all disabled:opacity-50 hover:shadow-[0_0_25px_rgba(59,130,246,0.25)] active:scale-[0.98]"
+                className="w-full py-3 bg-[var(--color-accent-dynamic)] text-black rounded-lg font-mono-label tracking-widest transition-all disabled:opacity-50 hover:opacity-90 active:scale-[0.98]"
               >
                 {loading ? "Accesso..." : "Accedi"}
               </button>
@@ -188,7 +183,7 @@ export default function LoginPage() {
               <div>
                 <label
                   htmlFor="telegram_id"
-                  className="block text-xs text-white/60 uppercase tracking-wider font-medium mb-2"
+                  className="block font-mono-label text-text-tertiary mb-2"
                 >
                   Telegram ID
                 </label>
@@ -198,25 +193,25 @@ export default function LoginPage() {
                   value={telegramId}
                   onChange={(e) => setTelegramId(e.target.value)}
                   placeholder="Es. 123456789"
-                  className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08] focus:outline-none focus:border-[#3B82F6]/30 focus:shadow-[0_0_15px_rgba(59,130,246,0.1)] text-white placeholder-[#444] transition-all"
+                  className="w-full px-4 py-3 rounded-lg bg-transparent border border-border focus:outline-none focus:border-[var(--color-accent-dynamic)] text-text-primary placeholder-text-tertiary transition-all font-body"
                   required
                 />
-                <p className="text-xs text-white/50 mt-2">
+                <p className="text-xs text-text-tertiary mt-2">
                   Puoi trovare il tuo Telegram ID inviando /start al bot
                   @userinfobot
                 </p>
               </div>
 
               {error && (
-                <div className="p-3 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/20">
-                  <p className="text-sm text-[#EF4444]">{error}</p>
+                <div className="p-3 rounded-lg bg-danger/10 border border-danger/20">
+                  <p className="text-sm text-danger">{error}</p>
                 </div>
               )}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-gradient-to-r from-[#3B82F6] to-[#8B5CF6] text-white rounded-xl font-medium transition-all disabled:opacity-50 hover:shadow-[0_0_25px_rgba(59,130,246,0.25)] active:scale-[0.98]"
+                className="w-full py-3 bg-[var(--color-accent-dynamic)] text-black rounded-lg font-mono-label tracking-widest transition-all disabled:opacity-50 hover:opacity-90 active:scale-[0.98]"
               >
                 {loading ? "Accesso..." : "Accedi"}
               </button>
@@ -225,24 +220,33 @@ export default function LoginPage() {
         </div>
 
         {/* Links below card */}
-        <div className="mt-6 space-y-3 text-center">
-          <p className="text-sm text-white/50">
+        <div className="space-y-3 text-center">
+          <p className="text-sm text-text-tertiary">
             <Link
               href="/forgot-password"
-              className="text-[#3B82F6] hover:text-[#60A5FA] transition-colors"
+              className="text-text-secondary hover:text-text-primary transition-colors underline"
             >
               Password dimenticata?
             </Link>
           </p>
-          <p className="text-sm text-white/50">
+          <p className="text-sm text-text-tertiary">
             Non hai un account?{" "}
             <Link
               href="/register"
-              className="text-[#3B82F6] hover:text-[#60A5FA] transition-colors"
+              className="text-text-secondary hover:text-text-primary transition-colors underline"
             >
               Registrati
             </Link>
           </p>
+        </div>
+
+        {/* Decorative typographic line */}
+        <div className="mt-8 flex items-center justify-center gap-1 opacity-30">
+          <div className="w-12 h-px" style={{ backgroundColor: 'var(--color-accent-dynamic)' }} />
+          <div className="w-8 h-px" style={{ backgroundColor: 'var(--color-accent-dynamic)' }} />
+          <div className="w-4 h-px" style={{ backgroundColor: 'var(--color-accent-dynamic)' }} />
+          <div className="w-2 h-px" style={{ backgroundColor: 'var(--color-accent-dynamic)' }} />
+          <div className="w-1 h-px" style={{ backgroundColor: 'var(--color-accent-dynamic)' }} />
         </div>
       </div>
     </div>
