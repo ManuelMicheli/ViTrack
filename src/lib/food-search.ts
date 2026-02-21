@@ -349,5 +349,5 @@ export async function searchFoods(query: string): Promise<FoodSearchResult[]> {
   ];
 
   const deduplicated = deduplicateResults(allResults);
-  return deduplicated.slice(0, 10);
+  return deduplicated.slice(0, 15);
 }
