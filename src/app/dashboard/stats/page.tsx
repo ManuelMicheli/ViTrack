@@ -207,6 +207,11 @@ export default function StatsPage() {
           caloriesBulk={num(user.calories_bulk)}
           goal={user.goal}
           weightKg={num(user.weight_kg)}
+          activeProteinG={num(user.macro_protein_g)}
+          activeCarbsG={num(user.macro_carbs_g)}
+          activeFatG={num(user.macro_fat_g)}
+          goalSubtype={user.goal_subtype || null}
+          calorieSurplusDeficit={user.calorie_surplus_deficit != null ? Number(user.calorie_surplus_deficit) : null}
         />
       </motion.div>
 

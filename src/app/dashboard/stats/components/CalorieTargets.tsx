@@ -9,6 +9,12 @@ interface CalorieTargetsProps {
   caloriesBulk: number | null;
   goal: string | null;
   weightKg: number | null;
+  // Actual macro targets from goal-classifier
+  activeProteinG: number | null;
+  activeCarbsG: number | null;
+  activeFatG: number | null;
+  goalSubtype: string | null;
+  calorieSurplusDeficit: number | null;
 }
 
 const goalToHighlight: Record<string, string> = {
@@ -29,6 +35,21 @@ const macroRatios: Record<GoalType, { proteinPerKg: number; fatPerKg: number }> 
   cut:      { proteinPerKg: 2.2, fatPerKg: 0.8 },
   maintain: { proteinPerKg: 2.0, fatPerKg: 1.0 },
   bulk:     { proteinPerKg: 2.0, fatPerKg: 1.0 },
+};
+
+const subtypeLabels: Record<string, string> = {
+  lean_bulk: 'Lean Bulk',
+  moderate_bulk: 'Bulk Moderato',
+  aggressive_bulk: 'Bulk Aggressivo',
+  conservative_deficit: 'Deficit Conservativo',
+  moderate_deficit: 'Deficit Moderato',
+  aggressive_deficit: 'Deficit Aggressivo',
+  performance_strength: 'Performance Forza',
+  performance_endurance: 'Performance Endurance',
+  performance_intermittent: 'Sport Misti',
+  performance_technical: 'Sport Tecnici',
+  maintain: 'Mantenimento',
+  healthy: 'Alimentazione Sana',
 };
 
 function computeMacros(
@@ -54,11 +75,13 @@ function AnimatedCard({
   value,
   isHighlighted,
   macros,
+  subtypeLabel,
 }: {
   label: string;
   value: number | null;
   isHighlighted: boolean;
   macros: { protein: number; carbs: number; fat: number } | null;
+  subtypeLabel?: string | null;
 }) {
   const animValue = useAnimatedNumber(value ?? 0);
 
@@ -79,6 +102,11 @@ function AnimatedCard({
         >
           Il tuo obiettivo
         </span>
+      )}
+      {isHighlighted && subtypeLabel && (
+        <p className="font-body text-[10px] text-text-tertiary mt-1">
+          {subtypeLabel}
+        </p>
       )}
       <p className="font-display text-xl font-bold text-text-primary mt-1">
         {value ? <motion.span>{animValue}</motion.span> : "--"}
@@ -106,12 +134,34 @@ function AnimatedCard({
   );
 }
 
-export default function CalorieTargets({ caloriesCut, caloriesMaintain, caloriesBulk, goal, weightKg }: CalorieTargetsProps) {
+export default function CalorieTargets({
+  caloriesCut,
+  caloriesMaintain,
+  caloriesBulk,
+  goal,
+  weightKg,
+  activeProteinG,
+  activeCarbsG,
+  activeFatG,
+  goalSubtype,
+}: CalorieTargetsProps) {
   const highlighted = goal ? goalToHighlight[goal] || "maintain" : "maintain";
 
-  const cutMacros = computeMacros(caloriesCut, weightKg, "cut");
-  const maintainMacros = computeMacros(caloriesMaintain, weightKg, "maintain");
-  const bulkMacros = computeMacros(caloriesBulk, weightKg, "bulk");
+  // For the highlighted card, use the actual DB macros (from goal-classifier)
+  // For non-highlighted cards, use the existing local computation
+  const cutMacros = highlighted === "cut" && activeProteinG != null
+    ? { protein: Math.round(activeProteinG), carbs: Math.round(activeCarbsG!), fat: Math.round(activeFatG!) }
+    : computeMacros(caloriesCut, weightKg, "cut");
+
+  const maintainMacros = highlighted === "maintain" && activeProteinG != null
+    ? { protein: Math.round(activeProteinG), carbs: Math.round(activeCarbsG!), fat: Math.round(activeFatG!) }
+    : computeMacros(caloriesMaintain, weightKg, "maintain");
+
+  const bulkMacros = highlighted === "bulk" && activeProteinG != null
+    ? { protein: Math.round(activeProteinG), carbs: Math.round(activeCarbsG!), fat: Math.round(activeFatG!) }
+    : computeMacros(caloriesBulk, weightKg, "bulk");
+
+  const resolvedSubtypeLabel = goalSubtype ? (subtypeLabels[goalSubtype] ?? goalSubtype) : null;
 
   return (
     <div className="space-y-3">
@@ -122,9 +172,9 @@ export default function CalorieTargets({ caloriesCut, caloriesMaintain, calories
         initial="initial"
         animate="animate"
       >
-        <AnimatedCard label="Dimagrimento" value={caloriesCut ? Math.round(caloriesCut) : null} isHighlighted={highlighted === "cut"} macros={cutMacros} />
-        <AnimatedCard label="Mantenimento" value={caloriesMaintain ? Math.round(caloriesMaintain) : null} isHighlighted={highlighted === "maintain"} macros={maintainMacros} />
-        <AnimatedCard label="Massa" value={caloriesBulk ? Math.round(caloriesBulk) : null} isHighlighted={highlighted === "bulk"} macros={bulkMacros} />
+        <AnimatedCard label="Dimagrimento" value={caloriesCut ? Math.round(caloriesCut) : null} isHighlighted={highlighted === "cut"} macros={cutMacros} subtypeLabel={highlighted === "cut" ? resolvedSubtypeLabel : null} />
+        <AnimatedCard label="Mantenimento" value={caloriesMaintain ? Math.round(caloriesMaintain) : null} isHighlighted={highlighted === "maintain"} macros={maintainMacros} subtypeLabel={highlighted === "maintain" ? resolvedSubtypeLabel : null} />
+        <AnimatedCard label="Massa" value={caloriesBulk ? Math.round(caloriesBulk) : null} isHighlighted={highlighted === "bulk"} macros={bulkMacros} subtypeLabel={highlighted === "bulk" ? resolvedSubtypeLabel : null} />
       </motion.div>
     </div>
   );

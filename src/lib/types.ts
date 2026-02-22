@@ -61,6 +61,10 @@ export interface User {
   macro_carbs_g: number | null;
   macro_fat_g: number | null;
 
+  // Goal classification
+  goal_subtype: string | null;
+  calorie_surplus_deficit: number | null;
+
   // Body composition
   body_fat_percentage: number | null;
   lean_mass_kg: number | null;
