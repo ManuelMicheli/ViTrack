@@ -281,12 +281,12 @@ function classifyCut(input: ClassificationInput, tdee: number): ClassificationRe
       } else if (bf >= 25 && bf <= 35) {
         goalSubtype = 'moderate_deficit';
         deficit = -450;
-      } else if (bf >= 20 && bf < 25) {
-        // This maps to BF% 22-25% female from spec, using 20-25 range
+      } else if (bf >= 22 && bf < 25) {
+        // BF% 22-25% female: conservative deficit (per GuidaObiettivi.md)
         goalSubtype = 'conservative_deficit';
         deficit = -300;
       } else {
-        // bf < 20
+        // bf < 22
         goalSubtype = 'conservative_deficit';
         deficit = -250;
       }
