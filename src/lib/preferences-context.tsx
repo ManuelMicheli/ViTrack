@@ -13,7 +13,7 @@ const ACCENT_COLORS: Record<AccentColor, string> = {
 
 const DEFAULT_SECTION_ORDER = [
   "greeting",
-  "quickadd",
+  "plan",
   "calories",
   "water-streak",
   "weight",
@@ -69,14 +69,28 @@ function loadLayoutMode(initial?: LayoutMode): LayoutMode {
   return saved === "compact" || saved === "expanded" ? saved : "expanded";
 }
 
+function migrateSectionOrder(order: string[]): string[] {
+  // Replace removed "quickadd" with "plan"
+  if (order.includes("quickadd")) {
+    return order.map((s) => (s === "quickadd" ? "plan" : s));
+  }
+  // Ensure "plan" exists for older saved orders
+  if (!order.includes("plan")) {
+    const idx = order.indexOf("greeting");
+    const insertAt = idx >= 0 ? idx + 1 : 0;
+    return [...order.slice(0, insertAt), "plan", ...order.slice(insertAt)];
+  }
+  return order;
+}
+
 function loadSectionOrder(initial?: string[]): string[] {
-  if (initial && Array.isArray(initial) && initial.length > 0) return initial;
+  if (initial && Array.isArray(initial) && initial.length > 0) return migrateSectionOrder(initial);
   if (typeof window === "undefined") return DEFAULT_SECTION_ORDER;
   const saved = localStorage.getItem("vitrack_dashboard_order");
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) return migrateSectionOrder(parsed);
     } catch { /* ignore */ }
   }
   return DEFAULT_SECTION_ORDER;

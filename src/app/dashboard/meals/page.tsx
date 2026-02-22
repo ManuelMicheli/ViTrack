@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import type { Meal, User } from "@/lib/types";
+import type { Meal } from "@/lib/types";
 import DatePicker from "@/components/DatePicker";
 import MacroBar from "@/components/MacroBar";
 import DailyRingChart from "@/components/DailyRingChart";
@@ -15,6 +15,7 @@ import AddMealModal from "@/components/AddMealModal";
 import { PlusIcon } from "@/components/icons";
 import { staggerContainer, staggerItem } from "@/lib/animation-config";
 import { useLanguage } from "@/lib/language-context";
+import { useUser } from "@/lib/user-provider";
 import { addToRecent, incrementFrequency } from "@/lib/food-history";
 import type { FoodItem } from "@/lib/food-database/types";
 import type { TranslationKey } from "@/lib/translations";
@@ -40,18 +41,9 @@ export default function MealsPage() {
   const [mealModalOpen, setMealModalOpen] = useState(false);
   const [mealModalType, setMealModalType] = useState<string | undefined>();
   const [foodSearchOpen, setFoodSearchOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
 
-  const userId = typeof window !== "undefined" ? localStorage.getItem("vitrack_user_id") : null;
-
-  // Fetch user goals
-  useEffect(() => {
-    if (!userId) return;
-    fetch(`/api/user?id=${userId}`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => { if (data) setUser(data); })
-      .catch(() => {});
-  }, [userId]);
+  const { user } = useUser();
+  const userId = user?.id ?? (typeof window !== "undefined" ? localStorage.getItem("vitrack_user_id") : null);
 
   const getMealTypeLabel = (type: string) => {
     const key = `meal.${type}` as TranslationKey;

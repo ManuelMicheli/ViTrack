@@ -10,6 +10,7 @@ import { ChatProvider } from "@/lib/chat-context";
 import { PreferencesProvider, type AccentColor } from "@/lib/preferences-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import { LanguageProvider } from "@/lib/language-context";
+import { UserProvider } from "@/lib/user-provider";
 import PageTransition from "@/components/PageTransition";
 import Celebration from "@/components/Celebration";
 import { VTLogo } from "@/components/ViTrackTransition";
@@ -107,18 +108,20 @@ export default function DashboardLayout({
             section_order: user.section_order,
           } : undefined}
         >
-          <Celebration>
-            <ChatProvider>
-              <div className="min-h-screen">
-                <Sidebar currentPath={pathname} user={user} onLogout={handleLogout} />
-                <main className="md:ml-[220px] pb-20 md:pb-0 min-h-screen">
-                  <PageTransition>{children}</PageTransition>
-                </main>
-                <BottomNav currentPath={pathname} />
-                <ChatPanel />
-              </div>
-            </ChatProvider>
-          </Celebration>
+          <UserProvider initialUser={user}>
+            <Celebration>
+              <ChatProvider>
+                <div className="min-h-screen">
+                  <Sidebar currentPath={pathname} user={user} onLogout={handleLogout} />
+                  <main className="md:ml-[220px] pb-20 md:pb-0 min-h-screen">
+                    <PageTransition>{children}</PageTransition>
+                  </main>
+                  <BottomNav currentPath={pathname} />
+                  <ChatPanel />
+                </div>
+              </ChatProvider>
+            </Celebration>
+          </UserProvider>
         </PreferencesProvider>
       </LanguageProvider>
     </ThemeProvider>

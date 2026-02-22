@@ -6,6 +6,13 @@ import { springs, staggerContainer, staggerItem } from "@/lib/animation-config";
 import { useLanguage } from "@/lib/language-context";
 import type { TranslationKey } from "@/lib/translations";
 
+interface MacroGoals {
+  protein_g?: number;
+  carbs_g?: number;
+  fat_g?: number;
+  fiber_g?: number;
+}
+
 interface DailySummaryProps {
   totals: {
     calories: number;
@@ -19,13 +26,16 @@ interface DailySummaryProps {
     net_calories: number;
   };
   compact?: boolean;
+  macroGoals?: MacroGoals;
 }
 
-const macroCards: { key: "protein_g" | "carbs_g" | "fat_g" | "fiber_g"; labelKey: TranslationKey; unit: string; color: string; goal: number }[] = [
-  { key: "protein_g", labelKey: "macro.protein", unit: "g", color: "#3B82F6", goal: 150 },
-  { key: "carbs_g", labelKey: "macro.carbs", unit: "g", color: "#F59E0B", goal: 250 },
-  { key: "fat_g", labelKey: "macro.fat", unit: "g", color: "#EF4444", goal: 70 },
-  { key: "fiber_g", labelKey: "macro.fiber", unit: "g", color: "#22C55E", goal: 30 },
+const defaultGoals: Required<MacroGoals> = { protein_g: 150, carbs_g: 250, fat_g: 70, fiber_g: 30 };
+
+const macroCardsMeta: { key: "protein_g" | "carbs_g" | "fat_g" | "fiber_g"; labelKey: TranslationKey; unit: string; color: string }[] = [
+  { key: "protein_g", labelKey: "macro.protein", unit: "g", color: "#3B82F6" },
+  { key: "carbs_g", labelKey: "macro.carbs", unit: "g", color: "#F59E0B" },
+  { key: "fat_g", labelKey: "macro.fat", unit: "g", color: "#EF4444" },
+  { key: "fiber_g", labelKey: "macro.fiber", unit: "g", color: "#22C55E" },
 ];
 
 function AnimatedNum({ value }: { value: number }) {
@@ -44,8 +54,9 @@ function AnimatedNum({ value }: { value: number }) {
   return <motion.span>{display}</motion.span>;
 }
 
-export default function DailySummary({ totals, compact }: DailySummaryProps) {
+export default function DailySummary({ totals, compact, macroGoals }: DailySummaryProps) {
   const { t } = useLanguage();
+  const goals = { ...defaultGoals, ...macroGoals };
 
   return (
     <motion.div
@@ -54,9 +65,10 @@ export default function DailySummary({ totals, compact }: DailySummaryProps) {
       animate="animate"
       variants={staggerContainer(0.08)}
     >
-      {macroCards.map((macro) => {
+      {macroCardsMeta.map((macro) => {
         const value = totals[macro.key];
-        const pct = Math.min((value / macro.goal) * 100, 100);
+        const goal = goals[macro.key];
+        const pct = Math.min((value / goal) * 100, 100);
         return (
           <motion.div key={macro.key} className={`data-card ${compact ? "p-2" : "p-3"}`} variants={staggerItem}>
             <span className="font-mono-label text-text-tertiary">{t(macro.labelKey)}</span>

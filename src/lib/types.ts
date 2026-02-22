@@ -116,6 +116,11 @@ export interface DailySummary {
     net_calories: number;
   };
   calorie_goal: number;
+  macro_goals?: {
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+  };
 }
 
 export interface WaterLog {

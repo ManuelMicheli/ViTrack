@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       .gte("logged_at", startOfDay)
       .lte("logged_at", endOfDay)
       .order("logged_at", { ascending: true }),
-    supabaseAdmin.from("users").select("daily_calorie_goal").eq("id", userId).single(),
+    supabaseAdmin.from("users").select("daily_calorie_goal, daily_calorie_target, macro_protein_g, macro_carbs_g, macro_fat_g, protein_goal, carbs_goal, fat_goal").eq("id", userId).single(),
   ]);
 
   if (mealsResult.error || workoutsResult.error) {
@@ -43,7 +43,8 @@ export async function GET(request: NextRequest) {
 
   const meals = mealsResult.data as Meal[];
   const workouts = workoutsResult.data as Workout[];
-  const calorieGoal = userResult.data?.daily_calorie_goal ?? 2000;
+  const u = userResult.data;
+  const calorieGoal = u?.daily_calorie_target ?? u?.daily_calorie_goal ?? 2000;
 
   const totalCalories = meals.reduce((sum, m) => sum + (m.calories || 0), 0);
   const totalProtein = meals.reduce((sum, m) => sum + (m.protein_g || 0), 0);
@@ -54,6 +55,10 @@ export async function GET(request: NextRequest) {
     (sum, w) => sum + (w.calories_burned || 0),
     0
   );
+
+  const proteinGoal = Number(u?.macro_protein_g ?? u?.protein_goal ?? 0) || undefined;
+  const carbsGoal = Number(u?.macro_carbs_g ?? u?.carbs_goal ?? 0) || undefined;
+  const fatGoal = Number(u?.macro_fat_g ?? u?.fat_goal ?? 0) || undefined;
 
   const summary: DailySummary = {
     meals,
@@ -70,6 +75,9 @@ export async function GET(request: NextRequest) {
       net_calories: totalCalories - totalBurned,
     },
     calorie_goal: calorieGoal,
+    ...(proteinGoal && carbsGoal && fatGoal
+      ? { macro_goals: { protein_g: proteinGoal, carbs_g: carbsGoal, fat_g: fatGoal } }
+      : {}),
   };
 
   return NextResponse.json(summary);

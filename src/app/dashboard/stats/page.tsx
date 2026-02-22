@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { staggerContainer, staggerItem } from "@/lib/animation-config";
 import { useLanguage } from "@/lib/language-context";
+import { useUser } from "@/lib/user-provider";
 import type { User, WeightLog, DailySummary } from "@/lib/types";
 
 import TDEEHero from "./components/TDEEHero";
@@ -34,20 +33,19 @@ interface DayData {
 }
 
 export default function StatsPage() {
-  const router = useRouter();
   const { t, language } = useLanguage();
   const locale = language === "en" ? "en-US" : "it-IT";
+  const { user, updateUser } = useUser();
 
-  const [user, setUser] = useState<User | null>(null);
   const [weightLogs, setWeightLogs] = useState<WeightLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>(7);
   const [trendData, setTrendData] = useState<DayData[]>([]);
   const [trendLoading, setTrendLoading] = useState(false);
 
-  const fetchWeightLogs = useCallback(async (userId: string) => {
+  const fetchWeightLogs = useCallback(async (uid: string) => {
     try {
-      const res = await fetch(`/api/weight?user_id=${userId}&limit=90`);
+      const res = await fetch(`/api/weight?user_id=${uid}&limit=90`);
       if (res.ok) {
         const data = await res.json();
         setWeightLogs(data);
@@ -57,46 +55,13 @@ export default function StatsPage() {
     }
   }, []);
 
-  const fetchUser = useCallback(async () => {
-    try {
-      const supabase = createSupabaseBrowser();
-      const { data: sessionData } = await supabase.auth.getSession();
-      let res: Response | null = null;
-
-      if (sessionData?.session?.user?.id) {
-        res = await fetch(`/api/user?id=${sessionData.session.user.id}`);
-      }
-
-      if (!res || !res.ok) {
-        const telegramId = localStorage.getItem("vitrack_telegram_id");
-        if (!telegramId) { router.push("/"); return; }
-        res = await fetch(`/api/user?telegram_id=${encodeURIComponent(telegramId)}`);
-      }
-
-      if (res.ok) {
-        const data = await res.json();
-        setUser(data);
-        await fetchWeightLogs(data.id);
-      } else {
-        router.push("/");
-      }
-    } catch {
-      const telegramId = localStorage.getItem("vitrack_telegram_id");
-      if (!telegramId) { router.push("/"); return; }
-      try {
-        const res = await fetch(`/api/user?telegram_id=${encodeURIComponent(telegramId)}`);
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data);
-          await fetchWeightLogs(data.id);
-        }
-      } catch { /* ignore */ }
-    } finally {
+  useEffect(() => {
+    if (user) {
+      fetchWeightLogs(user.id).finally(() => setLoading(false));
+    } else {
       setLoading(false);
     }
-  }, [router, fetchWeightLogs]);
-
-  useEffect(() => { fetchUser(); }, [fetchUser]);
+  }, [user, fetchWeightLogs]);
 
   // Fetch trend data
   const userId = typeof window !== "undefined" ? localStorage.getItem("vitrack_user_id") : null;
@@ -144,7 +109,7 @@ export default function StatsPage() {
 
   const handleWeightLogged = () => { if (user) fetchWeightLogs(user.id); };
   const handleStatsSaved = (updatedUser: User) => {
-    setUser(updatedUser);
+    updateUser(updatedUser);
     if (updatedUser.id) fetchWeightLogs(updatedUser.id);
   };
 

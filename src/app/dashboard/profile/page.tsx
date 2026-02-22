@@ -2,12 +2,11 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import type { User } from "@/lib/types";
-import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { staggerContainer, staggerItem } from "@/lib/animation-config";
 import { useLanguage } from "@/lib/language-context";
+import { useUser } from "@/lib/user-provider";
 
 const INPUT_CLASS =
   "w-full px-4 py-3 rounded-lg bg-transparent border border-border text-text-primary placeholder-text-tertiary text-sm font-body focus:outline-none focus:border-[var(--color-accent-dynamic)] transition-all";
@@ -15,13 +14,18 @@ const INPUT_CLASS =
 const SELECT_CLASS =
   "w-full px-4 py-3 rounded-lg bg-transparent border border-border text-text-primary text-sm font-body focus:outline-none focus:border-[var(--color-accent-dynamic)] transition-all appearance-none";
 
+/** Compute carbs from remaining calories after protein + fat */
+function calcAutoCarbs(calories: number, proteinG: number, fatG: number): number {
+  const remaining = calories - (proteinG * 4 + fatG * 9);
+  return Math.max(0, Math.round(remaining / 4));
+}
+
 export default function ProfilePage() {
   const { t, language } = useLanguage();
   const locale = language === "en" ? "en-US" : "it-IT";
-  const router = useRouter();
+  const { user, saveUser: ctxSaveUser, updateUser } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Personal info form
@@ -65,10 +69,16 @@ export default function ProfilePage() {
     setGender(data.gender || "");
     setHeightCm(data.height_cm != null ? String(data.height_cm) : "");
     setActivityLevel(data.activity_level || "sedentary");
-    setDailyCalorieGoal(String(data.daily_calorie_goal));
-    setProteinGoal(data.protein_goal != null ? String(data.protein_goal) : "");
-    setCarbsGoal(data.carbs_goal != null ? String(data.carbs_goal) : "");
-    setFatGoal(data.fat_goal != null ? String(data.fat_goal) : "");
+
+    const cal = Number(data.daily_calorie_target ?? data.daily_calorie_goal ?? 2000);
+    const prot = Number(data.macro_protein_g ?? data.protein_goal ?? 0);
+    const fat = Number(data.macro_fat_g ?? data.fat_goal ?? 0);
+    setDailyCalorieGoal(String(cal));
+    setProteinGoal(prot ? String(prot) : "");
+    setFatGoal(fat ? String(fat) : "");
+    // Carbs auto-calculated
+    setCarbsGoal(String(calcAutoCarbs(cal, prot, fat)));
+
     setWeightGoalKg(data.weight_goal_kg != null ? String(data.weight_goal_kg) : "");
     setWaterGoalMl(String(data.water_goal_ml));
     setDietaryPreferences(data.dietary_preferences || []);
@@ -77,72 +87,20 @@ export default function ProfilePage() {
     setDaysSinceJoin(Math.floor((Date.now() - joinDate.getTime()) / (1000 * 60 * 60 * 24)));
   }, []);
 
+  // Populate form from context user (no API call)
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        // Try Supabase Auth first
-        const supabase = createSupabaseBrowser();
-        const { data: sessionData } = await supabase.auth.getSession();
-
-        let res: Response | null = null;
-
-        if (sessionData?.session?.user?.id) {
-          res = await fetch(`/api/user?id=${sessionData.session.user.id}`);
-        }
-
-        // Fallback to localStorage telegram_id
-        if (!res || !res.ok) {
-          const telegramId = localStorage.getItem("vitrack_telegram_id");
-          if (!telegramId) {
-            router.push("/");
-            return;
-          }
-          res = await fetch(`/api/user?telegram_id=${encodeURIComponent(telegramId)}`);
-        }
-
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data);
-          populateForm(data);
-        } else {
-          router.push("/");
-        }
-      } catch {
-        // Fallback if Supabase client fails
-        const telegramId = localStorage.getItem("vitrack_telegram_id");
-        if (!telegramId) {
-          router.push("/");
-          return;
-        }
-        try {
-          const res = await fetch(`/api/user?telegram_id=${encodeURIComponent(telegramId)}`);
-          if (res.ok) {
-            const data = await res.json();
-            setUser(data);
-            populateForm(data);
-          }
-        } catch {
-          /* ignore */
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUser();
-  }, [router, populateForm]);
+    if (user) {
+      populateForm(user);
+      setLoading(false);
+    }
+  }, [user, populateForm]);
 
   const saveSection = async (section: string, fields: Record<string, unknown>) => {
     if (!user) return;
     setSavingSection(section);
     try {
-      const res = await fetch(`/api/user?id=${user.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(fields),
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        setUser(updated);
+      const updated = await ctxSaveUser(fields);
+      if (updated) {
         setSavedSection(section);
         setTimeout(() => setSavedSection(null), 2000);
       }
@@ -164,11 +122,22 @@ export default function ProfilePage() {
   };
 
   const handleSaveGoals = () => {
+    const cal = dailyCalorieGoal ? parseInt(dailyCalorieGoal) : 2000;
+    const prot = proteinGoal ? parseInt(proteinGoal) : null;
+    const carbs = carbsGoal ? parseInt(carbsGoal) : null;
+    const fat = fatGoal ? parseInt(fatGoal) : null;
+
     saveSection("goals", {
-      daily_calorie_goal: dailyCalorieGoal ? parseInt(dailyCalorieGoal) : 2000,
-      protein_goal: proteinGoal ? parseInt(proteinGoal) : null,
-      carbs_goal: carbsGoal ? parseInt(carbsGoal) : null,
-      fat_goal: fatGoal ? parseInt(fatGoal) : null,
+      // Legacy fields
+      daily_calorie_goal: cal,
+      protein_goal: prot,
+      carbs_goal: carbs,
+      fat_goal: fat,
+      // New fields (API sync will also mirror, but explicit is clearer)
+      daily_calorie_target: cal,
+      macro_protein_g: prot,
+      macro_carbs_g: carbs,
+      macro_fat_g: fat,
       weight_goal_kg: weightGoalKg ? parseFloat(weightGoalKg) : null,
       water_goal_ml: waterGoalMl ? parseInt(waterGoalMl) : 2000,
     });
@@ -186,6 +155,46 @@ export default function ProfilePage() {
     );
   };
 
+  // Macro consistency: when calories change, recalculate macros proportionally
+  const handleCalorieChange = (value: string) => {
+    const newCal = parseInt(value) || 0;
+    const oldCal = parseInt(dailyCalorieGoal) || 1;
+    setDailyCalorieGoal(value);
+
+    if (newCal > 0 && oldCal > 0) {
+      const ratio = newCal / oldCal;
+      const newProt = Math.round((parseInt(proteinGoal) || 0) * ratio);
+      const newFat = Math.round((parseInt(fatGoal) || 0) * ratio);
+      setProteinGoal(String(newProt));
+      setFatGoal(String(newFat));
+      setCarbsGoal(String(calcAutoCarbs(newCal, newProt, newFat)));
+    }
+  };
+
+  // Macro consistency: when protein changes, auto-adjust carbs
+  const handleProteinChange = (value: string) => {
+    setProteinGoal(value);
+    const cal = parseInt(dailyCalorieGoal) || 0;
+    const prot = parseInt(value) || 0;
+    const fat = parseInt(fatGoal) || 0;
+    setCarbsGoal(String(calcAutoCarbs(cal, prot, fat)));
+  };
+
+  // Macro consistency: when fat changes, auto-adjust carbs
+  const handleFatChange = (value: string) => {
+    setFatGoal(value);
+    const cal = parseInt(dailyCalorieGoal) || 0;
+    const prot = parseInt(proteinGoal) || 0;
+    const fat = parseInt(value) || 0;
+    setCarbsGoal(String(calcAutoCarbs(cal, prot, fat)));
+  };
+
+  // Computed: calories from current macro values
+  const macroCalories = (parseInt(proteinGoal) || 0) * 4 + (parseInt(carbsGoal) || 0) * 4 + (parseInt(fatGoal) || 0) * 9;
+  const targetCalories = parseInt(dailyCalorieGoal) || 0;
+  const calorieDiff = Math.abs(macroCalories - targetCalories);
+  const calorieMatch = calorieDiff <= 10; // within rounding tolerance
+
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
@@ -197,7 +206,7 @@ export default function ProfilePage() {
       const res = await fetch("/api/user/avatar", { method: "POST", body: formData });
       if (res.ok) {
         const updated = await res.json();
-        setUser(updated);
+        updateUser(updated);
       }
     } catch {
       /* ignore */
@@ -401,7 +410,7 @@ export default function ProfilePage() {
             <input
               type="number"
               value={dailyCalorieGoal}
-              onChange={(e) => setDailyCalorieGoal(e.target.value)}
+              onChange={(e) => handleCalorieChange(e.target.value)}
               placeholder="2000"
               className={INPUT_CLASS + " pr-14"}
             />
@@ -416,7 +425,7 @@ export default function ProfilePage() {
             <input
               type="number"
               value={proteinGoal}
-              onChange={(e) => setProteinGoal(e.target.value)}
+              onChange={(e) => handleProteinChange(e.target.value)}
               placeholder="150"
               className={INPUT_CLASS + " pr-10"}
             />
@@ -424,16 +433,18 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Carboidrati */}
+        {/* Carboidrati (auto-calculated) */}
         <div>
-          <label className="font-mono-label text-text-tertiary mb-2 block">{t("macro.carbs")}</label>
+          <label className="font-mono-label text-text-tertiary mb-2 block">
+            {t("macro.carbs")}
+            <span className="ml-2 text-[10px] text-text-tertiary/60 font-body">({t("profile.carbsAutoAdjust")})</span>
+          </label>
           <div className="relative">
             <input
               type="number"
               value={carbsGoal}
-              onChange={(e) => setCarbsGoal(e.target.value)}
-              placeholder="250"
-              className={INPUT_CLASS + " pr-10"}
+              readOnly
+              className={INPUT_CLASS + " pr-10 opacity-60 cursor-not-allowed"}
             />
             <span className="absolute right-4 top-1/2 -translate-y-1/2 font-mono-label text-text-tertiary">g</span>
           </div>
@@ -446,13 +457,25 @@ export default function ProfilePage() {
             <input
               type="number"
               value={fatGoal}
-              onChange={(e) => setFatGoal(e.target.value)}
+              onChange={(e) => handleFatChange(e.target.value)}
               placeholder="65"
               className={INPUT_CLASS + " pr-10"}
             />
             <span className="absolute right-4 top-1/2 -translate-y-1/2 font-mono-label text-text-tertiary">g</span>
           </div>
         </div>
+
+        {/* Live macro/calorie consistency preview */}
+        {targetCalories > 0 && (
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-mono-label ${
+            calorieMatch
+              ? "bg-emerald-500/10 text-emerald-400"
+              : "bg-amber-500/10 text-amber-400"
+          }`}>
+            <span>{t("profile.macroCalories")}: {macroCalories} kcal</span>
+            {!calorieMatch && <span>({macroCalories > targetCalories ? "+" : ""}{macroCalories - targetCalories})</span>}
+          </div>
+        )}
 
         {/* Obiettivo peso */}
         <div>

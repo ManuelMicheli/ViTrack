@@ -3,14 +3,14 @@
 import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import type { DailySummary, User } from "@/lib/types";
+import type { DailySummary } from "@/lib/types";
 import CalorieProgress from "@/components/CalorieProgress";
 import DailySummaryCard from "@/components/DailySummary";
 import MealList from "@/components/MealList";
 import WorkoutList from "@/components/WorkoutList";
 import DatePicker from "@/components/DatePicker";
-import QuickAddBar from "@/components/QuickAddBar";
 import WaterTracker from "@/components/WaterTracker";
+import PersonalPlanCard from "@/components/PersonalPlanCard";
 import StreakCalendar from "@/components/StreakCalendar";
 import WeightChart from "@/components/WeightChart";
 import AddMealModal from "@/components/AddMealModal";
@@ -19,14 +19,15 @@ import { getGreeting, getMotivation } from "@/lib/personalization";
 import { useCelebration } from "@/lib/celebration-context";
 import { usePreferences } from "@/lib/preferences-context";
 import { useLanguage } from "@/lib/language-context";
+import { useUser } from "@/lib/user-provider";
 
 export default function DashboardPage() {
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [summary, setSummary] = useState<DailySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [mealModalOpen, setMealModalOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
 
+  const { user, saveUser } = useUser();
   const { celebrate } = useCelebration();
   const { sectionOrder, layoutMode } = usePreferences();
   const { t, language } = useLanguage();
@@ -42,37 +43,6 @@ export default function DashboardPage() {
       celebrate("calorie_goal");
     }
   }, [summary, celebrate]);
-
-  // Fetch user settings
-  useEffect(() => {
-    const fetchUser = async () => {
-      // Try Supabase session first (email-registered users)
-      const supabase = (await import("@/lib/supabase-browser")).createSupabaseBrowser();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        try {
-          const res = await fetch(`/api/user?id=${session.user.id}`);
-          if (res.ok) {
-            const data = await res.json();
-            setUser(data);
-            return;
-          }
-        } catch { /* fall through */ }
-      }
-
-      // Legacy: Telegram-only users
-      const telegramId = typeof window !== "undefined" ? localStorage.getItem("vitrack_telegram_id") : null;
-      if (!telegramId) return;
-      try {
-        const res = await fetch(`/api/user?telegram_id=${encodeURIComponent(telegramId)}`);
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data);
-        }
-      } catch { /* ignore */ }
-    };
-    fetchUser();
-  }, []);
 
   const fetchSummary = useCallback(async () => {
     if (!userId) return;
@@ -122,18 +92,7 @@ export default function DashboardPage() {
   };
 
   const updateUserSettings = async (updates: Record<string, unknown>) => {
-    if (!user) return;
-    try {
-      const res = await fetch(`/api/user?id=${user.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        setUser(updated);
-      }
-    } catch { /* ignore */ }
+    await saveUser(updates);
   };
 
   if (loading) {
@@ -173,21 +132,24 @@ export default function DashboardPage() {
         <DatePicker value={date} onChange={setDate} />
       </motion.div>
     ),
-    quickadd: (
-      <motion.div key="quickadd" variants={staggerItem}>
-        <QuickAddBar
-          onAddMeal={() => setMealModalOpen(true)}
-          onAddWater={() => {}}
-          onAddWorkout={() => {}}
-          onAddWeight={() => {}}
-        />
+    plan: user?.goal_subtype ? (
+      <motion.div key="plan" variants={staggerItem}>
+        <PersonalPlanCard user={user} />
       </motion.div>
-    ),
+    ) : null,
     calories: summary ? (
       <motion.div key="calories" variants={staggerItem} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <CalorieProgress current={summary.totals.calories} goal={summary.calorie_goal} burned={summary.totals.calories_burned} compact={isCompact} />
         <div className="lg:col-span-2">
-          <DailySummaryCard totals={summary.totals} compact={isCompact} />
+          <DailySummaryCard
+            totals={summary.totals}
+            compact={isCompact}
+            macroGoals={summary.macro_goals ?? (user ? {
+              protein_g: user.macro_protein_g ?? user.protein_goal ?? undefined,
+              carbs_g: user.macro_carbs_g ?? user.carbs_goal ?? undefined,
+              fat_g: user.macro_fat_g ?? user.fat_goal ?? undefined,
+            } : undefined)}
+          />
         </div>
       </motion.div>
     ) : null,
@@ -217,9 +179,17 @@ export default function DashboardPage() {
       <motion.div key="meals" variants={staggerItem}>
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-mono-label text-text-tertiary">{t("dashboard.todaysMeals")}</h3>
-          <Link href="/dashboard/meals" className="font-mono-label text-text-tertiary hover:text-text-primary transition-colors">
-            {t("dashboard.viewAll")} &rarr;
-          </Link>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMealModalOpen(true)}
+              className="font-mono-label text-xs text-[var(--color-accent-dynamic)] hover:opacity-80 transition-opacity"
+            >
+              + Aggiungi
+            </button>
+            <Link href="/dashboard/meals" className="font-mono-label text-text-tertiary hover:text-text-primary transition-colors">
+              {t("dashboard.viewAll")} &rarr;
+            </Link>
+          </div>
         </div>
         <MealList meals={summary.meals.slice(0, 3)} onDelete={handleDeleteMeal} compact />
       </motion.div>
@@ -228,9 +198,17 @@ export default function DashboardPage() {
       <motion.div key="workouts" variants={staggerItem}>
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-mono-label text-text-tertiary">{t("dashboard.todaysWorkouts")}</h3>
-          <Link href="/dashboard/workouts" className="font-mono-label text-text-tertiary hover:text-text-primary transition-colors">
-            {t("dashboard.viewAll")} &rarr;
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/dashboard/workouts"
+              className="font-mono-label text-xs text-[var(--color-accent-dynamic)] hover:opacity-80 transition-opacity"
+            >
+              + Aggiungi
+            </Link>
+            <Link href="/dashboard/workouts" className="font-mono-label text-text-tertiary hover:text-text-primary transition-colors">
+              {t("dashboard.viewAll")} &rarr;
+            </Link>
+          </div>
         </div>
         <WorkoutList workouts={summary.workouts.slice(0, 3)} onDelete={handleDeleteWorkout} compact />
       </motion.div>

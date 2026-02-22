@@ -110,6 +110,28 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
 
+  // Sync legacy ↔ new fields so both sets stay consistent
+  if (updates.daily_calorie_goal !== undefined && updates.daily_calorie_target === undefined) {
+    updates.daily_calorie_target = updates.daily_calorie_goal;
+  } else if (updates.daily_calorie_target !== undefined && updates.daily_calorie_goal === undefined) {
+    updates.daily_calorie_goal = updates.daily_calorie_target;
+  }
+  if (updates.protein_goal !== undefined && updates.macro_protein_g === undefined) {
+    updates.macro_protein_g = updates.protein_goal;
+  } else if (updates.macro_protein_g !== undefined && updates.protein_goal === undefined) {
+    updates.protein_goal = updates.macro_protein_g;
+  }
+  if (updates.carbs_goal !== undefined && updates.macro_carbs_g === undefined) {
+    updates.macro_carbs_g = updates.carbs_goal;
+  } else if (updates.macro_carbs_g !== undefined && updates.carbs_goal === undefined) {
+    updates.carbs_goal = updates.macro_carbs_g;
+  }
+  if (updates.fat_goal !== undefined && updates.macro_fat_g === undefined) {
+    updates.macro_fat_g = updates.fat_goal;
+  } else if (updates.macro_fat_g !== undefined && updates.fat_goal === undefined) {
+    updates.fat_goal = updates.macro_fat_g;
+  }
+
   const { data, error } = await supabaseAdmin
     .from("users")
     .update(updates)

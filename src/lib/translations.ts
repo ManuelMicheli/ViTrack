@@ -227,6 +227,9 @@ const translations = {
   "profile.notLinked": { it: "Non collegato", en: "Not linked" },
   "profile.plan": { it: "Piano", en: "Plan" },
 
+  "profile.macroCalories": { it: "Calorie dai macro", en: "Calories from macros" },
+  "profile.carbsAutoAdjust": { it: "Calcolati automaticamente", en: "Auto-calculated" },
+
   // ── Dietary options ──
   "dietary.vegan": { it: "Vegano", en: "Vegan" },
   "dietary.vegetarian": { it: "Vegetariano", en: "Vegetarian" },
