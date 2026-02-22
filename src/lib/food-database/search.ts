@@ -110,7 +110,7 @@ function getPopularity(food: FoodItem): number {
 }
 
 // ---------------------------------------------------------------------------
-// Fuse.js search instance (lazy-initialized)
+// Fuse.js search instance (lazy-initialized) — used only as fallback
 // ---------------------------------------------------------------------------
 let fuseInstance: Fuse<FoodItem> | null = null;
 
@@ -118,14 +118,13 @@ function getFuse(): Fuse<FoodItem> {
   if (!fuseInstance) {
     fuseInstance = new Fuse(getAllFoods(), {
       keys: [
-        { name: "name_it", weight: 0.45 },
-        { name: "category", weight: 0.2 },
-        { name: "brand", weight: 0.15 },
+        { name: "name_it", weight: 0.6 },
+        { name: "brand", weight: 0.2 },
         { name: "name_en", weight: 0.1 },
         { name: "tags", weight: 0.05 },
         { name: "subcategory", weight: 0.05 },
       ],
-      threshold: 0.4,
+      threshold: 0.25, // strict — avoid false matches
       includeScore: true,
       ignoreLocation: true,
       minMatchCharLength: 2,
@@ -143,10 +142,87 @@ export interface FoodSearchResultLocal {
 }
 
 // ---------------------------------------------------------------------------
-// Main search function — fuzzy, instant, client-side
-// Results are sorted: generic first, then branded. Within each group,
-// popular/well-known items come first. Deduplicates by name (keeps most
-// popular variant of each food name).
+// Phase 1: Exact / prefix / contains matching on name_it, brand, category.
+// This is the primary search — instant and precise.
+// ---------------------------------------------------------------------------
+function exactSearch(query: string, allFoods: FoodItem[]): FoodItem[] {
+  const q = query.toLowerCase();
+
+  // Tier 1: name_it is exactly the query (e.g. "pasta" → "Pasta")
+  const exact: FoodItem[] = [];
+  // Tier 2: name_it starts with the query (e.g. "past" → "Pasta Integrale")
+  const startsWith: FoodItem[] = [];
+  // Tier 3: any word in name_it starts with the query (e.g. "pollo" → "Petto di pollo")
+  const wordMatch: FoodItem[] = [];
+  // Tier 4: name_it contains query anywhere, or category matches
+  const contains: FoodItem[] = [];
+  // Tier 5: brand matches
+  const brandMatch: FoodItem[] = [];
+
+  for (const food of allFoods) {
+    const name = food.name_it.toLowerCase();
+    const brand = food.brand?.toLowerCase() ?? "";
+
+    if (name === q) {
+      exact.push(food);
+    } else if (name.startsWith(q)) {
+      startsWith.push(food);
+    } else if (
+      name.split(/[\s/'()]+/).some((word) => word.startsWith(q))
+    ) {
+      wordMatch.push(food);
+    } else if (name.includes(q) || food.category === q) {
+      contains.push(food);
+    } else if (brand.includes(q)) {
+      brandMatch.push(food);
+    }
+  }
+
+  return [...exact, ...startsWith, ...wordMatch, ...contains, ...brandMatch];
+}
+
+// ---------------------------------------------------------------------------
+// Sort + deduplicate results: generic first (sorted by popularity), then
+// branded (sorted by popularity). Deduplicate by name within each group.
+// ---------------------------------------------------------------------------
+function sortAndDeduplicate(
+  items: FoodItem[],
+  limit: number
+): FoodSearchResultLocal[] {
+  const generic = items.filter((f) => !f.brand);
+  const branded = items.filter((f) => !!f.brand);
+
+  const byPopularity = (a: FoodItem, b: FoodItem) =>
+    getPopularity(a) - getPopularity(b);
+
+  generic.sort(byPopularity);
+  branded.sort(byPopularity);
+
+  // Deduplicate generic by name
+  const seenGeneric = new Set<string>();
+  const uniqueGeneric = generic.filter((f) => {
+    const key = f.name_it.toLowerCase();
+    if (seenGeneric.has(key)) return false;
+    seenGeneric.add(key);
+    return true;
+  });
+
+  // Deduplicate branded by name+brand
+  const seenBranded = new Set<string>();
+  const uniqueBranded = branded.filter((f) => {
+    const key = `${f.brand?.toLowerCase()}|${f.name_it.toLowerCase()}`;
+    if (seenBranded.has(key)) return false;
+    seenBranded.add(key);
+    return true;
+  });
+
+  return [...uniqueGeneric, ...uniqueBranded]
+    .slice(0, limit)
+    .map((item) => ({ item, score: 0 }));
+}
+
+// ---------------------------------------------------------------------------
+// Main search function — two-phase: exact first, fuzzy fallback
 // ---------------------------------------------------------------------------
 export function searchLocalFoods(
   query: string,
@@ -158,57 +234,35 @@ export function searchLocalFoods(
   const q = query.trim();
   if (!q) return [];
 
-  const fuse = getFuse();
-  // Fetch more than needed so we can re-sort and still hit the limit
-  let results = fuse.search(q, { limit: 80 });
+  const limit = options?.limit ?? 6;
+  let allFoods = getAllFoods();
 
   if (options?.category) {
-    results = results.filter((r) => r.item.category === options.category);
+    allFoods = allFoods.filter((f) => f.category === options.category);
   }
 
-  // Split into generic (no brand) and branded
-  const generic = results.filter((r) => !r.item.brand);
-  const branded = results.filter((r) => !!r.item.brand);
+  // Phase 1: exact / prefix / contains matching
+  const exactResults = exactSearch(q, allFoods);
 
-  // Sort each group by popularity (lower = more popular), then by fuzzy score
-  const sortByPopularity = (
-    a: { item: FoodItem; score?: number },
-    b: { item: FoodItem; score?: number }
-  ) => {
-    const popA = getPopularity(a.item);
-    const popB = getPopularity(b.item);
-    if (popA !== popB) return popA - popB;
-    return (a.score ?? 1) - (b.score ?? 1);
-  };
+  if (exactResults.length >= limit) {
+    return sortAndDeduplicate(exactResults, limit);
+  }
 
-  generic.sort(sortByPopularity);
-  branded.sort(sortByPopularity);
+  // Phase 2: fuzzy fallback — fill remaining slots
+  const exactIds = new Set(exactResults.map((f) => f.id));
+  const fuse = getFuse();
+  const fuseResults = fuse
+    .search(q, { limit: 30 })
+    .filter((r) => !exactIds.has(r.item.id))
+    .map((r) => r.item);
 
-  // Deduplicate generic by name — keep the most popular variant
-  const seenGeneric = new Set<string>();
-  const uniqueGeneric = generic.filter((r) => {
-    const key = r.item.name_it.toLowerCase();
-    if (seenGeneric.has(key)) return false;
-    seenGeneric.add(key);
-    return true;
-  });
+  if (options?.category) {
+    const cat = options.category;
+    const filtered = fuseResults.filter((f) => f.category === cat);
+    return sortAndDeduplicate([...exactResults, ...filtered], limit);
+  }
 
-  // Deduplicate branded by name+brand
-  const seenBranded = new Set<string>();
-  const uniqueBranded = branded.filter((r) => {
-    const key = `${r.item.brand?.toLowerCase()}|${r.item.name_it.toLowerCase()}`;
-    if (seenBranded.has(key)) return false;
-    seenBranded.add(key);
-    return true;
-  });
-
-  const sorted = [...uniqueGeneric, ...uniqueBranded];
-  const limit = options?.limit ?? 6;
-
-  return sorted.slice(0, limit).map((r) => ({
-    item: r.item,
-    score: r.score ?? 1,
-  }));
+  return sortAndDeduplicate([...exactResults, ...fuseResults], limit);
 }
 
 // ---------------------------------------------------------------------------
