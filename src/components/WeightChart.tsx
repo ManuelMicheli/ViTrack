@@ -482,7 +482,7 @@ export default function WeightChart({
                 <motion.div className="text-center" variants={staggerItem}>
                   {toGoal !== null ? (
                     <p className="font-display text-xs font-bold text-text-primary">
-                      <AnimatedNum value={toGoal} />
+                      <AnimatedNum value={toGoal} /> <span className="font-mono-label text-text-tertiary">kg</span>
                     </p>
                   ) : (
                     <p className="font-display text-xs font-bold text-text-tertiary">&mdash;</p>

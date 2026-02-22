@@ -96,7 +96,7 @@ const translations = {
   "weight.objective": { it: "Obiettivo", en: "Goal" },
   "weight.today": { it: "Oggi", en: "Today" },
   "weight.daysAgo": { it: "{count} giorni fa", en: "{count} days ago" },
-  "weight.toGoal": { it: "Al goal", en: "To goal" },
+  "weight.toGoal": { it: "Mancanti", en: "Remaining" },
   "weight.entries": { it: "Registrazioni", en: "Entries" },
   "weight.history": { it: "Storico", en: "History" },
   "weight.deleteTitle": { it: "Elimina peso", en: "Delete weight" },
