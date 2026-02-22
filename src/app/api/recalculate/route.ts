@@ -19,6 +19,39 @@ function round1(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
+// Per-goal macro ratios (from TDEEinfo.md guide)
+// Cut:      protein 2.2 g/kg, fat 0.8 g/kg, carbs = remaining
+// Maintain: protein 2.0 g/kg, fat 1.0 g/kg, carbs = remaining
+// Bulk:     protein 2.0 g/kg, fat 1.0 g/kg, carbs = remaining
+type GoalType = "cut" | "maintain" | "bulk";
+
+const MACRO_RATIOS: Record<GoalType, { proteinPerKg: number; fatPerKg: number }> = {
+  cut:      { proteinPerKg: 2.2, fatPerKg: 0.8 },
+  maintain: { proteinPerKg: 2.0, fatPerKg: 1.0 },
+  bulk:     { proteinPerKg: 2.0, fatPerKg: 1.0 },
+};
+
+function getGoalType(goal: string): GoalType {
+  if (CUT_GOALS.includes(goal)) return "cut";
+  if (BULK_GOALS.includes(goal)) return "bulk";
+  return "maintain";
+}
+
+function computeGoalMacros(
+  targetKcal: number,
+  weightKg: number,
+  goalType: GoalType
+): { protein_g: number; carbs_g: number; fat_g: number } {
+  const { proteinPerKg, fatPerKg } = MACRO_RATIOS[goalType];
+  const protein_g = round1(weightKg * proteinPerKg);
+  const fat_g = round1(weightKg * fatPerKg);
+  const protein_kcal = protein_g * 4;
+  const fat_kcal = fat_g * 9;
+  const carbs_kcal = targetKcal - protein_kcal - fat_kcal;
+  const carbs_g = round1(Math.max(0, carbs_kcal / 4));
+  return { protein_g, carbs_g, fat_g };
+}
+
 function calculateBMR(
   weight_kg: number,
   height_cm: number,
@@ -134,13 +167,9 @@ export async function POST(request: NextRequest) {
     getDailyCalorieTarget(goal, calories_bulk, calories_maintain, calories_cut)
   );
 
-  // Macro split
-  const protein_g = round1(weight_kg * 2);
-  const protein_kcal = protein_g * 4;
-  const fat_kcal = daily_calorie_target * 0.25;
-  const fat_g = round1(fat_kcal / 9);
-  const carbs_kcal = daily_calorie_target - protein_kcal - fat_kcal;
-  const carbs_g = round1(carbs_kcal / 4);
+  // Macro split (per-goal g/kg ratios from TDEEinfo.md)
+  const goalType = getGoalType(goal);
+  const { protein_g, carbs_g, fat_g } = computeGoalMacros(daily_calorie_target, weight_kg, goalType);
 
   // Body fat % (US Navy Formula)
   let body_fat_percentage: number | null = null;

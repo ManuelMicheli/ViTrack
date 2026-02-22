@@ -308,6 +308,18 @@ export default function StatsPage() {
       <motion.div variants={staggerItem}>
         <EditStatsForm user={user} onSaved={handleStatsSaved} />
       </motion.div>
+
+      {/* Disclaimer */}
+      <motion.div variants={staggerItem}>
+        <div className="data-card border-border-subtle bg-surface-secondary/30">
+          <div className="flex gap-3">
+            <span className="text-text-tertiary text-lg mt-0.5 shrink-0">&#9432;</span>
+            <p className="font-body text-[11px] text-text-tertiary leading-relaxed">
+              Questa guida &egrave; a scopo informativo e educativo. Non sostituisce il parere di un medico, un dietologo o un nutrizionista professionista. Consulta sempre un esperto prima di intraprendere cambiamenti significativi nella tua alimentazione o nel tuo stile di vita. I calcoli di BMR, TDEE e macro sono stime basate su formule scientifiche (Mifflin-St Jeor, US Navy) e possono variare in base a fattori individuali.
+            </p>
+          </div>
+        </div>
+      </motion.div>
     </motion.div>
   );
 }

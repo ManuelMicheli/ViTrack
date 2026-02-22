@@ -19,20 +19,30 @@ const goalToHighlight: Record<string, string> = {
   "Migliorare la performance atletica": "bulk",
 };
 
-// Same formula as /api/recalculate:
-//   protein = weight_kg * 2 (constant across all goals)
-//   fat     = target_kcal * 25% / 9
-//   carbs   = (target_kcal - protein_kcal - fat_kcal) / 4
+// Per-goal macro ratios (mirrors /api/recalculate, from TDEEinfo.md):
+//   Cut:      protein 2.2 g/kg, fat 0.8 g/kg, carbs = remaining
+//   Maintain: protein 2.0 g/kg, fat 1.0 g/kg, carbs = remaining
+//   Bulk:     protein 2.0 g/kg, fat 1.0 g/kg, carbs = remaining
+type GoalType = "cut" | "maintain" | "bulk";
+
+const macroRatios: Record<GoalType, { proteinPerKg: number; fatPerKg: number }> = {
+  cut:      { proteinPerKg: 2.2, fatPerKg: 0.8 },
+  maintain: { proteinPerKg: 2.0, fatPerKg: 1.0 },
+  bulk:     { proteinPerKg: 2.0, fatPerKg: 1.0 },
+};
+
 function computeMacros(
   targetKcal: number | null,
-  weightKg: number | null
+  weightKg: number | null,
+  goalType: GoalType
 ): { protein: number; carbs: number; fat: number } | null {
   if (!targetKcal || !weightKg) return null;
 
-  const proteinG = Math.round(weightKg * 2);
+  const { proteinPerKg, fatPerKg } = macroRatios[goalType];
+  const proteinG = Math.round(weightKg * proteinPerKg);
+  const fatG = Math.round(weightKg * fatPerKg);
   const proteinKcal = proteinG * 4;
-  const fatKcal = targetKcal * 0.25;
-  const fatG = Math.round(fatKcal / 9);
+  const fatKcal = fatG * 9;
   const carbsKcal = targetKcal - proteinKcal - fatKcal;
   const carbsG = Math.max(0, Math.round(carbsKcal / 4));
 
@@ -99,9 +109,9 @@ function AnimatedCard({
 export default function CalorieTargets({ caloriesCut, caloriesMaintain, caloriesBulk, goal, weightKg }: CalorieTargetsProps) {
   const highlighted = goal ? goalToHighlight[goal] || "maintain" : "maintain";
 
-  const cutMacros = computeMacros(caloriesCut, weightKg);
-  const maintainMacros = computeMacros(caloriesMaintain, weightKg);
-  const bulkMacros = computeMacros(caloriesBulk, weightKg);
+  const cutMacros = computeMacros(caloriesCut, weightKg, "cut");
+  const maintainMacros = computeMacros(caloriesMaintain, weightKg, "maintain");
+  const bulkMacros = computeMacros(caloriesBulk, weightKg, "bulk");
 
   return (
     <div className="space-y-3">
