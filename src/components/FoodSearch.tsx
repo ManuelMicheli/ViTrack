@@ -4,8 +4,8 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "@/lib/language-context";
 import type { TranslationKey } from "@/lib/translations";
-import { staggerContainer, staggerItem } from "@/lib/animation-config";
-import { TrashIcon } from "./icons";
+import { staggerContainer, staggerItem, springs } from "@/lib/animation-config";
+import { TrashIcon, CloseIcon } from "./icons";
 import MacroBar from "./MacroBar";
 import {
   searchLocalFoods,
@@ -25,6 +25,8 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 interface FoodSearchProps {
+  isOpen: boolean;
+  onClose: () => void;
   onSave: (meal: {
     description: string;
     calories: number;
@@ -34,13 +36,11 @@ interface FoodSearchProps {
     fiber_g: number;
     meal_type: string;
   }) => void;
-  /** Current daily intake — used to compute macro-based suggestions */
   dailyIntake?: {
     protein_g: number;
     carbs_g: number;
     fat_g: number;
   };
-  /** User goals — used to compute macro-based suggestions */
   goals?: {
     protein_g: number | null;
     carbs_g: number | null;
@@ -62,6 +62,8 @@ const mealTypeKeys: { value: string; labelKey: TranslationKey; icon: string }[] 
   { value: "snack", labelKey: "meal.snack", icon: "\uD83C\uDF4E" },
 ];
 
+const gramPresets = [50, 100, 150, 200];
+
 function getDefaultMealType(): string {
   const hour = new Date().getHours();
   if (hour >= 6 && hour < 10) return "colazione";
@@ -81,14 +83,12 @@ function scaleDecimal(value: number, grams: number): number {
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchProps) {
+export default function FoodSearch({ isOpen, onClose, onSave, dailyIntake, goals }: FoodSearchProps) {
   const { t } = useLanguage();
-  const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // State
   const [query, setQuery] = useState("");
-  const [isActive, setIsActive] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [grams, setGrams] = useState(100);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -96,13 +96,26 @@ export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchPro
   const [recentFoods, setRecentFoods] = useState<FoodItem[]>([]);
   const [frequentFoodIds, setFrequentFoodIds] = useState<string[]>([]);
 
-  // Load history on mount
+  // Load history & auto-focus on open
   useEffect(() => {
-    setRecentFoods(getRecentFoods());
-    setFrequentFoodIds(getFrequentFoodIds());
-  }, []);
+    if (isOpen) {
+      setRecentFoods(getRecentFoods());
+      setFrequentFoodIds(getFrequentFoodIds());
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [isOpen]);
 
-  // Fuzzy search results (debounced via useMemo on trimmed query)
+  // Reset on close
+  useEffect(() => {
+    if (!isOpen) {
+      setQuery("");
+      setDebouncedQuery("");
+      setSelectedId(null);
+      setShowMealType(false);
+    }
+  }, [isOpen]);
+
+  // Debounced search
   const [debouncedQuery, setDebouncedQuery] = useState("");
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query.trim()), 150);
@@ -111,10 +124,10 @@ export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchPro
 
   const searchResults = useMemo(() => {
     if (debouncedQuery.length < 2) return [];
-    return searchLocalFoods(debouncedQuery, { limit: 6 });
+    return searchLocalFoods(debouncedQuery, { limit: 8 });
   }, [debouncedQuery]);
 
-  // Frequent foods resolved from IDs
+  // Frequent foods
   const frequentFoods = useMemo(() => {
     return frequentFoodIds
       .map((id) => getFoodById(id))
@@ -129,7 +142,6 @@ export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchPro
     const carbsLeft = (goals.carbs_g ?? 0) - dailyIntake.carbs_g;
     const fatLeft = (goals.fat_g ?? 0) - dailyIntake.fat_g;
 
-    // Find the macro with the largest relative deficit
     const proteinRatio = goals.protein_g ? proteinLeft / goals.protein_g : 0;
     const carbsRatio = goals.carbs_g ? carbsLeft / goals.carbs_g : 0;
     const fatRatio = goals.fat_g ? fatLeft / goals.fat_g : 0;
@@ -148,7 +160,6 @@ export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchPro
       label = "foodSearch.suggestedFat";
     }
 
-    // Only show suggestions if there's a meaningful deficit (>20% remaining)
     if (maxRatio < 0.2) return { suggestedFoods: [] as FoodItem[], deficitLabel: "" };
 
     return {
@@ -157,25 +168,7 @@ export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchPro
     };
   }, [dailyIntake, goals]);
 
-  // Close panel when clicking outside
-  useEffect(() => {
-    if (!isActive) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        // Don't close if there's a cart
-        if (cart.length === 0 && !query) {
-          setIsActive(false);
-          setSelectedId(null);
-        }
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isActive, cart.length, query]);
-
-  // What to show
   const isSearching = debouncedQuery.length >= 2;
-  const showHome = isActive && !isSearching;
 
   // Handlers
   const handleSelectFood = useCallback((food: FoodItem) => {
@@ -194,8 +187,6 @@ export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchPro
     setSelectedId(null);
     setQuery("");
     setDebouncedQuery("");
-    setIsActive(false);
-    // Refresh history
     setRecentFoods(getRecentFoods());
     setFrequentFoodIds(getFrequentFoodIds());
   }, [grams]);
@@ -232,7 +223,13 @@ export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchPro
     setShowMealType(false);
     setSelectedId(null);
     setGrams(100);
-    setIsActive(false);
+    onClose();
+  };
+
+  const handleClose = () => {
+    if (cart.length === 0) {
+      onClose();
+    }
   };
 
   // Cart totals
@@ -243,7 +240,7 @@ export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchPro
   const cartTotalFiber = cart.reduce((s, item) => s + scaleDecimal(item.fiber_per_100g, item.grams), 0);
 
   // ---------------------------------------------------------------------------
-  // Render food item row
+  // Render food item row with improved gram picker
   // ---------------------------------------------------------------------------
   const renderFoodItem = (food: FoodItem) => (
     <motion.div key={food.id} variants={staggerItem}>
@@ -258,12 +255,12 @@ export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchPro
             </p>
             <div className="flex items-center gap-1.5 mt-0.5">
               {food.brand && (
-                <span className="font-mono-label text-[10px] text-[var(--color-accent-dynamic)]/70">
-                  {food.brand}
-                </span>
-              )}
-              {food.brand && (
-                <span className="text-text-tertiary/40 text-[10px]">&middot;</span>
+                <>
+                  <span className="font-mono-label text-[10px] text-[var(--color-accent-dynamic)]/70">
+                    {food.brand}
+                  </span>
+                  <span className="text-text-tertiary/40 text-[10px]">&middot;</span>
+                </>
               )}
               <span className="font-mono-label text-[11px] text-text-tertiary">
                 {food.calories_per_100g} kcal
@@ -277,7 +274,7 @@ export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchPro
         </div>
       </button>
 
-      {/* Gram picker */}
+      {/* Improved gram picker with presets */}
       <AnimatePresence>
         {selectedId === food.id && (
           <motion.div
@@ -288,12 +285,39 @@ export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchPro
             className="overflow-hidden"
           >
             <div className="px-4 pb-3 space-y-3">
+              {/* Preset buttons */}
+              <div className="flex items-center gap-2 justify-center flex-wrap">
+                {gramPresets.map((preset) => (
+                  <button
+                    key={preset}
+                    onClick={(e) => { e.stopPropagation(); setGrams(preset); }}
+                    className={`px-3 py-1.5 rounded-lg font-mono-label text-xs transition-all border ${
+                      grams === preset
+                        ? "border-[var(--color-accent-dynamic)]/50 bg-[var(--color-accent-dynamic)]/10 text-text-primary"
+                        : "border-border text-text-tertiary hover:text-text-secondary hover:bg-surface-raised"
+                    }`}
+                  >
+                    {preset}g
+                  </button>
+                ))}
+                {food.serving_size_g !== 100 && !gramPresets.includes(food.serving_size_g) && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setGrams(food.serving_size_g); }}
+                    className={`px-3 py-1.5 rounded-lg font-mono-label text-xs transition-all border ${
+                      grams === food.serving_size_g
+                        ? "border-[var(--color-accent-dynamic)]/50 bg-[var(--color-accent-dynamic)]/10 text-text-primary"
+                        : "border-border text-text-tertiary hover:text-text-secondary hover:bg-surface-raised"
+                    }`}
+                  >
+                    {food.serving_size_g}g
+                  </button>
+                )}
+              </div>
+
+              {/* Manual input with -/+ */}
               <div className="flex items-center justify-center gap-3">
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setGrams((g) => Math.max(1, g - 10));
-                  }}
+                  onClick={(e) => { e.stopPropagation(); setGrams((g) => Math.max(1, g - 10)); }}
                   className="w-9 h-9 rounded-lg border border-border text-text-secondary hover:bg-surface-raised hover:text-text-primary transition-all font-mono-label text-lg flex items-center justify-center"
                 >
                   -
@@ -307,22 +331,21 @@ export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchPro
                       if (!isNaN(v) && v >= 1) setGrams(v);
                       else if (e.target.value === "") setGrams(1);
                     }}
+                    onClick={(e) => e.stopPropagation()}
                     className="w-16 text-center bg-transparent border border-border rounded-lg py-1.5 font-mono-label text-sm text-text-primary outline-none focus:border-[var(--color-accent-dynamic)]/30 transition-all"
                     min={1}
                   />
                   <span className="font-mono-label text-[11px] text-text-tertiary">g</span>
                 </div>
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setGrams((g) => g + 10);
-                  }}
+                  onClick={(e) => { e.stopPropagation(); setGrams((g) => g + 10); }}
                   className="w-9 h-9 rounded-lg border border-border text-text-secondary hover:bg-surface-raised hover:text-text-primary transition-all font-mono-label text-lg flex items-center justify-center"
                 >
                   +
                 </button>
               </div>
 
+              {/* Macro preview */}
               <div className="grid grid-cols-4 gap-1.5">
                 <div className="p-2 rounded-lg bg-protein/10 text-center">
                   <p className="font-mono-label text-[10px] text-protein">P</p>
@@ -350,19 +373,18 @@ export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchPro
                 </div>
               </div>
 
+              {/* Calories + Add button */}
               <div className="flex items-center justify-between">
                 <span className="font-mono-label text-sm text-text-secondary">
                   {scale(food.calories_per_100g, grams)} kcal
                 </span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAddToCart(food);
-                  }}
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={(e) => { e.stopPropagation(); handleAddToCart(food); }}
                   className="px-4 py-2 rounded-lg bg-[var(--color-accent-dynamic)] text-black font-mono-label text-sm hover:opacity-90 transition-all"
                 >
                   {t("foodSearch.addToCart")}
-                </button>
+                </motion.button>
               </div>
             </div>
           </motion.div>
@@ -375,295 +397,286 @@ export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchPro
   // Render
   // ---------------------------------------------------------------------------
   return (
-    <div ref={containerRef} className="space-y-3">
-      {/* Search bar */}
-      <div className="relative">
-        <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-border bg-transparent focus-within:border-[var(--color-accent-dynamic)]/30 transition-all">
-          <svg
-            className="w-4 h-4 text-text-tertiary shrink-0"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => setIsActive(true)}
-            placeholder={t("foodSearch.placeholder")}
-            className="flex-1 bg-transparent text-text-primary placeholder-text-tertiary font-body text-sm outline-none"
-          />
-          {query && (
-            <button
-              onClick={() => { setQuery(""); setDebouncedQuery(""); }}
-              className="text-text-tertiary hover:text-text-primary transition-colors shrink-0"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* ── HOME VIEW: Frequent + Recent + Suggested ── */}
-      {showHome && (
-        <div className="space-y-4">
-          {/* Frequent foods */}
-          {frequentFoods.length > 0 && (
-            <div>
-              <p className="font-mono-label text-[11px] text-text-tertiary uppercase tracking-wider mb-2 px-1">
-                {t("foodSearch.frequent")}
-              </p>
-              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                {frequentFoods.map((food) => (
-                  <button
-                    key={food.id}
-                    onClick={() => handleSelectFood(food)}
-                    className="shrink-0 px-3 py-2 rounded-lg border border-border hover:bg-surface-raised transition-all"
-                  >
-                    <p className="font-body text-xs text-text-primary whitespace-nowrap capitalize">{food.name_it}</p>
-                    <p className="font-mono-label text-[10px] text-text-tertiary mt-0.5">{food.calories_per_100g} kcal</p>
-                  </button>
-                ))}
-              </div>
-              {/* Inline gram picker for frequent food */}
-              <AnimatePresence>
-                {selectedId && frequentFoods.some(f => f.id === selectedId) && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden mt-2"
-                  >
-                    {renderFoodItem(frequentFoods.find(f => f.id === selectedId)!)}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-
-          {/* Recent foods */}
-          {recentFoods.length > 0 && (
-            <div>
-              <p className="font-mono-label text-[11px] text-text-tertiary uppercase tracking-wider mb-2 px-1">
-                {t("foodSearch.recent")}
-              </p>
-              <div className="data-card !p-0 overflow-hidden">
-                <div className="divide-y divide-border-subtle">
-                  {recentFoods.slice(0, 5).map((food) => (
-                    <button
-                      key={food.id}
-                      onClick={() => handleSelectFood(food)}
-                      className="w-full text-left px-4 py-2.5 hover:bg-surface-raised transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-body text-sm text-text-primary truncate capitalize">{food.name_it}</p>
-                          {food.brand && (
-                            <span className="font-mono-label text-[10px] text-text-tertiary">{food.brand}</span>
-                          )}
-                        </div>
-                        <span className="font-mono-label text-[11px] text-text-tertiary shrink-0 ml-2">
-                          {food.calories_per_100g} kcal
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {/* Inline gram picker for recent food */}
-              <AnimatePresence>
-                {selectedId && recentFoods.some(f => f.id === selectedId) && !frequentFoods.some(f => f.id === selectedId) && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden mt-2"
-                  >
-                    <div className="data-card !p-0">
-                      {renderFoodItem(recentFoods.find(f => f.id === selectedId)!)}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-
-          {/* Suggested foods based on macro deficit */}
-          {suggestedFoods.length > 0 && deficitLabel && (
-            <div>
-              <p className="font-mono-label text-[11px] text-text-tertiary uppercase tracking-wider mb-2 px-1">
-                {t(deficitLabel as TranslationKey)}
-              </p>
-              <div className="data-card !p-0 overflow-hidden">
-                <motion.div
-                  initial="initial"
-                  animate="animate"
-                  variants={staggerContainer(0.02)}
-                  className="divide-y divide-border-subtle"
-                >
-                  {suggestedFoods.map((food) => renderFoodItem(food))}
-                </motion.div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── SEARCH RESULTS VIEW (flat list, no categories) ── */}
-      {isActive && isSearching && (
-        <div className="space-y-2">
-          {searchResults.length === 0 ? (
-            <div className="data-card text-center py-6">
-              <p className="font-body text-sm text-text-tertiary">{t("foodSearch.noResults")}</p>
-            </div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="data-card !p-0 overflow-hidden"
-            >
-              <motion.div
-                initial="initial"
-                animate="animate"
-                variants={staggerContainer(0.02)}
-                className="divide-y divide-border-subtle"
-              >
-                {searchResults.map((r) => renderFoodItem(r.item))}
-              </motion.div>
-            </motion.div>
-          )}
-        </div>
-      )}
-
-      {/* ── CART ── */}
-      <AnimatePresence>
-        {cart.length > 0 && (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          className="fixed inset-0 z-50 bg-black/60"
+          onClick={handleClose}
+        >
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.2 }}
-            className="data-card !p-0"
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={springs.enter}
+            onClick={(e) => e.stopPropagation()}
+            className="absolute inset-0 top-0 bg-background flex flex-col sm:top-4 sm:left-4 sm:right-4 sm:bottom-4 sm:rounded-xl sm:border sm:border-border"
           >
-            <div className="px-4 pt-4 pb-2">
-              <span className="font-mono-label text-text-tertiary">{t("foodSearch.cart")}</span>
+            {/* Header with search bar */}
+            <div className="shrink-0 px-4 pt-4 pb-3 border-b border-border space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="font-display text-lg font-bold text-text-primary">
+                  {t("foodSearch.addFood")}
+                </h2>
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={onClose}
+                  className="p-2 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-surface-raised transition-all"
+                >
+                  <CloseIcon className="w-5 h-5" />
+                </motion.button>
+              </div>
+
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-transparent focus-within:border-[var(--color-accent-dynamic)]/30 transition-all">
+                <svg className="w-4 h-4 text-text-tertiary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={t("foodSearch.placeholder")}
+                  className="flex-1 bg-transparent text-text-primary placeholder-text-tertiary font-body text-sm outline-none"
+                />
+                {query && (
+                  <button
+                    onClick={() => { setQuery(""); setDebouncedQuery(""); }}
+                    className="text-text-tertiary hover:text-text-primary transition-colors shrink-0"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className="divide-y divide-border-subtle">
-              {cart.map((item, index) => (
-                <div key={`${item.id}-${index}`} className="px-4 py-3 flex items-center justify-between gap-2 group">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-body text-sm text-text-primary truncate capitalize">{item.name_it}</p>
-                    <div className="flex gap-2 mt-0.5 font-mono-label text-[11px]">
-                      <span className="text-text-secondary">{item.grams}g</span>
-                      <span className="text-text-tertiary/60">&middot;</span>
-                      <span className="text-protein">P:{scaleDecimal(item.protein_per_100g, item.grams)}g</span>
-                      <span className="text-carbs">C:{scaleDecimal(item.carbs_per_100g, item.grams)}g</span>
-                      <span className="text-fat">G:{scaleDecimal(item.fat_per_100g, item.grams)}g</span>
+            {/* Scrollable content area */}
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+              {/* HOME VIEW */}
+              {!isSearching && (
+                <>
+                  {/* Frequent foods */}
+                  {frequentFoods.length > 0 && (
+                    <div>
+                      <p className="font-mono-label text-[11px] text-text-tertiary uppercase tracking-wider mb-2 px-1">
+                        {t("foodSearch.frequent")}
+                      </p>
+                      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                        {frequentFoods.map((food) => (
+                          <button
+                            key={food.id}
+                            onClick={() => handleSelectFood(food)}
+                            className={`shrink-0 px-3 py-2 rounded-lg border transition-all ${
+                              selectedId === food.id
+                                ? "border-[var(--color-accent-dynamic)]/50 bg-[var(--color-accent-dynamic)]/5"
+                                : "border-border hover:bg-surface-raised"
+                            }`}
+                          >
+                            <p className="font-body text-xs text-text-primary whitespace-nowrap capitalize">{food.name_it}</p>
+                            <p className="font-mono-label text-[10px] text-text-tertiary mt-0.5">{food.calories_per_100g} kcal</p>
+                          </button>
+                        ))}
+                      </div>
+                      {/* Inline gram picker for frequent */}
+                      <AnimatePresence>
+                        {selectedId && frequentFoods.some(f => f.id === selectedId) && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden mt-2"
+                          >
+                            <div className="data-card !p-0">
+                              {renderFoodItem(frequentFoods.find(f => f.id === selectedId)!)}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono-label text-sm text-text-secondary whitespace-nowrap">
-                      {scale(item.calories_per_100g, item.grams)} kcal
-                    </span>
-                    <button
-                      onClick={() => handleRemoveFromCart(index)}
-                      className="text-text-tertiary hover:text-danger hover:bg-danger/10 rounded p-1 transition-all"
-                      title={t("foodSearch.remove")}
-                    >
-                      <TrashIcon className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  )}
 
-            {/* Cart totals */}
-            <div className="px-4 pt-2 pb-3 border-t border-border">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-mono-label text-text-tertiary">{t("foodSearch.total")}</span>
-                <span className="font-display text-lg font-bold text-text-primary">{cartTotalCal} kcal</span>
-              </div>
-              <div className="flex gap-2 mb-2 font-mono-label text-[11px]">
-                <span className="text-protein">P:{parseFloat(cartTotalProtein.toFixed(1))}g</span>
-                <span className="text-carbs">C:{parseFloat(cartTotalCarbs.toFixed(1))}g</span>
-                <span className="text-fat">G:{parseFloat(cartTotalFat.toFixed(1))}g</span>
-                <span className="text-fiber">F:{parseFloat(cartTotalFiber.toFixed(1))}g</span>
-              </div>
-              <MacroBar
-                protein={parseFloat(cartTotalProtein.toFixed(1))}
-                carbs={parseFloat(cartTotalCarbs.toFixed(1))}
-                fat={parseFloat(cartTotalFat.toFixed(1))}
-                fiber={parseFloat(cartTotalFiber.toFixed(1))}
-                height={4}
-              />
-            </div>
+                  {/* Recent foods */}
+                  {recentFoods.length > 0 && (
+                    <div>
+                      <p className="font-mono-label text-[11px] text-text-tertiary uppercase tracking-wider mb-2 px-1">
+                        {t("foodSearch.recent")}
+                      </p>
+                      <div className="data-card !p-0 overflow-hidden">
+                        <div className="divide-y divide-border-subtle">
+                          {recentFoods.slice(0, 5).map((food) => renderFoodItem(food))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-            {/* Log meal / Meal type picker */}
-            <div className="px-4 pb-4">
-              <AnimatePresence mode="wait">
-                {!showMealType ? (
-                  <motion.button
-                    key="log-btn"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    onClick={() => setShowMealType(true)}
-                    className="w-full py-3 rounded-lg bg-[var(--color-accent-dynamic)] text-black font-mono-label hover:opacity-90 transition-all"
-                  >
-                    {t("foodSearch.logMeal")}
-                  </motion.button>
-                ) : (
-                  <motion.div
-                    key="meal-type-picker"
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 4 }}
-                    className="space-y-2"
-                  >
-                    <p className="font-mono-label text-text-tertiary text-center">
-                      {t("foodSearch.selectMealType")}
-                    </p>
-                    <div className="grid grid-cols-4 gap-2">
-                      {mealTypeKeys.map((type) => (
-                        <motion.button
-                          key={type.value}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => handleLogMeal(type.value)}
-                          className={`py-2.5 rounded-lg font-mono-label text-xs transition-all border border-border hover:bg-surface-raised hover:text-text-primary text-text-secondary ${
-                            getDefaultMealType() === type.value
-                              ? "bg-surface-raised text-text-primary border-border"
-                              : ""
-                          }`}
+                  {/* Macro-deficit suggestions */}
+                  {suggestedFoods.length > 0 && deficitLabel && (
+                    <div>
+                      <p className="font-mono-label text-[11px] text-text-tertiary uppercase tracking-wider mb-2 px-1">
+                        {t(deficitLabel as TranslationKey)}
+                      </p>
+                      <div className="data-card !p-0 overflow-hidden">
+                        <motion.div
+                          initial="initial"
+                          animate="animate"
+                          variants={staggerContainer(0.02)}
+                          className="divide-y divide-border-subtle"
                         >
-                          <span className="block text-base mb-0.5">{type.icon}</span>
-                          {t(type.labelKey)}
-                        </motion.button>
+                          {suggestedFoods.map((food) => renderFoodItem(food))}
+                        </motion.div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Empty state when no history */}
+                  {frequentFoods.length === 0 && recentFoods.length === 0 && (
+                    <div className="text-center py-12">
+                      <p className="font-body text-sm text-text-tertiary">
+                        {t("foodSearch.emptyCart")}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* SEARCH RESULTS VIEW */}
+              {isSearching && (
+                <>
+                  {searchResults.length === 0 ? (
+                    <div className="text-center py-12">
+                      <p className="font-body text-sm text-text-tertiary">{t("foodSearch.noResults")}</p>
+                    </div>
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="data-card !p-0 overflow-hidden"
+                    >
+                      <motion.div
+                        initial="initial"
+                        animate="animate"
+                        variants={staggerContainer(0.02)}
+                        className="divide-y divide-border-subtle"
+                      >
+                        {searchResults.map((r) => renderFoodItem(r.item))}
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* CART - Bottom sheet */}
+            <AnimatePresence>
+              {cart.length > 0 && (
+                <motion.div
+                  initial={{ y: "100%" }}
+                  animate={{ y: 0 }}
+                  exit={{ y: "100%" }}
+                  transition={springs.enter}
+                  className="shrink-0 border-t border-border bg-background"
+                >
+                  <div className="px-4 pt-3 pb-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-mono-label text-text-tertiary">{t("foodSearch.cart")} ({cart.length})</span>
+                      <span className="font-display text-lg font-bold text-text-primary">{cartTotalCal} kcal</span>
+                    </div>
+
+                    {/* Cart items (scrollable if many) */}
+                    <div className="max-h-32 overflow-y-auto space-y-1 mb-2">
+                      {cart.map((item, index) => (
+                        <div key={`${item.id}-${index}`} className="flex items-center justify-between gap-2 py-1">
+                          <div className="min-w-0 flex-1">
+                            <span className="font-body text-sm text-text-primary truncate capitalize block">{item.name_it}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-mono-label text-[11px] text-text-tertiary">{item.grams}g</span>
+                            <span className="font-mono-label text-xs text-text-secondary">{scale(item.calories_per_100g, item.grams)}</span>
+                            <button
+                              onClick={() => handleRemoveFromCart(index)}
+                              className="text-text-tertiary hover:text-danger p-0.5 transition-colors"
+                            >
+                              <TrashIcon className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
                       ))}
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {/* Empty cart hint */}
-      {cart.length === 0 && !showHome && !isSearching && (
-        <p className="font-body text-sm text-text-tertiary text-center py-2">
-          {t("foodSearch.emptyCart")}
-        </p>
+                    {/* Macro summary */}
+                    <div className="flex gap-2 mb-2 font-mono-label text-[11px]">
+                      <span className="text-protein">P:{parseFloat(cartTotalProtein.toFixed(1))}g</span>
+                      <span className="text-carbs">C:{parseFloat(cartTotalCarbs.toFixed(1))}g</span>
+                      <span className="text-fat">G:{parseFloat(cartTotalFat.toFixed(1))}g</span>
+                      <span className="text-fiber">F:{parseFloat(cartTotalFiber.toFixed(1))}g</span>
+                    </div>
+                    <MacroBar
+                      protein={parseFloat(cartTotalProtein.toFixed(1))}
+                      carbs={parseFloat(cartTotalCarbs.toFixed(1))}
+                      fat={parseFloat(cartTotalFat.toFixed(1))}
+                      fiber={parseFloat(cartTotalFiber.toFixed(1))}
+                      height={4}
+                    />
+                  </div>
+
+                  {/* Log meal / Meal type picker */}
+                  <div className="px-4 pb-4 pt-2">
+                    <AnimatePresence mode="wait">
+                      {!showMealType ? (
+                        <motion.button
+                          key="log-btn"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          whileTap={{ scale: 0.97 }}
+                          onClick={() => setShowMealType(true)}
+                          className="w-full py-3 rounded-lg bg-[var(--color-accent-dynamic)] text-black font-mono-label hover:opacity-90 transition-all"
+                        >
+                          {t("foodSearch.logMeal")}
+                        </motion.button>
+                      ) : (
+                        <motion.div
+                          key="meal-type-picker"
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 4 }}
+                          className="space-y-2"
+                        >
+                          <p className="font-mono-label text-text-tertiary text-center">
+                            {t("foodSearch.selectMealType")}
+                          </p>
+                          <div className="grid grid-cols-4 gap-2">
+                            {mealTypeKeys.map((type) => (
+                              <motion.button
+                                key={type.value}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleLogMeal(type.value)}
+                                className={`py-2.5 rounded-lg font-mono-label text-xs transition-all border border-border hover:bg-surface-raised hover:text-text-primary text-text-secondary ${
+                                  getDefaultMealType() === type.value
+                                    ? "bg-surface-raised text-text-primary border-border"
+                                    : ""
+                                }`}
+                              >
+                                <span className="block text-base mb-0.5">{type.icon}</span>
+                                {t(type.labelKey)}
+                              </motion.button>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        </motion.div>
       )}
-    </div>
+    </AnimatePresence>
   );
 }

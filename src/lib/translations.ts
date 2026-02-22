@@ -106,6 +106,15 @@ const translations = {
   "mealsPage.title": { it: "Pasti", en: "Meals" },
   "mealsPage.addType": { it: "Aggiungi", en: "Add" },
   "mealsPage.dailyTotal": { it: "Totale giornata", en: "Daily total" },
+  "mealsPage.goalKcal": { it: "obiettivo", en: "goal" },
+  "mealsPage.consumed": { it: "consumate", en: "consumed" },
+  "mealsPage.remaining": { it: "rimanenti", en: "remaining" },
+  "mealsPage.quickAdd": { it: "Aggiungi rapido", en: "Quick add" },
+  "mealsPage.deleteConfirm": { it: "Conferma eliminazione", en: "Confirm delete" },
+  "mealsPage.expandDetails": { it: "Dettagli", en: "Details" },
+  "mealsPage.portion": { it: "Porzione", en: "Portion" },
+  "mealsPage.addFirst": { it: "Aggiungi il primo pasto", en: "Add your first meal" },
+  "mealsPage.noMealsYet": { it: "Nessun pasto registrato per oggi", en: "No meals logged for today" },
 
   // -- Food Search --
   "foodSearch.placeholder": { it: "Cerca alimento...", en: "Search food..." },
@@ -129,6 +138,9 @@ const translations = {
   "foodSearch.suggestedFat": { it: "Ricchi di grassi", en: "High in fat" },
   "foodSearch.allItems": { it: "Tutti", en: "All items" },
   "foodSearch.back": { it: "Indietro", en: "Back" },
+  "foodSearch.presetPortion": { it: "Porzione", en: "Portion" },
+  "foodSearch.close": { it: "Chiudi", en: "Close" },
+  "foodSearch.addFood": { it: "Aggiungi alimento", en: "Add food" },
 
   // ── Workouts page ──
   "workoutsPage.title": { it: "Allenamenti", en: "Workouts" },
