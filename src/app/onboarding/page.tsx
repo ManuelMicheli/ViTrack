@@ -9,8 +9,20 @@ import Step1Goal from "./components/Step1Goal";
 import Step2Physical from "./components/Step2Physical";
 import Step3Lifestyle from "./components/Step3Lifestyle";
 import Step4Nutrition from "./components/Step4Nutrition";
+import Step5GoalClassification from "./components/Step5GoalClassification";
+import Step6Summary from "./components/Step6Summary";
+import {
+  classifyGoal,
+  getGoalCategory,
+  type ClassificationInput,
+  type ClassificationResult,
+  type SportCategory,
+  type SeasonPhase,
+  type Gender,
+  type TrainingExperience,
+} from "@/lib/goal-classifier";
 
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 6;
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -52,6 +64,15 @@ export default function OnboardingPage() {
     meals_per_day: "",
     supplements: [] as string[],
   });
+
+  // Step 5 — Performance-specific selections
+  const [sportCategory, setSportCategory] = useState<SportCategory | null>(null);
+  const [seasonPhase, setSeasonPhase] = useState<SeasonPhase | null>(null);
+
+  // Computed classification (calculated when entering Step 5)
+  const [classification, setClassification] = useState<ClassificationResult | null>(null);
+  const [tdee, setTdee] = useState<number>(0);
+  const [bmr, setBmr] = useState<number>(0);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -115,6 +136,67 @@ export default function OnboardingPage() {
     checkAuth();
   }, [router]);
 
+  // Compute classification when entering Step 5 or when performance selections change
+  useEffect(() => {
+    if (step >= 5 && goal && physical.weight_kg && physical.height_cm && physical.age && physical.gender) {
+      const weight = parseFloat(physical.weight_kg);
+      const height = parseInt(physical.height_cm);
+      const age = parseInt(physical.age);
+      const gender = physical.gender as Gender;
+
+      // BMR (Mifflin-St Jeor)
+      const maleBMR = 10 * weight + 6.25 * height - 5 * age + 5;
+      const femaleBMR = 10 * weight + 6.25 * height - 5 * age - 161;
+      const computedBmr = gender === 'male' ? maleBMR : gender === 'female' ? femaleBMR : (maleBMR + femaleBMR) / 2;
+
+      // TDEE
+      const ACTIVITY_MULTIPLIERS: Record<string, number> = {
+        sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9
+      };
+      const computedTdee = computedBmr * (ACTIVITY_MULTIPLIERS[lifestyle.activity_level] ?? 1.2);
+
+      // Body fat (US Navy formula)
+      let bodyFat: number | null = null;
+      const neck = physical.neck_cm ? parseFloat(physical.neck_cm) : null;
+      const waist = physical.waist_cm ? parseFloat(physical.waist_cm) : null;
+      const hip = physical.hip_cm ? parseFloat(physical.hip_cm) : null;
+
+      if (neck && waist) {
+        if (gender === 'male' || gender === 'other') {
+          const diff = waist - neck;
+          if (diff > 0) {
+            const bf = 495 / (1.0324 - 0.19077 * Math.log10(diff) + 0.15456 * Math.log10(height)) - 450;
+            if (bf > 0 && bf < 100) bodyFat = Math.round(bf * 10) / 10;
+          }
+        } else if (gender === 'female' && hip) {
+          const sum = waist + hip - neck;
+          if (sum > 0) {
+            const bf = 495 / (1.29579 - 0.35004 * Math.log10(sum) + 0.22100 * Math.log10(height)) - 450;
+            if (bf > 0 && bf < 100) bodyFat = Math.round(bf * 10) / 10;
+          }
+        }
+      }
+
+      const input: ClassificationInput = {
+        goal: goal,
+        gender,
+        weight_kg: weight,
+        height_cm: height,
+        age,
+        body_fat_percentage: bodyFat,
+        training_experience: (physical.training_experience as TrainingExperience) || 'intermediate',
+        activity_level: lifestyle.activity_level,
+        sport_category: sportCategory || undefined,
+        season_phase: seasonPhase || undefined,
+      };
+
+      const result = classifyGoal(input, computedTdee);
+      setClassification(result);
+      setBmr(Math.round(computedBmr * 10) / 10);
+      setTdee(Math.round(computedTdee * 10) / 10);
+    }
+  }, [step, goal, physical, lifestyle.activity_level, sportCategory, seasonPhase]);
+
   const handlePhysicalChange = useCallback(
     (field: string, value: string) => {
       setPhysical((prev) => ({ ...prev, [field]: value }));
@@ -151,6 +233,13 @@ export default function OnboardingPage() {
         return lifestyle.activity_level !== "";
       case 4:
         return true; // All optional
+      case 5:
+        if (getGoalCategory(goal || '') === 'performance') {
+          return sportCategory !== null && seasonPhase !== null;
+        }
+        return classification !== null; // Auto-classified, just need computation to complete
+      case 6:
+        return classification !== null; // Summary is always valid if classification exists
       default:
         return false;
     }
@@ -204,6 +293,11 @@ export default function OnboardingPage() {
         intolerances: nutrition.intolerances,
         meals_per_day: mealsNum,
         supplements: nutrition.supplements.filter((s) => s !== "Nessuno"),
+        training_experience: physical.training_experience || 'intermediate',
+        sport_category: sportCategory || undefined,
+        season_phase: seasonPhase || undefined,
+        goal_subtype: classification?.goal_subtype,
+        calorie_surplus_deficit: classification?.calorie_surplus_deficit,
       };
 
       const res = await fetch("/api/onboarding", {
@@ -282,6 +376,25 @@ export default function OnboardingPage() {
             )}
             {step === 4 && (
               <Step4Nutrition data={nutrition} onChange={handleNutritionChange} />
+            )}
+            {step === 5 && (
+              <Step5GoalClassification
+                goal={goal || ''}
+                classification={classification}
+                sportCategory={sportCategory}
+                onSportCategoryChange={setSportCategory}
+                seasonPhase={seasonPhase}
+                onSeasonPhaseChange={setSeasonPhase}
+                onChangeGoal={() => { setDirection(-1); setStep(1); }}
+              />
+            )}
+            {step === 6 && classification && (
+              <Step6Summary
+                classification={classification}
+                tdee={tdee}
+                weight_kg={parseFloat(physical.weight_kg)}
+                bmr={bmr}
+              />
             )}
           </motion.div>
         </AnimatePresence>
