@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
 import type { User } from "@/lib/types";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
@@ -289,19 +288,6 @@ export default function ProfilePage() {
           <p className="font-display text-lg font-bold text-text-primary">{user.first_name || t("common.user")}</p>
           {user.email && <p className="font-body text-sm text-text-secondary">{user.email}</p>}
         </div>
-      </motion.div>
-
-      {/* --- Stats Link --- */}
-      <motion.div variants={staggerItem}>
-        <Link href="/dashboard/profile/stats" className="data-card flex items-center justify-between hover:border-[var(--color-accent-dynamic)]/30 transition-colors">
-          <div>
-            <p className="font-display text-sm font-bold text-text-primary">Le tue statistiche</p>
-            <p className="font-body text-xs text-text-tertiary">BMR, TDEE, macro e composizione corporea</p>
-          </div>
-          <svg className="w-5 h-5 text-text-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
-          </svg>
-        </Link>
       </motion.div>
 
       {/* --- Informazioni Personali --- */}

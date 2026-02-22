@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { HomeIcon, UtensilsIcon, DumbbellIcon, ChartIcon, UserIcon, SettingsIcon, ChatIcon } from "./icons";
+import { HomeIcon, UtensilsIcon, DumbbellIcon, ChartIcon, SettingsIcon, ChatIcon } from "./icons";
 import { useChat } from "@/lib/chat-context";
 import { usePreferences } from "@/lib/preferences-context";
 import { useLanguage } from "@/lib/language-context";
@@ -25,8 +25,6 @@ export default function Sidebar({ currentPath, user, onLogout }: SidebarProps) {
     { href: "/dashboard/meals", label: t("nav.meals"), icon: UtensilsIcon },
     { href: "/dashboard/workouts", label: t("nav.workouts"), icon: DumbbellIcon },
     { href: "/dashboard/stats", label: t("nav.stats"), icon: ChartIcon },
-    { href: "/dashboard/profile", label: t("nav.profile"), icon: UserIcon },
-    { href: "/dashboard/settings", label: t("nav.settings"), icon: SettingsIcon },
   ];
 
   return (
@@ -126,6 +124,10 @@ export default function Sidebar({ currentPath, user, onLogout }: SidebarProps) {
             </div>
           </Link>
         )}
+        <Link href="/dashboard/settings" className="flex items-center gap-3 px-3 py-2 text-xs text-text-tertiary hover:text-text-secondary transition-colors">
+          <SettingsIcon className="w-3.5 h-3.5 opacity-40" filled={false} />
+          {t("nav.settings")}
+        </Link>
         <button
           onClick={onLogout}
           className="w-full text-left px-3 py-2 text-xs text-text-tertiary hover:text-danger transition-colors"
