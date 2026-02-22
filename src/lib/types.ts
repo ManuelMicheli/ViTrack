@@ -25,6 +25,45 @@ export interface User {
   layout_mode: "compact" | "expanded";
   section_order: string[];
   created_at: string;
+
+  // Onboarding
+  onboarding_completed: boolean;
+  goal: string | null;
+  age: number | null;
+  weight_kg: number | null;
+  target_weight_kg: number | null;
+
+  // Body measurements
+  neck_cm: number | null;
+  waist_cm: number | null;
+  hip_cm: number | null;
+
+  // Lifestyle
+  workout_types: string[];
+  weekly_frequency: string | null;
+  sleep_hours: string | null;
+  stress_level: string | null;
+
+  // Nutrition
+  diet_type: string | null;
+  intolerances: string[];
+  meals_per_day: number | null;
+  supplements: string[];
+
+  // Calculated metabolic fields
+  bmr: number | null;
+  tdee: number | null;
+  daily_calorie_target: number | null;
+  calories_bulk: number | null;
+  calories_maintain: number | null;
+  calories_cut: number | null;
+  macro_protein_g: number | null;
+  macro_carbs_g: number | null;
+  macro_fat_g: number | null;
+
+  // Body composition
+  body_fat_percentage: number | null;
+  lean_mass_kg: number | null;
 }
 
 export interface Meal {
