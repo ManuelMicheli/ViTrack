@@ -261,6 +261,15 @@ export default function WeightChart({
               >
                 {bmi}
               </span>
+              <span className="font-mono-label text-[10px] text-text-tertiary">
+                ({bmi < 18.5
+                  ? "Sottopeso"
+                  : bmi < 25
+                  ? "Normopeso"
+                  : bmi < 30
+                  ? "Sovrappeso"
+                  : "Obeso"})
+              </span>
             </div>
           )}
         </div>
