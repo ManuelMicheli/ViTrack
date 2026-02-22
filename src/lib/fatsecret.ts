@@ -4,7 +4,7 @@ const FATSECRET_CLIENT_ID = process.env.FATSECRET_CLIENT_ID!;
 const FATSECRET_CLIENT_SECRET = process.env.FATSECRET_CLIENT_SECRET!;
 const TOKEN_URL = "https://oauth.fatsecret.com/connect/token";
 const API_BASE = "https://platform.fatsecret.com/rest";
-const TIMEOUT_MS = 3000;
+const TIMEOUT_MS = 5000;
 
 // ---------------------------------------------------------------------------
 // OAuth2 token cache (Client Credentials flow, ~24h lifetime)
@@ -136,7 +136,7 @@ export async function lookupFood(
       format: "json",
       region: "IT",
       language: "it",
-      max_results: "5",
+      max_results: "10",
     });
 
     const searchRes = await fetch(`${API_BASE}/foods/search/v1?${searchParams}`, {
@@ -165,7 +165,7 @@ export async function lookupFood(
       .map((f) => ({ food: f, score: scoreFoodMatch(name, f.food_name) }))
       .sort((a, b) => b.score - a.score)[0];
 
-    if (!best || best.score < 5) {
+    if (!best || best.score < 3) {
       clearTimeout(timer);
       console.log(`[FatSecret] MISS: "${name}" — low score`);
       return null;

@@ -63,80 +63,70 @@ function scaleResult(
 }
 
 // ---------------------------------------------------------------------------
-// Generic lookup — USDA priority, queries all 3 sources in parallel
-// Cross-validates when 2+ APIs agree within 15% on calories
+// Generic lookup — FatSecret priority, USDA+OFF as fallback
 // ---------------------------------------------------------------------------
 async function fetchPer100gGeneric(
   name: string,
   nameEn: string
 ): Promise<NutrientResult | null> {
-  const [usdaRes, offRes, fsRes] = await Promise.allSettled([
+  // Try FatSecret first (primary source)
+  try {
+    const fs = await lookupFood(name, 100);
+    if (fs && atwaterCheck(fs)) {
+      console.log(`[Nutrition] FatSecret primary hit for "${name}"`);
+      return fs;
+    }
+  } catch {
+    console.warn(`[Nutrition] FatSecret failed for "${name}", trying fallbacks`);
+  }
+
+  // Fallback: USDA + OFF in parallel
+  const [usdaRes, offRes] = await Promise.allSettled([
     lookupUSDA(nameEn, 100),
     lookupOFF(name, 100),
-    lookupFood(name, 100),
   ]);
 
   const usda = usdaRes.status === "fulfilled" ? usdaRes.value : null;
   const off = offRes.status === "fulfilled" ? offRes.value : null;
-  const fs = fsRes.status === "fulfilled" ? fsRes.value : null;
-
-  const valid = [usda, off, fs].filter(
-    (r): r is NutrientResult => r !== null && atwaterCheck(r)
-  );
-
-  if (valid.length >= 2) {
-    const [a, b] = valid;
-    const diff = Math.abs(a.calories - b.calories);
-    const avg = (a.calories + b.calories) / 2;
-    if (avg > 0 && diff / avg <= 0.15) {
-      return a;
-    }
-  }
 
   if (usda && atwaterCheck(usda)) return usda;
   if (off && atwaterCheck(off)) return off;
-  if (fs && atwaterCheck(fs)) return fs;
   return null;
 }
 
 // ---------------------------------------------------------------------------
-// Branded lookup — OpenFoodFacts priority, prepends brand to queries
-// Cross-validates when 2+ APIs agree within 15% on calories
+// Branded lookup — FatSecret priority (brand prepended), OFF/USDA as fallback
 // ---------------------------------------------------------------------------
 async function fetchPer100gBranded(
   name: string,
   nameEn: string,
   brand: string
 ): Promise<NutrientResult | null> {
-  const [offBrandedRes, offRes, fsRes, usdaRes] = await Promise.allSettled([
+  // Try FatSecret first with brand (primary source)
+  try {
+    const fs = await lookupFood(`${brand} ${name}`, 100);
+    if (fs && atwaterCheck(fs)) {
+      console.log(`[Nutrition] FatSecret primary hit for "${brand} ${name}"`);
+      return fs;
+    }
+  } catch {
+    console.warn(`[Nutrition] FatSecret failed for "${brand} ${name}", trying fallbacks`);
+  }
+
+  // Fallback: OFF branded + OFF generic + USDA in parallel
+  const [offBrandedRes, offRes, usdaRes] = await Promise.allSettled([
     lookupOFFBranded(name, brand, 100),
     lookupOFF(`${brand} ${name}`, 100),
-    lookupFood(`${brand} ${name}`, 100),
     lookupUSDA(`${brand} ${nameEn}`, 100),
   ]);
 
   const offBranded =
     offBrandedRes.status === "fulfilled" ? offBrandedRes.value : null;
   const off = offRes.status === "fulfilled" ? offRes.value : null;
-  const fs = fsRes.status === "fulfilled" ? fsRes.value : null;
   const usda = usdaRes.status === "fulfilled" ? usdaRes.value : null;
-
-  const valid = [offBranded, off, fs, usda].filter(
-    (r): r is NutrientResult => r !== null && atwaterCheck(r)
-  );
-
-  if (valid.length >= 2) {
-    const [a, b] = valid;
-    const diff = Math.abs(a.calories - b.calories);
-    const avg = (a.calories + b.calories) / 2;
-    if (avg > 0 && diff / avg <= 0.15) {
-      return a;
-    }
-  }
 
   if (offBranded && atwaterCheck(offBranded)) return offBranded;
   if (off && atwaterCheck(off)) return off;
-  if (fs && atwaterCheck(fs)) return fs;
   if (usda && atwaterCheck(usda)) return usda;
   return null;
 }
@@ -156,17 +146,6 @@ export async function lookupNutrients(
   if (isCooked) {
     const { adjustedGrams } = adjustForCooking(name, grams, true);
     lookupGrams = adjustedGrams;
-  }
-
-  // Try CREA local database first (instant, no API calls) — skip for branded items
-  if (!brand) {
-    const creaResult = lookupItalianFood(name, lookupGrams);
-    if (creaResult) {
-      console.log(
-        `[Nutrition] CREA: "${name}" → ${creaResult.calories} kcal (${lookupGrams}g${isCooked ? `, from ${grams}g cooked` : ""})`
-      );
-      return creaResult;
-    }
   }
 
   const key = makeKey(name, nameEn);
@@ -209,8 +188,19 @@ export async function lookupNutrients(
       return r;
     }
 
+    // Fallback to CREA local database if all APIs failed — skip for branded items
+    if (!brand) {
+      const creaResult = lookupItalianFood(name, lookupGrams);
+      if (creaResult) {
+        console.log(
+          `[Nutrition] CREA fallback: "${name}" → ${creaResult.calories} kcal (${lookupGrams}g${isCooked ? `, from ${grams}g cooked` : ""})`
+        );
+        return creaResult;
+      }
+    }
+
     console.log(
-      `[Nutrition] "${name}" → NO DATA (all APIs failed, no fallback)`
+      `[Nutrition] "${name}" → NO DATA (all APIs and CREA failed)`
     );
     return null;
   } finally {
@@ -219,7 +209,7 @@ export async function lookupNutrients(
 }
 
 // ---------------------------------------------------------------------------
-// Background cache warmup — pre-fetches common Italian gym foods.
+// Background cache warmup — pre-fetches common Italian gym foods via FatSecret.
 // Called once on first request; fire-and-forget, doesn't block anything.
 // ---------------------------------------------------------------------------
 const COMMON_FOODS: [string, string][] = [
@@ -247,11 +237,29 @@ const COMMON_FOODS: [string, string][] = [
 
 let warmupStarted = false;
 
+async function warmupFoodEntry(name: string, nameEn: string): Promise<void> {
+  const key = makeKey(name, nameEn);
+  if (cache.has(key)) return;
+
+  // Try FatSecret first (primary source for warmup)
+  try {
+    const fs = await lookupFood(name, 100);
+    if (fs && atwaterCheck(fs)) {
+      cache.set(key, { per100g: fs, ts: Date.now() });
+      return;
+    }
+  } catch { /* fall through to generic */ }
+
+  // Fallback to full generic pipeline
+  const per100g = await fetchPer100gGeneric(name, nameEn);
+  cache.set(key, { per100g, ts: Date.now() });
+}
+
 export function warmupCache(): void {
   if (warmupStarted) return;
   warmupStarted = true;
 
-  console.log("[Nutrition] Cache warmup starting...");
+  console.log("[Nutrition] Cache warmup starting (FatSecret primary)...");
 
   // Process in batches of 5 to avoid rate-limit storms
   const batchSize = 5;
@@ -260,13 +268,7 @@ export function warmupCache(): void {
     for (let i = 0; i < COMMON_FOODS.length; i += batchSize) {
       const batch = COMMON_FOODS.slice(i, i + batchSize);
       await Promise.allSettled(
-        batch.map(([name, nameEn]) => {
-          const key = makeKey(name, nameEn);
-          if (cache.has(key)) return Promise.resolve();
-          return fetchPer100gGeneric(name, nameEn).then((per100g) => {
-            cache.set(key, { per100g, ts: Date.now() });
-          });
-        })
+        batch.map(([name, nameEn]) => warmupFoodEntry(name, nameEn))
       );
     }
     console.log(`[Nutrition] Cache warmup done — ${cache.size} entries`);
