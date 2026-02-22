@@ -94,6 +94,13 @@ const translations = {
   "weight.30d": { it: "30gg", en: "30d" },
   "weight.90d": { it: "90gg", en: "90d" },
   "weight.objective": { it: "Obiettivo", en: "Goal" },
+  "weight.today": { it: "Oggi", en: "Today" },
+  "weight.daysAgo": { it: "{count} giorni fa", en: "{count} days ago" },
+  "weight.toGoal": { it: "Al goal", en: "To goal" },
+  "weight.entries": { it: "Registrazioni", en: "Entries" },
+  "weight.history": { it: "Storico", en: "History" },
+  "weight.deleteTitle": { it: "Elimina peso", en: "Delete weight" },
+  "weight.deleteMsg": { it: "Vuoi eliminare questa registrazione? L'azione è irreversibile.", en: "Do you want to delete this entry? This action is irreversible." },
 
   // ── Meals page ──
   "mealsPage.title": { it: "Pasti", en: "Meals" },

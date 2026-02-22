@@ -53,3 +53,24 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json(data);
 }
+
+export async function DELETE(request: NextRequest) {
+  const id = request.nextUrl.searchParams.get("id");
+  const userId = request.nextUrl.searchParams.get("user_id");
+
+  if (!id || !userId) {
+    return NextResponse.json({ error: "id and user_id required" }, { status: 400 });
+  }
+
+  const { error } = await supabaseAdmin
+    .from("weight_logs")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", userId);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
+}
