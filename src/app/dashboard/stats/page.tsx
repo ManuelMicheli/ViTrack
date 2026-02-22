@@ -163,7 +163,7 @@ export default function StatsPage() {
 
   if (loading) {
     return (
-      <div className="px-4 md:px-8 py-6 space-y-6 max-w-4xl">
+      <div className="px-4 md:px-8 py-6 space-y-6">
         <div className="h-8 w-48 shimmer rounded-lg" />
         <div className="h-32 shimmer rounded-lg" />
         <div className="grid grid-cols-3 gap-3">
@@ -182,7 +182,7 @@ export default function StatsPage() {
 
   return (
     <motion.div
-      className="px-4 md:px-8 py-6 space-y-8 max-w-4xl"
+      className="px-4 md:px-8 py-6 space-y-8"
       initial="initial"
       animate="animate"
       variants={staggerContainer(0.08)}
@@ -196,7 +196,7 @@ export default function StatsPage() {
 
       {/* 1. TDEE Hero */}
       <motion.div variants={staggerItem}>
-        <TDEEHero bmr={num(user.bmr)} tdee={num(user.tdee)} activityLevel={user.activity_level} />
+        <TDEEHero bmr={num(user.bmr)} tdee={num(user.tdee)} activityLevel={user.activity_level} proteinG={num(user.macro_protein_g)} carbsG={num(user.macro_carbs_g)} fatG={num(user.macro_fat_g)} />
       </motion.div>
 
       {/* 2. Calorie Targets */}
