@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import type { Meal } from "@/lib/types";
+import type { Meal, User } from "@/lib/types";
 import DatePicker from "@/components/DatePicker";
 import MacroBar from "@/components/MacroBar";
 import { PlusIcon, TrashIcon } from "@/components/icons";
@@ -26,8 +26,18 @@ export default function MealsPage() {
   const [deleting, setDeleting] = useState(false);
   const [mealModalOpen, setMealModalOpen] = useState(false);
   const [mealModalType, setMealModalType] = useState<string | undefined>();
+  const [user, setUser] = useState<User | null>(null);
 
   const userId = typeof window !== "undefined" ? localStorage.getItem("vitrack_user_id") : null;
+
+  // Fetch user goals
+  useEffect(() => {
+    if (!userId) return;
+    fetch(`/api/user?id=${userId}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setUser(data); })
+      .catch(() => {});
+  }, [userId]);
 
   const getMealTypeLabel = (type: string) => {
     const key = `meal.${type}` as TranslationKey;
@@ -111,7 +121,19 @@ export default function MealsPage() {
       </motion.div>
 
       <motion.div variants={staggerItem}>
-        <FoodSearch onSave={handleSaveMeal} />
+        <FoodSearch
+          onSave={handleSaveMeal}
+          dailyIntake={{
+            protein_g: totalProtein,
+            carbs_g: totalCarbs,
+            fat_g: totalFat,
+          }}
+          goals={user ? {
+            protein_g: user.macro_protein_g ?? user.protein_goal,
+            carbs_g: user.macro_carbs_g ?? user.carbs_goal,
+            fat_g: user.macro_fat_g ?? user.fat_goal,
+          } : undefined}
+        />
       </motion.div>
 
       {/* Grouped meal sections */}

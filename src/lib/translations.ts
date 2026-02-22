@@ -123,6 +123,10 @@ const translations = {
   "foodSearch.categories": { it: "Categorie", en: "Categories" },
   "foodSearch.frequent": { it: "Frequenti", en: "Frequent" },
   "foodSearch.recent": { it: "Recenti", en: "Recent" },
+  "foodSearch.suggested": { it: "Suggeriti per te", en: "Suggested for you" },
+  "foodSearch.suggestedProtein": { it: "Ricchi di proteine", en: "High in protein" },
+  "foodSearch.suggestedCarbs": { it: "Ricchi di carboidrati", en: "High in carbs" },
+  "foodSearch.suggestedFat": { it: "Ricchi di grassi", en: "High in fat" },
   "foodSearch.allItems": { it: "Tutti", en: "All items" },
   "foodSearch.back": { it: "Indietro", en: "Back" },
 

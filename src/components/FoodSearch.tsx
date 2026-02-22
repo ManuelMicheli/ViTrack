@@ -9,11 +9,11 @@ import { TrashIcon } from "./icons";
 import MacroBar from "./MacroBar";
 import {
   searchLocalFoods,
-  getFoodsByCategory,
   getFoodById,
+  getSuggestedFoods,
 } from "@/lib/food-database/search";
-import { CATEGORIES } from "@/lib/food-database/types";
-import type { FoodItem, FoodCategory } from "@/lib/food-database/types";
+import type { FoodItem } from "@/lib/food-database/types";
+import type { MacroType } from "@/lib/food-database/search";
 import {
   getRecentFoods,
   addToRecent,
@@ -34,6 +34,18 @@ interface FoodSearchProps {
     fiber_g: number;
     meal_type: string;
   }) => void;
+  /** Current daily intake — used to compute macro-based suggestions */
+  dailyIntake?: {
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+  };
+  /** User goals — used to compute macro-based suggestions */
+  goals?: {
+    protein_g: number | null;
+    carbs_g: number | null;
+    fat_g: number | null;
+  };
 }
 
 interface CartItem extends FoodItem {
@@ -69,14 +81,13 @@ function scaleDecimal(value: number, grams: number): number {
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-export default function FoodSearch({ onSave }: FoodSearchProps) {
+export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchProps) {
   const { t } = useLanguage();
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // State
   const [query, setQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<FoodCategory | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [grams, setGrams] = useState(100);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -99,17 +110,8 @@ export default function FoodSearch({ onSave }: FoodSearchProps) {
 
   const searchResults = useMemo(() => {
     if (debouncedQuery.length < 2) return [];
-    return searchLocalFoods(debouncedQuery, {
-      category: selectedCategory ?? undefined,
-      limit: 40,
-    });
-  }, [debouncedQuery, selectedCategory]);
-
-  // Category items (when browsing a category without search)
-  const categoryItems = useMemo(() => {
-    if (!selectedCategory || debouncedQuery.length >= 2) return [];
-    return getFoodsByCategory(selectedCategory);
-  }, [selectedCategory, debouncedQuery]);
+    return searchLocalFoods(debouncedQuery, { limit: 6 });
+  }, [debouncedQuery]);
 
   // Frequent foods resolved from IDs
   const frequentFoods = useMemo(() => {
@@ -118,22 +120,45 @@ export default function FoodSearch({ onSave }: FoodSearchProps) {
       .filter((f): f is FoodItem => f !== undefined);
   }, [frequentFoodIds]);
 
+  // Suggested foods based on macro deficit
+  const { suggestedFoods, deficitLabel } = useMemo(() => {
+    if (!dailyIntake || !goals) return { suggestedFoods: [] as FoodItem[], deficitLabel: "" };
+
+    const proteinLeft = (goals.protein_g ?? 0) - dailyIntake.protein_g;
+    const carbsLeft = (goals.carbs_g ?? 0) - dailyIntake.carbs_g;
+    const fatLeft = (goals.fat_g ?? 0) - dailyIntake.fat_g;
+
+    // Find the macro with the largest relative deficit
+    const proteinRatio = goals.protein_g ? proteinLeft / goals.protein_g : 0;
+    const carbsRatio = goals.carbs_g ? carbsLeft / goals.carbs_g : 0;
+    const fatRatio = goals.fat_g ? fatLeft / goals.fat_g : 0;
+
+    let deficitMacro: MacroType = "protein";
+    let label: TranslationKey = "foodSearch.suggestedProtein";
+    let maxRatio = proteinRatio;
+
+    if (carbsRatio > maxRatio) {
+      deficitMacro = "carbs";
+      label = "foodSearch.suggestedCarbs";
+      maxRatio = carbsRatio;
+    }
+    if (fatRatio > maxRatio) {
+      deficitMacro = "fat";
+      label = "foodSearch.suggestedFat";
+    }
+
+    // Only show suggestions if there's a meaningful deficit (>20% remaining)
+    if (maxRatio < 0.2) return { suggestedFoods: [] as FoodItem[], deficitLabel: "" };
+
+    return {
+      suggestedFoods: getSuggestedFoods(deficitMacro, 5),
+      deficitLabel: label,
+    };
+  }, [dailyIntake, goals]);
+
   // What to show
   const isSearching = debouncedQuery.length >= 2;
-  const isBrowsingCategory = selectedCategory !== null && !isSearching;
-  const showHome = !isSearching && !isBrowsingCategory;
-
-  // Group search results by category
-  const groupedResults = useMemo(() => {
-    if (!isSearching) return new Map<FoodCategory, FoodItem[]>();
-    const map = new Map<FoodCategory, FoodItem[]>();
-    for (const r of searchResults) {
-      const cat = r.item.category;
-      if (!map.has(cat)) map.set(cat, []);
-      map.get(cat)!.push(r.item);
-    }
-    return map;
-  }, [searchResults, isSearching]);
+  const showHome = !isSearching;
 
   // Handlers
   const handleSelectFood = useCallback((food: FoodItem) => {
@@ -189,14 +214,6 @@ export default function FoodSearch({ onSave }: FoodSearchProps) {
     setShowMealType(false);
     setSelectedId(null);
     setGrams(100);
-    setSelectedCategory(null);
-  };
-
-  const handleBackFromCategory = () => {
-    setSelectedCategory(null);
-    setQuery("");
-    setDebouncedQuery("");
-    setSelectedId(null);
   };
 
   // Cart totals
@@ -205,9 +222,6 @@ export default function FoodSearch({ onSave }: FoodSearchProps) {
   const cartTotalCarbs = cart.reduce((s, item) => s + scaleDecimal(item.carbs_per_100g, item.grams), 0);
   const cartTotalFat = cart.reduce((s, item) => s + scaleDecimal(item.fat_per_100g, item.grams), 0);
   const cartTotalFiber = cart.reduce((s, item) => s + scaleDecimal(item.fiber_per_100g, item.grams), 0);
-
-  // Get category info helper
-  const getCategoryInfo = (id: FoodCategory) => CATEGORIES.find((c) => c.id === id);
 
   // ---------------------------------------------------------------------------
   // Render food item row
@@ -346,40 +360,24 @@ export default function FoodSearch({ onSave }: FoodSearchProps) {
       {/* Search bar */}
       <div className="relative">
         <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-border bg-transparent focus-within:border-[var(--color-accent-dynamic)]/30 transition-all">
-          {/* Back arrow when browsing category */}
-          {selectedCategory && !isSearching ? (
-            <button
-              onClick={handleBackFromCategory}
-              className="text-text-tertiary hover:text-text-primary transition-colors shrink-0"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M19 12H5M12 19l-7-7 7-7" />
-              </svg>
-            </button>
-          ) : (
-            <svg
-              className="w-4 h-4 text-text-tertiary shrink-0"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-          )}
+          <svg
+            className="w-4 h-4 text-text-tertiary shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={
-              selectedCategory
-                ? `${t("foodSearch.placeholder")} ${getCategoryInfo(selectedCategory)?.label_it ?? ""}...`
-                : t("foodSearch.placeholder")
-            }
+            placeholder={t("foodSearch.placeholder")}
             className="flex-1 bg-transparent text-text-primary placeholder-text-tertiary font-body text-sm outline-none"
           />
           {query && (
@@ -395,7 +393,7 @@ export default function FoodSearch({ onSave }: FoodSearchProps) {
         </div>
       </div>
 
-      {/* ── HOME VIEW: Frequent + Recent + Category Grid ── */}
+      {/* ── HOME VIEW: Frequent + Recent + Suggested ── */}
       {showHome && (
         <div className="space-y-4">
           {/* Frequent foods */}
@@ -479,61 +477,28 @@ export default function FoodSearch({ onSave }: FoodSearchProps) {
             </div>
           )}
 
-          {/* Category grid */}
-          <div>
-            <p className="font-mono-label text-[11px] text-text-tertiary uppercase tracking-wider mb-2 px-1">
-              {t("foodSearch.categories")}
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              {CATEGORIES.sort((a, b) => a.order - b.order).map((cat) => (
-                <motion.button
-                  key={cat.id}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    setSelectedCategory(cat.id);
-                    setSelectedId(null);
-                  }}
-                  className="flex flex-col items-center justify-center py-4 px-2 rounded-xl border border-border hover:bg-surface-raised hover:border-[var(--color-accent-dynamic)]/20 transition-all"
+          {/* Suggested foods based on macro deficit */}
+          {suggestedFoods.length > 0 && deficitLabel && (
+            <div>
+              <p className="font-mono-label text-[11px] text-text-tertiary uppercase tracking-wider mb-2 px-1">
+                {t(deficitLabel as TranslationKey)}
+              </p>
+              <div className="data-card !p-0 overflow-hidden">
+                <motion.div
+                  initial="initial"
+                  animate="animate"
+                  variants={staggerContainer(0.02)}
+                  className="divide-y divide-border-subtle"
                 >
-                  <span className="text-2xl mb-1">{cat.icon}</span>
-                  <span className="font-mono-label text-[11px] text-text-secondary">
-                    {cat.label_it}
-                  </span>
-                </motion.button>
-              ))}
+                  {suggestedFoods.map((food) => renderFoodItem(food))}
+                </motion.div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
-      {/* ── CATEGORY BROWSE VIEW ── */}
-      {isBrowsingCategory && categoryItems.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="data-card !p-0 overflow-hidden"
-        >
-          <div className="px-4 py-2.5 border-b border-border flex items-center gap-2">
-            <span className="text-base">{getCategoryInfo(selectedCategory!)?.icon}</span>
-            <span className="font-mono-label text-sm text-text-primary">
-              {getCategoryInfo(selectedCategory!)?.label_it}
-            </span>
-            <span className="font-mono-label text-[11px] text-text-tertiary ml-auto">
-              {categoryItems.length}
-            </span>
-          </div>
-          <motion.div
-            initial="initial"
-            animate="animate"
-            variants={staggerContainer(0.015)}
-            className="divide-y divide-border-subtle max-h-[60vh] overflow-y-auto"
-          >
-            {categoryItems.map((food) => renderFoodItem(food))}
-          </motion.div>
-        </motion.div>
-      )}
-
-      {/* ── SEARCH RESULTS VIEW ── */}
+      {/* ── SEARCH RESULTS VIEW (flat list, no categories) ── */}
       {isSearching && (
         <div className="space-y-2">
           {searchResults.length === 0 ? (
@@ -541,32 +506,20 @@ export default function FoodSearch({ onSave }: FoodSearchProps) {
               <p className="font-body text-sm text-text-tertiary">{t("foodSearch.noResults")}</p>
             </div>
           ) : (
-            Array.from(groupedResults.entries()).map(([catId, foods]) => {
-              const catInfo = getCategoryInfo(catId);
-              return (
-                <motion.div
-                  key={catId}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="data-card !p-0 overflow-hidden"
-                >
-                  <div className="px-4 py-2 border-b border-border-subtle flex items-center gap-2">
-                    <span className="text-sm">{catInfo?.icon}</span>
-                    <span className="font-mono-label text-[11px] text-text-tertiary uppercase tracking-wider">
-                      {catInfo?.label_it}
-                    </span>
-                  </div>
-                  <motion.div
-                    initial="initial"
-                    animate="animate"
-                    variants={staggerContainer(0.02)}
-                    className="divide-y divide-border-subtle"
-                  >
-                    {foods.map((food) => renderFoodItem(food))}
-                  </motion.div>
-                </motion.div>
-              );
-            })
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="data-card !p-0 overflow-hidden"
+            >
+              <motion.div
+                initial="initial"
+                animate="animate"
+                variants={staggerContainer(0.02)}
+                className="divide-y divide-border-subtle"
+              >
+                {searchResults.map((r) => renderFoodItem(r.item))}
+              </motion.div>
+            </motion.div>
           )}
         </div>
       )}
@@ -686,7 +639,7 @@ export default function FoodSearch({ onSave }: FoodSearchProps) {
       </AnimatePresence>
 
       {/* Empty cart hint */}
-      {cart.length === 0 && !showHome && !isSearching && !isBrowsingCategory && (
+      {cart.length === 0 && !showHome && !isSearching && (
         <p className="font-body text-sm text-text-tertiary text-center py-2">
           {t("foodSearch.emptyCart")}
         </p>

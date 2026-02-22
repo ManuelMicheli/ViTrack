@@ -3,6 +3,7 @@ import { lookupOFF, lookupOFFBranded } from "./openfoodfacts";
 import { lookupFood } from "./fatsecret";
 import { lookupItalianFood } from "./italian-foods";
 import { adjustForCooking } from "./cooking-factors";
+import { lookupFoodDatabase } from "./food-database/search";
 
 // ---------------------------------------------------------------------------
 // Shared type used by all nutrition clients
@@ -149,6 +150,20 @@ export async function lookupNutrients(
   }
 
   const key = makeKey(name, nameEn);
+
+  // 0. Food-database lookup — instant, structured data (795 items)
+  const dbMatch = lookupFoodDatabase(name, brand);
+  if (dbMatch) {
+    const per100g: NutrientResult = {
+      ...dbMatch.per100g,
+      source: "crea" as const,
+    };
+    const r = scaleResult(per100g, lookupGrams);
+    console.log(
+      `[Nutrition] FOOD-DB: "${name}" → ${r.calories} kcal (${lookupGrams}g)`
+    );
+    return r;
+  }
 
   // 1. Cache hit — instant
   const cached = cache.get(key);
