@@ -64,6 +64,10 @@ TIPO PASTO: deduci da orario italiano (7-10: colazione, 12-14: pranzo, 19-21: ce
 Se è un ALLENAMENTO:
 {"type":"workout","description":"...","workout_type":"...","duration_min":null,"calories_burned":null,"exercises":[]}
 
+CAMPI ALLENAMENTO:
+- "description": titolo CONCISO dell'allenamento (es: "Petto e bicipiti", "Corsa 30 min", "Yoga"). NON mettere risposte, conferme o frasi discorsive.
+- "workout_type": categoria (es: "Palestra", "Corsa", "Cardio", "Yoga", "Nuoto", "Calisthenics").
+
 REGOLE ALLENAMENTI:
 - NON inventare, supporre o generare MAI esercizi che l'utente non ha esplicitamente menzionato.
 - NON calcolare mai le calorie bruciate. Usa calories_burned: null.

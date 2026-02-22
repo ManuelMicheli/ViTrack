@@ -95,7 +95,7 @@ export default function WorkoutList({ workouts, onDelete, compact }: WorkoutList
                 {workout.exercises && workout.exercises.length > 0 && (
                   <div className="mt-2 ml-10 space-y-1">
                     {workout.exercises.map((ex, i) => (
-                      <p key={i} className="font-mono-label text-[11px] text-text-tertiary">
+                      <p key={i} className="font-mono-label text-[11px] text-text-secondary">
                         {ex.name}
                         {ex.sets && ex.reps && ` - ${ex.sets}x${ex.reps}`}
                         {ex.weight_kg && ` @ ${ex.weight_kg}kg`}
