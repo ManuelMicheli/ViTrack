@@ -88,6 +88,7 @@ export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchPro
 
   // State
   const [query, setQuery] = useState("");
+  const [isActive, setIsActive] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [grams, setGrams] = useState(100);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -156,9 +157,25 @@ export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchPro
     };
   }, [dailyIntake, goals]);
 
+  // Close panel when clicking outside
+  useEffect(() => {
+    if (!isActive) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        // Don't close if there's a cart
+        if (cart.length === 0 && !query) {
+          setIsActive(false);
+          setSelectedId(null);
+        }
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isActive, cart.length, query]);
+
   // What to show
   const isSearching = debouncedQuery.length >= 2;
-  const showHome = !isSearching;
+  const showHome = isActive && !isSearching;
 
   // Handlers
   const handleSelectFood = useCallback((food: FoodItem) => {
@@ -177,6 +194,7 @@ export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchPro
     setSelectedId(null);
     setQuery("");
     setDebouncedQuery("");
+    setIsActive(false);
     // Refresh history
     setRecentFoods(getRecentFoods());
     setFrequentFoodIds(getFrequentFoodIds());
@@ -214,6 +232,7 @@ export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchPro
     setShowMealType(false);
     setSelectedId(null);
     setGrams(100);
+    setIsActive(false);
   };
 
   // Cart totals
@@ -377,6 +396,7 @@ export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchPro
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setIsActive(true)}
             placeholder={t("foodSearch.placeholder")}
             className="flex-1 bg-transparent text-text-primary placeholder-text-tertiary font-body text-sm outline-none"
           />
@@ -499,7 +519,7 @@ export default function FoodSearch({ onSave, dailyIntake, goals }: FoodSearchPro
       )}
 
       {/* ── SEARCH RESULTS VIEW (flat list, no categories) ── */}
-      {isSearching && (
+      {isActive && isSearching && (
         <div className="space-y-2">
           {searchResults.length === 0 ? (
             <div className="data-card text-center py-6">
