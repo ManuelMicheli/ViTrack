@@ -1,14 +1,29 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { FoodSearchResult } from "@/lib/food-search";
 import { useLanguage } from "@/lib/language-context";
 import type { TranslationKey } from "@/lib/translations";
 import { staggerContainer, staggerItem } from "@/lib/animation-config";
 import { TrashIcon } from "./icons";
 import MacroBar from "./MacroBar";
+import {
+  searchLocalFoods,
+  getFoodsByCategory,
+  getFoodById,
+} from "@/lib/food-database/search";
+import { CATEGORIES } from "@/lib/food-database/types";
+import type { FoodItem, FoodCategory } from "@/lib/food-database/types";
+import {
+  getRecentFoods,
+  addToRecent,
+  incrementFrequency,
+  getFrequentFoodIds,
+} from "@/lib/food-history";
 
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 interface FoodSearchProps {
   onSave: (meal: {
     description: string;
@@ -21,6 +36,13 @@ interface FoodSearchProps {
   }) => void;
 }
 
+interface CartItem extends FoodItem {
+  grams: number;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 const mealTypeKeys: { value: string; labelKey: TranslationKey; icon: string }[] = [
   { value: "colazione", labelKey: "meal.colazione", icon: "\u2600\uFE0F" },
   { value: "pranzo", labelKey: "meal.pranzo", icon: "\uD83C\uDF24\uFE0F" },
@@ -36,13 +58,6 @@ function getDefaultMealType(): string {
   return "snack";
 }
 
-const SOURCE_LABELS: Record<string, string> = {
-  crea: "CREA",
-  usda: "USDA",
-  openfoodfacts: "OFF",
-  fatsecret: "FS",
-};
-
 function scale(value: number, grams: number): number {
   return Math.round((value * grams) / 100);
 }
@@ -51,78 +66,96 @@ function scaleDecimal(value: number, grams: number): number {
   return parseFloat(((value * grams) / 100).toFixed(1));
 }
 
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 export default function FoodSearch({ onSave }: FoodSearchProps) {
   const { t } = useLanguage();
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
+  // State
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<FoodSearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<FoodCategory | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [grams, setGrams] = useState(100);
-  const [cart, setCart] = useState<(FoodSearchResult & { grams: number })[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [showMealType, setShowMealType] = useState(false);
-  const [showResults, setShowResults] = useState(false);
+  const [recentFoods, setRecentFoods] = useState<FoodItem[]>([]);
+  const [frequentFoodIds, setFrequentFoodIds] = useState<string[]>([]);
 
-  // Debounced search
+  // Load history on mount
   useEffect(() => {
-    if (query.trim().length < 2) {
-      setResults([]);
-      setShowResults(false);
-      return;
-    }
+    setRecentFoods(getRecentFoods());
+    setFrequentFoodIds(getFrequentFoodIds());
+  }, []);
 
-    const timer = setTimeout(async () => {
-      setSearching(true);
-      setShowResults(true);
-      try {
-        const res = await fetch("/api/foods/search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: query.trim() }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setResults(data.results ?? []);
-        }
-      } catch {
-        // ignore network errors
-      } finally {
-        setSearching(false);
-      }
-    }, 400);
-
+  // Fuzzy search results (debounced via useMemo on trimmed query)
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query.trim()), 150);
     return () => clearTimeout(timer);
   }, [query]);
 
-  // Click outside to close results
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setShowResults(false);
-        setSelectedId(null);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const searchResults = useMemo(() => {
+    if (debouncedQuery.length < 2) return [];
+    return searchLocalFoods(debouncedQuery, {
+      category: selectedCategory ?? undefined,
+      limit: 40,
+    });
+  }, [debouncedQuery, selectedCategory]);
 
-  const handleSelectResult = (result: FoodSearchResult) => {
-    if (selectedId === result.id) {
+  // Category items (when browsing a category without search)
+  const categoryItems = useMemo(() => {
+    if (!selectedCategory || debouncedQuery.length >= 2) return [];
+    return getFoodsByCategory(selectedCategory);
+  }, [selectedCategory, debouncedQuery]);
+
+  // Frequent foods resolved from IDs
+  const frequentFoods = useMemo(() => {
+    return frequentFoodIds
+      .map((id) => getFoodById(id))
+      .filter((f): f is FoodItem => f !== undefined);
+  }, [frequentFoodIds]);
+
+  // What to show
+  const isSearching = debouncedQuery.length >= 2;
+  const isBrowsingCategory = selectedCategory !== null && !isSearching;
+  const showHome = !isSearching && !isBrowsingCategory;
+
+  // Group search results by category
+  const groupedResults = useMemo(() => {
+    if (!isSearching) return new Map<FoodCategory, FoodItem[]>();
+    const map = new Map<FoodCategory, FoodItem[]>();
+    for (const r of searchResults) {
+      const cat = r.item.category;
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push(r.item);
+    }
+    return map;
+  }, [searchResults, isSearching]);
+
+  // Handlers
+  const handleSelectFood = useCallback((food: FoodItem) => {
+    if (selectedId === food.id) {
       setSelectedId(null);
     } else {
-      setSelectedId(result.id);
-      setGrams(100);
+      setSelectedId(food.id);
+      setGrams(food.serving_size_g);
     }
-  };
+  }, [selectedId]);
 
-  const handleAddToCart = (result: FoodSearchResult) => {
-    setCart((prev) => [...prev, { ...result, grams }]);
+  const handleAddToCart = useCallback((food: FoodItem) => {
+    setCart((prev) => [...prev, { ...food, grams }]);
+    addToRecent(food);
+    incrementFrequency(food.id);
     setSelectedId(null);
     setQuery("");
-    setResults([]);
-    setShowResults(false);
-  };
+    setDebouncedQuery("");
+    // Refresh history
+    setRecentFoods(getRecentFoods());
+    setFrequentFoodIds(getFrequentFoodIds());
+  }, [grams]);
 
   const handleRemoveFromCart = (index: number) => {
     setCart((prev) => prev.filter((_, i) => i !== index));
@@ -131,14 +164,14 @@ export default function FoodSearch({ onSave }: FoodSearchProps) {
 
   const handleLogMeal = (mealType: string) => {
     const description = cart
-      .map((item) => `${item.name}(${item.grams}g)`)
+      .map((item) => `${item.name_it}(${item.grams}g)`)
       .join(", ");
 
-    const totalCalories = cart.reduce((s, item) => s + scale(item.calories_100g, item.grams), 0);
-    const totalProtein = cart.reduce((s, item) => s + scaleDecimal(item.protein_100g, item.grams), 0);
-    const totalCarbs = cart.reduce((s, item) => s + scaleDecimal(item.carbs_100g, item.grams), 0);
-    const totalFat = cart.reduce((s, item) => s + scaleDecimal(item.fat_100g, item.grams), 0);
-    const totalFiber = cart.reduce((s, item) => s + scaleDecimal(item.fiber_100g, item.grams), 0);
+    const totalCalories = cart.reduce((s, item) => s + scale(item.calories_per_100g, item.grams), 0);
+    const totalProtein = cart.reduce((s, item) => s + scaleDecimal(item.protein_per_100g, item.grams), 0);
+    const totalCarbs = cart.reduce((s, item) => s + scaleDecimal(item.carbs_per_100g, item.grams), 0);
+    const totalFat = cart.reduce((s, item) => s + scaleDecimal(item.fat_per_100g, item.grams), 0);
+    const totalFiber = cart.reduce((s, item) => s + scaleDecimal(item.fiber_per_100g, item.grams), 0);
 
     onSave({
       description,
@@ -150,212 +183,395 @@ export default function FoodSearch({ onSave }: FoodSearchProps) {
       meal_type: mealType,
     });
 
-    // Reset everything
     setCart([]);
     setQuery("");
-    setResults([]);
-    setShowResults(false);
+    setDebouncedQuery("");
     setShowMealType(false);
     setSelectedId(null);
     setGrams(100);
+    setSelectedCategory(null);
+  };
+
+  const handleBackFromCategory = () => {
+    setSelectedCategory(null);
+    setQuery("");
+    setDebouncedQuery("");
+    setSelectedId(null);
   };
 
   // Cart totals
-  const cartTotalCal = cart.reduce((s, item) => s + scale(item.calories_100g, item.grams), 0);
-  const cartTotalProtein = cart.reduce((s, item) => s + scaleDecimal(item.protein_100g, item.grams), 0);
-  const cartTotalCarbs = cart.reduce((s, item) => s + scaleDecimal(item.carbs_100g, item.grams), 0);
-  const cartTotalFat = cart.reduce((s, item) => s + scaleDecimal(item.fat_100g, item.grams), 0);
-  const cartTotalFiber = cart.reduce((s, item) => s + scaleDecimal(item.fiber_100g, item.grams), 0);
+  const cartTotalCal = cart.reduce((s, item) => s + scale(item.calories_per_100g, item.grams), 0);
+  const cartTotalProtein = cart.reduce((s, item) => s + scaleDecimal(item.protein_per_100g, item.grams), 0);
+  const cartTotalCarbs = cart.reduce((s, item) => s + scaleDecimal(item.carbs_per_100g, item.grams), 0);
+  const cartTotalFat = cart.reduce((s, item) => s + scaleDecimal(item.fat_per_100g, item.grams), 0);
+  const cartTotalFiber = cart.reduce((s, item) => s + scaleDecimal(item.fiber_per_100g, item.grams), 0);
 
+  // Get category info helper
+  const getCategoryInfo = (id: FoodCategory) => CATEGORIES.find((c) => c.id === id);
+
+  // ---------------------------------------------------------------------------
+  // Render food item row
+  // ---------------------------------------------------------------------------
+  const renderFoodItem = (food: FoodItem) => (
+    <motion.div key={food.id} variants={staggerItem}>
+      <button
+        onClick={() => handleSelectFood(food)}
+        className="w-full text-left px-4 py-3 hover:bg-surface-raised transition-colors"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="font-body text-sm text-text-primary truncate capitalize">
+              {food.name_it}
+            </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              {food.brand && (
+                <span className="font-mono-label text-[10px] text-[var(--color-accent-dynamic)]/70">
+                  {food.brand}
+                </span>
+              )}
+              {food.brand && (
+                <span className="text-text-tertiary/40 text-[10px]">&middot;</span>
+              )}
+              <span className="font-mono-label text-[11px] text-text-tertiary">
+                {food.calories_per_100g} kcal
+              </span>
+              <span className="text-text-tertiary/40 text-[10px]">&middot;</span>
+              <span className="font-mono-label text-[11px] text-protein">P:{food.protein_per_100g}g</span>
+              <span className="font-mono-label text-[11px] text-carbs">C:{food.carbs_per_100g}g</span>
+              <span className="font-mono-label text-[11px] text-fat">G:{food.fat_per_100g}g</span>
+            </div>
+          </div>
+        </div>
+      </button>
+
+      {/* Gram picker */}
+      <AnimatePresence>
+        {selectedId === food.id && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-3 space-y-3">
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setGrams((g) => Math.max(1, g - 10));
+                  }}
+                  className="w-9 h-9 rounded-lg border border-border text-text-secondary hover:bg-surface-raised hover:text-text-primary transition-all font-mono-label text-lg flex items-center justify-center"
+                >
+                  -
+                </button>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    value={grams}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (!isNaN(v) && v >= 1) setGrams(v);
+                      else if (e.target.value === "") setGrams(1);
+                    }}
+                    className="w-16 text-center bg-transparent border border-border rounded-lg py-1.5 font-mono-label text-sm text-text-primary outline-none focus:border-[var(--color-accent-dynamic)]/30 transition-all"
+                    min={1}
+                  />
+                  <span className="font-mono-label text-[11px] text-text-tertiary">g</span>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setGrams((g) => g + 10);
+                  }}
+                  className="w-9 h-9 rounded-lg border border-border text-text-secondary hover:bg-surface-raised hover:text-text-primary transition-all font-mono-label text-lg flex items-center justify-center"
+                >
+                  +
+                </button>
+              </div>
+
+              <div className="grid grid-cols-4 gap-1.5">
+                <div className="p-2 rounded-lg bg-protein/10 text-center">
+                  <p className="font-mono-label text-[10px] text-protein">P</p>
+                  <p className="font-display text-xs font-bold text-text-primary">
+                    {scaleDecimal(food.protein_per_100g, grams)}g
+                  </p>
+                </div>
+                <div className="p-2 rounded-lg bg-carbs/10 text-center">
+                  <p className="font-mono-label text-[10px] text-carbs">C</p>
+                  <p className="font-display text-xs font-bold text-text-primary">
+                    {scaleDecimal(food.carbs_per_100g, grams)}g
+                  </p>
+                </div>
+                <div className="p-2 rounded-lg bg-fat/10 text-center">
+                  <p className="font-mono-label text-[10px] text-fat">G</p>
+                  <p className="font-display text-xs font-bold text-text-primary">
+                    {scaleDecimal(food.fat_per_100g, grams)}g
+                  </p>
+                </div>
+                <div className="p-2 rounded-lg bg-fiber/10 text-center">
+                  <p className="font-mono-label text-[10px] text-fiber">F</p>
+                  <p className="font-display text-xs font-bold text-text-primary">
+                    {scaleDecimal(food.fiber_per_100g, grams)}g
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="font-mono-label text-sm text-text-secondary">
+                  {scale(food.calories_per_100g, grams)} kcal
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAddToCart(food);
+                  }}
+                  className="px-4 py-2 rounded-lg bg-[var(--color-accent-dynamic)] text-black font-mono-label text-sm hover:opacity-90 transition-all"
+                >
+                  {t("foodSearch.addToCart")}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
   return (
     <div ref={containerRef} className="space-y-3">
       {/* Search bar */}
       <div className="relative">
         <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-border bg-transparent focus-within:border-[var(--color-accent-dynamic)]/30 transition-all">
-          <svg
-            className="w-4 h-4 text-text-tertiary shrink-0"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
+          {/* Back arrow when browsing category */}
+          {selectedCategory && !isSearching ? (
+            <button
+              onClick={handleBackFromCategory}
+              className="text-text-tertiary hover:text-text-primary transition-colors shrink-0"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+            </button>
+          ) : (
+            <svg
+              className="w-4 h-4 text-text-tertiary shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          )}
           <input
+            ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("foodSearch.placeholder")}
+            placeholder={
+              selectedCategory
+                ? `${t("foodSearch.placeholder")} ${getCategoryInfo(selectedCategory)?.label_it ?? ""}...`
+                : t("foodSearch.placeholder")
+            }
             className="flex-1 bg-transparent text-text-primary placeholder-text-tertiary font-body text-sm outline-none"
           />
-          {searching && (
-            <span className="font-mono-label text-[11px] text-text-tertiary animate-pulse">
-              {t("foodSearch.searching")}
-            </span>
+          {query && (
+            <button
+              onClick={() => { setQuery(""); setDebouncedQuery(""); }}
+              className="text-text-tertiary hover:text-text-primary transition-colors shrink-0"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
           )}
         </div>
       </div>
 
-      {/* Results dropdown */}
-      <AnimatePresence>
-        {showResults && (query.trim().length >= 2) && (
-          <motion.div
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.15 }}
-            className="data-card !p-0 overflow-hidden"
-          >
-            {searching && results.length === 0 ? (
-              <div className="space-y-0">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="px-4 py-3">
-                    <div className="h-4 w-3/4 shimmer rounded" />
-                    <div className="h-3 w-1/2 shimmer rounded mt-2" />
-                  </div>
+      {/* ── HOME VIEW: Frequent + Recent + Category Grid ── */}
+      {showHome && (
+        <div className="space-y-4">
+          {/* Frequent foods */}
+          {frequentFoods.length > 0 && (
+            <div>
+              <p className="font-mono-label text-[11px] text-text-tertiary uppercase tracking-wider mb-2 px-1">
+                {t("foodSearch.frequent")}
+              </p>
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                {frequentFoods.map((food) => (
+                  <button
+                    key={food.id}
+                    onClick={() => handleSelectFood(food)}
+                    className="shrink-0 px-3 py-2 rounded-lg border border-border hover:bg-surface-raised transition-all"
+                  >
+                    <p className="font-body text-xs text-text-primary whitespace-nowrap capitalize">{food.name_it}</p>
+                    <p className="font-mono-label text-[10px] text-text-tertiary mt-0.5">{food.calories_per_100g} kcal</p>
+                  </button>
                 ))}
               </div>
-            ) : results.length === 0 && !searching ? (
-              <div className="px-4 py-6 text-center">
-                <p className="font-body text-sm text-text-tertiary">{t("foodSearch.noResults")}</p>
-              </div>
-            ) : (
-              <motion.div
-                initial="initial"
-                animate="animate"
-                variants={staggerContainer(0.03)}
-                className="divide-y divide-border-subtle"
-              >
-                {results.map((result) => (
-                  <motion.div key={result.id} variants={staggerItem}>
+              {/* Inline gram picker for frequent food */}
+              <AnimatePresence>
+                {selectedId && frequentFoods.some(f => f.id === selectedId) && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden mt-2"
+                  >
+                    {renderFoodItem(frequentFoods.find(f => f.id === selectedId)!)}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+
+          {/* Recent foods */}
+          {recentFoods.length > 0 && (
+            <div>
+              <p className="font-mono-label text-[11px] text-text-tertiary uppercase tracking-wider mb-2 px-1">
+                {t("foodSearch.recent")}
+              </p>
+              <div className="data-card !p-0 overflow-hidden">
+                <div className="divide-y divide-border-subtle">
+                  {recentFoods.slice(0, 5).map((food) => (
                     <button
-                      onClick={() => handleSelectResult(result)}
-                      className="w-full text-left px-4 py-3 hover:bg-surface-raised transition-colors"
+                      key={food.id}
+                      onClick={() => handleSelectFood(food)}
+                      className="w-full text-left px-4 py-2.5 hover:bg-surface-raised transition-colors"
                     >
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center justify-between">
                         <div className="min-w-0 flex-1">
-                          <p className="font-body text-sm text-text-primary truncate capitalize">
-                            {result.name}
-                          </p>
-                          <p className="font-mono-label text-[11px] text-text-tertiary mt-0.5">
-                            {result.calories_100g} kcal{" "}
-                            <span className="text-text-tertiary/60">&middot;</span>{" "}
-                            <span className="text-protein">P:{result.protein_100g}g</span>{" "}
-                            <span className="text-carbs">C:{result.carbs_100g}g</span>{" "}
-                            <span className="text-fat">G:{result.fat_100g}g</span>
-                          </p>
+                          <p className="font-body text-sm text-text-primary truncate capitalize">{food.name_it}</p>
+                          {food.brand && (
+                            <span className="font-mono-label text-[10px] text-text-tertiary">{food.brand}</span>
+                          )}
                         </div>
-                        <span className="font-mono-label text-[10px] text-text-tertiary/50 shrink-0 mt-0.5">
-                          {SOURCE_LABELS[result.source] ?? result.source}
+                        <span className="font-mono-label text-[11px] text-text-tertiary shrink-0 ml-2">
+                          {food.calories_per_100g} kcal
                         </span>
                       </div>
                     </button>
-
-                    {/* Gram picker (inline below selected result) */}
-                    <AnimatePresence>
-                      {selectedId === result.id && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="px-4 pb-3 space-y-3">
-                            {/* Gram controls */}
-                            <div className="flex items-center justify-center gap-3">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setGrams((g) => Math.max(1, g - 10));
-                                }}
-                                className="w-9 h-9 rounded-lg border border-border text-text-secondary hover:bg-surface-raised hover:text-text-primary transition-all font-mono-label text-lg flex items-center justify-center"
-                              >
-                                -
-                              </button>
-                              <div className="flex items-center gap-1.5">
-                                <input
-                                  type="number"
-                                  value={grams}
-                                  onChange={(e) => {
-                                    const v = parseInt(e.target.value, 10);
-                                    if (!isNaN(v) && v >= 1) setGrams(v);
-                                    else if (e.target.value === "") setGrams(1);
-                                  }}
-                                  className="w-16 text-center bg-transparent border border-border rounded-lg py-1.5 font-mono-label text-sm text-text-primary outline-none focus:border-[var(--color-accent-dynamic)]/30 transition-all"
-                                  min={1}
-                                />
-                                <span className="font-mono-label text-[11px] text-text-tertiary">g</span>
-                              </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setGrams((g) => g + 10);
-                                }}
-                                className="w-9 h-9 rounded-lg border border-border text-text-secondary hover:bg-surface-raised hover:text-text-primary transition-all font-mono-label text-lg flex items-center justify-center"
-                              >
-                                +
-                              </button>
-                            </div>
-
-                            {/* Scaled macros */}
-                            <div className="grid grid-cols-4 gap-1.5">
-                              <div className="p-2 rounded-lg bg-protein/10 text-center">
-                                <p className="font-mono-label text-[10px] text-protein">P</p>
-                                <p className="font-display text-xs font-bold text-text-primary">
-                                  {scaleDecimal(result.protein_100g, grams)}g
-                                </p>
-                              </div>
-                              <div className="p-2 rounded-lg bg-carbs/10 text-center">
-                                <p className="font-mono-label text-[10px] text-carbs">C</p>
-                                <p className="font-display text-xs font-bold text-text-primary">
-                                  {scaleDecimal(result.carbs_100g, grams)}g
-                                </p>
-                              </div>
-                              <div className="p-2 rounded-lg bg-fat/10 text-center">
-                                <p className="font-mono-label text-[10px] text-fat">G</p>
-                                <p className="font-display text-xs font-bold text-text-primary">
-                                  {scaleDecimal(result.fat_100g, grams)}g
-                                </p>
-                              </div>
-                              <div className="p-2 rounded-lg bg-fiber/10 text-center">
-                                <p className="font-mono-label text-[10px] text-fiber">F</p>
-                                <p className="font-display text-xs font-bold text-text-primary">
-                                  {scaleDecimal(result.fiber_100g, grams)}g
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                              <span className="font-mono-label text-sm text-text-secondary">
-                                {scale(result.calories_100g, grams)} kcal
-                              </span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleAddToCart(result);
-                                }}
-                                className="px-4 py-2 rounded-lg bg-[var(--color-accent-dynamic)] text-black font-mono-label text-sm hover:opacity-90 transition-all"
-                              >
-                                {t("foodSearch.addToCart")}
-                              </button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                  ))}
+                </div>
+              </div>
+              {/* Inline gram picker for recent food */}
+              <AnimatePresence>
+                {selectedId && recentFoods.some(f => f.id === selectedId) && !frequentFoods.some(f => f.id === selectedId) && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden mt-2"
+                  >
+                    <div className="data-card !p-0">
+                      {renderFoodItem(recentFoods.find(f => f.id === selectedId)!)}
+                    </div>
                   </motion.div>
-                ))}
-              </motion.div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
 
-      {/* Cart */}
+          {/* Category grid */}
+          <div>
+            <p className="font-mono-label text-[11px] text-text-tertiary uppercase tracking-wider mb-2 px-1">
+              {t("foodSearch.categories")}
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {CATEGORIES.sort((a, b) => a.order - b.order).map((cat) => (
+                <motion.button
+                  key={cat.id}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setSelectedCategory(cat.id);
+                    setSelectedId(null);
+                  }}
+                  className="flex flex-col items-center justify-center py-4 px-2 rounded-xl border border-border hover:bg-surface-raised hover:border-[var(--color-accent-dynamic)]/20 transition-all"
+                >
+                  <span className="text-2xl mb-1">{cat.icon}</span>
+                  <span className="font-mono-label text-[11px] text-text-secondary">
+                    {cat.label_it}
+                  </span>
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CATEGORY BROWSE VIEW ── */}
+      {isBrowsingCategory && categoryItems.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="data-card !p-0 overflow-hidden"
+        >
+          <div className="px-4 py-2.5 border-b border-border flex items-center gap-2">
+            <span className="text-base">{getCategoryInfo(selectedCategory!)?.icon}</span>
+            <span className="font-mono-label text-sm text-text-primary">
+              {getCategoryInfo(selectedCategory!)?.label_it}
+            </span>
+            <span className="font-mono-label text-[11px] text-text-tertiary ml-auto">
+              {categoryItems.length}
+            </span>
+          </div>
+          <motion.div
+            initial="initial"
+            animate="animate"
+            variants={staggerContainer(0.015)}
+            className="divide-y divide-border-subtle max-h-[60vh] overflow-y-auto"
+          >
+            {categoryItems.map((food) => renderFoodItem(food))}
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* ── SEARCH RESULTS VIEW ── */}
+      {isSearching && (
+        <div className="space-y-2">
+          {searchResults.length === 0 ? (
+            <div className="data-card text-center py-6">
+              <p className="font-body text-sm text-text-tertiary">{t("foodSearch.noResults")}</p>
+            </div>
+          ) : (
+            Array.from(groupedResults.entries()).map(([catId, foods]) => {
+              const catInfo = getCategoryInfo(catId);
+              return (
+                <motion.div
+                  key={catId}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="data-card !p-0 overflow-hidden"
+                >
+                  <div className="px-4 py-2 border-b border-border-subtle flex items-center gap-2">
+                    <span className="text-sm">{catInfo?.icon}</span>
+                    <span className="font-mono-label text-[11px] text-text-tertiary uppercase tracking-wider">
+                      {catInfo?.label_it}
+                    </span>
+                  </div>
+                  <motion.div
+                    initial="initial"
+                    animate="animate"
+                    variants={staggerContainer(0.02)}
+                    className="divide-y divide-border-subtle"
+                  >
+                    {foods.map((food) => renderFoodItem(food))}
+                  </motion.div>
+                </motion.div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* ── CART ── */}
       <AnimatePresence>
         {cart.length > 0 && (
           <motion.div
@@ -373,18 +589,18 @@ export default function FoodSearch({ onSave }: FoodSearchProps) {
               {cart.map((item, index) => (
                 <div key={`${item.id}-${index}`} className="px-4 py-3 flex items-center justify-between gap-2 group">
                   <div className="min-w-0 flex-1">
-                    <p className="font-body text-sm text-text-primary truncate capitalize">{item.name}</p>
+                    <p className="font-body text-sm text-text-primary truncate capitalize">{item.name_it}</p>
                     <div className="flex gap-2 mt-0.5 font-mono-label text-[11px]">
                       <span className="text-text-secondary">{item.grams}g</span>
                       <span className="text-text-tertiary/60">&middot;</span>
-                      <span className="text-protein">P:{scaleDecimal(item.protein_100g, item.grams)}g</span>
-                      <span className="text-carbs">C:{scaleDecimal(item.carbs_100g, item.grams)}g</span>
-                      <span className="text-fat">G:{scaleDecimal(item.fat_100g, item.grams)}g</span>
+                      <span className="text-protein">P:{scaleDecimal(item.protein_per_100g, item.grams)}g</span>
+                      <span className="text-carbs">C:{scaleDecimal(item.carbs_per_100g, item.grams)}g</span>
+                      <span className="text-fat">G:{scaleDecimal(item.fat_per_100g, item.grams)}g</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-mono-label text-sm text-text-secondary whitespace-nowrap">
-                      {scale(item.calories_100g, item.grams)} kcal
+                      {scale(item.calories_per_100g, item.grams)} kcal
                     </span>
                     <button
                       onClick={() => handleRemoveFromCart(index)}
@@ -470,7 +686,7 @@ export default function FoodSearch({ onSave }: FoodSearchProps) {
       </AnimatePresence>
 
       {/* Empty cart hint */}
-      {cart.length === 0 && !showResults && (
+      {cart.length === 0 && !showHome && !isSearching && !isBrowsingCategory && (
         <p className="font-body text-sm text-text-tertiary text-center py-2">
           {t("foodSearch.emptyCart")}
         </p>

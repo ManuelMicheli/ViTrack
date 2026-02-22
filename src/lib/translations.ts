@@ -120,6 +120,11 @@ const translations = {
   "foodSearch.emptyCart": { it: "Cerca e aggiungi alimenti per comporre il pasto", en: "Search and add foods to build your meal" },
   "foodSearch.selectMealType": { it: "Tipo di pasto", en: "Meal type" },
   "foodSearch.remove": { it: "Rimuovi", en: "Remove" },
+  "foodSearch.categories": { it: "Categorie", en: "Categories" },
+  "foodSearch.frequent": { it: "Frequenti", en: "Frequent" },
+  "foodSearch.recent": { it: "Recenti", en: "Recent" },
+  "foodSearch.allItems": { it: "Tutti", en: "All items" },
+  "foodSearch.back": { it: "Indietro", en: "Back" },
 
   // ── Workouts page ──
   "workoutsPage.title": { it: "Allenamenti", en: "Workouts" },
