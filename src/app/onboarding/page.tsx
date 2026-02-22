@@ -33,6 +33,7 @@ export default function OnboardingPage() {
     neck_cm: "",
     waist_cm: "",
     hip_cm: "",
+    training_experience: "",
   });
 
   // Step 3

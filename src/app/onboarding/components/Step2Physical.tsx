@@ -15,6 +15,7 @@ interface Step2Data {
   neck_cm: string;
   waist_cm: string;
   hip_cm: string;
+  training_experience: string;
 }
 
 interface Step2PhysicalProps {
@@ -226,6 +227,43 @@ export default function Step2Physical({ data, goal, onChange }: Step2PhysicalPro
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Training experience */}
+        <motion.div variants={staggerItem} className="pt-2">
+          <div className="border-t border-border-subtle pt-4">
+            <label className="font-mono-label text-text-tertiary mb-2 block">
+              Esperienza di allenamento
+            </label>
+            <p className="font-body text-xs text-text-tertiary mb-3">
+              Da quanto tempo ti alleni con costanza?
+            </p>
+            <div className="grid grid-cols-1 gap-2">
+              {[
+                { value: "beginner", label: "Principiante", desc: "Meno di 1 anno di allenamento costante" },
+                { value: "intermediate", label: "Intermedio", desc: "1-3 anni di allenamento costante" },
+                { value: "advanced", label: "Avanzato", desc: "Più di 3 anni di allenamento costante" },
+              ].map((opt) => {
+                const isSelected = data.training_experience === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => onChange("training_experience", opt.value)}
+                    className={`text-left p-3 rounded-lg border transition-all ${
+                      isSelected
+                        ? "border-[var(--color-accent-dynamic)] bg-[var(--color-accent-dynamic)]/10"
+                        : "border-border bg-surface hover:border-border"
+                    }`}
+                  >
+                    <span className={`font-body text-sm ${isSelected ? "text-text-primary" : "text-text-secondary"}`}>
+                      {opt.label}
+                    </span>
+                    <p className="font-body text-xs text-text-tertiary mt-0.5">{opt.desc}</p>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </motion.div>
