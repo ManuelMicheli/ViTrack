@@ -24,6 +24,16 @@ export async function GET(request: NextRequest) {
     query = query.gte("logged_at", startOfDay).lte("logged_at", endOfDay);
   }
 
+  const range = request.nextUrl.searchParams.get("range");
+  if (!date && range) {
+    const days = parseInt(range, 10);
+    if (!isNaN(days) && days > 0) {
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+      query = query.gte("logged_at", since.toISOString());
+    }
+  }
+
   const { data, error } = await query;
 
   if (error) {
@@ -52,4 +62,44 @@ export async function DELETE(request: NextRequest) {
   }
 
   return NextResponse.json({ success: true });
+}
+
+export async function POST(request: NextRequest) {
+  let body: {
+    user_id: string;
+    description: string;
+    workout_type: string;
+    duration_min?: number | null;
+    calories_burned?: number | null;
+    exercises?: { name: string; sets?: number; reps?: number; weight_kg?: number | null }[];
+  };
+
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  if (!body.user_id || !body.description || !body.workout_type) {
+    return NextResponse.json({ error: "user_id, description, workout_type required" }, { status: 400 });
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("workouts")
+    .insert({
+      user_id: body.user_id,
+      description: body.description,
+      workout_type: body.workout_type,
+      duration_min: body.duration_min ?? null,
+      calories_burned: body.calories_burned ?? null,
+      exercises: body.exercises ?? null,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json(data, { status: 201 });
 }
