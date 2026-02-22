@@ -7,6 +7,38 @@ import type { FoodItem } from "../types";
 
 export const PASTA: FoodItem[] = [
   // ===========================================================================
+  // PASTA GENERICA — appare per prima quando si cerca "pasta"
+  // ===========================================================================
+  {
+    id: "pasta_generica",
+    name_it: "Pasta",
+    name_en: "Pasta dry",
+    category: "pasta",
+    subcategory: "normale",
+    serving_size_g: 80,
+    calories_per_100g: 353,
+    protein_per_100g: 12.5,
+    carbs_per_100g: 71.2,
+    fat_per_100g: 1.8,
+    fiber_per_100g: 2.7,
+    tags: [],
+  },
+  {
+    id: "pasta_integrale_generica",
+    name_it: "Pasta Integrale",
+    name_en: "Whole wheat pasta dry",
+    category: "pasta",
+    subcategory: "integrale",
+    serving_size_g: 80,
+    calories_per_100g: 348,
+    protein_per_100g: 13.4,
+    carbs_per_100g: 66.2,
+    fat_per_100g: 2.5,
+    fiber_per_100g: 7.0,
+    tags: ["integrale"],
+  },
+
+  // ===========================================================================
   // SPAGHETTI
   // ===========================================================================
 

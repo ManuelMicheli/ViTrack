@@ -7,6 +7,13 @@ import { getAllFoods } from "./index";
 // Lower number = higher priority. Items not listed default to 100.
 // ---------------------------------------------------------------------------
 const POPULARITY: Record<string, number> = {
+  // Generic categories — absolute top priority
+  pasta: 0,
+  "pasta integrale": 0,
+  riso: 0,
+  "riso integrale": 0,
+  pane: 0,
+  "pane integrale": 0,
   // Pasta shapes — most popular first
   spaghetti: 1,
   penne: 2,
@@ -26,16 +33,12 @@ const POPULARITY: Record<string, number> = {
   "riso carnaroli": 1,
   "riso arborio": 2,
   "riso basmati": 3,
-  "riso": 4,
-  "riso integrale": 5,
-  "riso venere": 6,
-  "riso parboiled": 7,
+  "riso venere": 4,
+  "riso parboiled": 5,
   // Bread & cereals
-  pane: 1,
-  "pane integrale": 2,
-  "fiocchi d'avena": 3,
-  farro: 4,
-  "fette biscottate": 5,
+  "fiocchi d'avena": 1,
+  farro: 2,
+  "fette biscottate": 3,
   // Meat
   "petto di pollo": 1,
   "petto di tacchino": 2,

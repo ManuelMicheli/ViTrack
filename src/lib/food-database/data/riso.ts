@@ -6,6 +6,38 @@ import type { FoodItem } from "../types";
 
 export const RISO: FoodItem[] = [
   // =========================================================================
+  // RISO GENERICO — appare per primo quando si cerca "riso"
+  // =========================================================================
+  {
+    id: "riso_generico",
+    name_it: "Riso",
+    name_en: "White rice raw",
+    category: "riso",
+    subcategory: "bianco",
+    serving_size_g: 80,
+    calories_per_100g: 360,
+    protein_per_100g: 6.7,
+    carbs_per_100g: 80.4,
+    fat_per_100g: 0.4,
+    fiber_per_100g: 1.0,
+    tags: ["senza glutine"],
+  },
+  {
+    id: "riso_integrale_generico",
+    name_it: "Riso Integrale",
+    name_en: "Brown rice raw",
+    category: "riso",
+    subcategory: "integrale",
+    serving_size_g: 80,
+    calories_per_100g: 337,
+    protein_per_100g: 7.5,
+    carbs_per_100g: 72.0,
+    fat_per_100g: 2.2,
+    fiber_per_100g: 3.5,
+    tags: ["integrale", "senza glutine"],
+  },
+
+  // =========================================================================
   // RISO BIANCO
   // =========================================================================
 
