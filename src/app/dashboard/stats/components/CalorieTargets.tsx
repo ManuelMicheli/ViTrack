@@ -8,9 +8,7 @@ interface CalorieTargetsProps {
   caloriesMaintain: number | null;
   caloriesBulk: number | null;
   goal: string | null;
-  proteinG: number | null;
-  carbsG: number | null;
-  fatG: number | null;
+  weightKg: number | null;
 }
 
 const goalToHighlight: Record<string, string> = {
@@ -21,44 +19,24 @@ const goalToHighlight: Record<string, string> = {
   "Migliorare la performance atletica": "bulk",
 };
 
-// Derive macro grams from calories for each goal
-// Maintain = base macros; Cut = -20% cal, higher protein ratio; Bulk = +15% cal, higher carb ratio
-function deriveMacros(
-  kcal: number | null,
-  baseProtein: number | null,
-  baseCarbs: number | null,
-  baseFat: number | null,
-  type: "cut" | "maintain" | "bulk"
+// Same formula as /api/recalculate:
+//   protein = weight_kg * 2 (constant across all goals)
+//   fat     = target_kcal * 25% / 9
+//   carbs   = (target_kcal - protein_kcal - fat_kcal) / 4
+function computeMacros(
+  targetKcal: number | null,
+  weightKg: number | null
 ): { protein: number; carbs: number; fat: number } | null {
-  if (!kcal || !baseProtein || !baseCarbs || !baseFat) return null;
+  if (!targetKcal || !weightKg) return null;
 
-  const totalBaseKcal = baseProtein * 4 + baseCarbs * 4 + baseFat * 9;
-  if (totalBaseKcal <= 0) return null;
+  const proteinG = Math.round(weightKg * 2);
+  const proteinKcal = proteinG * 4;
+  const fatKcal = targetKcal * 0.25;
+  const fatG = Math.round(fatKcal / 9);
+  const carbsKcal = targetKcal - proteinKcal - fatKcal;
+  const carbsG = Math.max(0, Math.round(carbsKcal / 4));
 
-  const ratio = kcal / totalBaseKcal;
-
-  if (type === "cut") {
-    // Keep protein high, reduce carbs and fat proportionally
-    const protein = Math.round(baseProtein * 1.05);
-    const fat = Math.round(baseFat * ratio * 0.9);
-    const remainingKcal = kcal - protein * 4 - fat * 9;
-    const carbs = Math.max(0, Math.round(remainingKcal / 4));
-    return { protein, carbs, fat };
-  }
-  if (type === "bulk") {
-    // Keep protein, increase carbs more
-    const protein = Math.round(baseProtein * ratio);
-    const fat = Math.round(baseFat * ratio);
-    const remainingKcal = kcal - protein * 4 - fat * 9;
-    const carbs = Math.max(0, Math.round(remainingKcal / 4));
-    return { protein, carbs, fat };
-  }
-  // maintain
-  return {
-    protein: Math.round(baseProtein),
-    carbs: Math.round(baseCarbs),
-    fat: Math.round(baseFat),
-  };
+  return { protein: proteinG, carbs: carbsG, fat: fatG };
 }
 
 function AnimatedCard({
@@ -118,12 +96,12 @@ function AnimatedCard({
   );
 }
 
-export default function CalorieTargets({ caloriesCut, caloriesMaintain, caloriesBulk, goal, proteinG, carbsG, fatG }: CalorieTargetsProps) {
+export default function CalorieTargets({ caloriesCut, caloriesMaintain, caloriesBulk, goal, weightKg }: CalorieTargetsProps) {
   const highlighted = goal ? goalToHighlight[goal] || "maintain" : "maintain";
 
-  const cutMacros = deriveMacros(caloriesCut, proteinG, carbsG, fatG, "cut");
-  const maintainMacros = deriveMacros(caloriesMaintain, proteinG, carbsG, fatG, "maintain");
-  const bulkMacros = deriveMacros(caloriesBulk, proteinG, carbsG, fatG, "bulk");
+  const cutMacros = computeMacros(caloriesCut, weightKg);
+  const maintainMacros = computeMacros(caloriesMaintain, weightKg);
+  const bulkMacros = computeMacros(caloriesBulk, weightKg);
 
   return (
     <div className="space-y-3">

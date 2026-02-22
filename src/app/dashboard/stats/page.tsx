@@ -206,9 +206,7 @@ export default function StatsPage() {
           caloriesMaintain={num(user.calories_maintain)}
           caloriesBulk={num(user.calories_bulk)}
           goal={user.goal}
-          proteinG={num(user.macro_protein_g)}
-          carbsG={num(user.macro_carbs_g)}
-          fatG={num(user.macro_fat_g)}
+          weightKg={num(user.weight_kg)}
         />
       </motion.div>
 
