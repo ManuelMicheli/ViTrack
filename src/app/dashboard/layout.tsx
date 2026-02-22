@@ -36,6 +36,10 @@ export default function DashboardLayout({
           const res = await fetch(`/api/user?id=${session.user.id}`);
           if (res.ok) {
             const userData = await res.json();
+            if (userData.onboarding_completed === false) {
+              router.push("/onboarding");
+              return;
+            }
             setUser(userData);
             setAuthChecked(true);
             return;
@@ -58,6 +62,10 @@ export default function DashboardLayout({
         const res = await fetch(`/api/user?telegram_id=${encodeURIComponent(telegramId)}`);
         if (res.ok) {
           const userData = await res.json();
+          if (userData.onboarding_completed === false) {
+            router.push("/onboarding");
+            return;
+          }
           setUser(userData);
         } else {
           router.push("/");
