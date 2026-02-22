@@ -1,5 +1,12 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  classifyGoal,
+  type ClassificationInput,
+  type TrainingExperience,
+  type SportCategory,
+  type SeasonPhase,
+} from "@/lib/goal-classifier";
 
 // Activity level to multiplier mapping (Mifflin-St Jeor)
 const ACTIVITY_MULTIPLIERS: Record<string, number> = {
@@ -10,45 +17,8 @@ const ACTIVITY_MULTIPLIERS: Record<string, number> = {
   very_active: 1.9,
 };
 
-// Goals that map to bulk calories
-const BULK_GOALS = ["Aumentare massa muscolare", "Migliorare la performance atletica"];
-// Goals that map to maintenance calories
-const MAINTAIN_GOALS = ["Mantenere il peso", "Mangiare più sano"];
-// Goals that map to cut calories
-const CUT_GOALS = ["Perdere grasso corporeo"];
-
 function round1(value: number): number {
   return Math.round(value * 10) / 10;
-}
-
-// Per-goal macro ratios (from TDEEinfo.md guide)
-type GoalType = "cut" | "maintain" | "bulk";
-
-const MACRO_RATIOS: Record<GoalType, { proteinPerKg: number; fatPerKg: number }> = {
-  cut:      { proteinPerKg: 2.2, fatPerKg: 0.8 },
-  maintain: { proteinPerKg: 2.0, fatPerKg: 1.0 },
-  bulk:     { proteinPerKg: 2.0, fatPerKg: 1.0 },
-};
-
-function getGoalType(goal: string): GoalType {
-  if (CUT_GOALS.includes(goal)) return "cut";
-  if (BULK_GOALS.includes(goal)) return "bulk";
-  return "maintain";
-}
-
-function computeGoalMacros(
-  targetKcal: number,
-  weightKg: number,
-  goalType: GoalType
-): { protein_g: number; carbs_g: number; fat_g: number } {
-  const { proteinPerKg, fatPerKg } = MACRO_RATIOS[goalType];
-  const protein_g = round1(weightKg * proteinPerKg);
-  const fat_g = round1(weightKg * fatPerKg);
-  const protein_kcal = protein_g * 4;
-  const fat_kcal = fat_g * 9;
-  const carbs_kcal = targetKcal - protein_kcal - fat_kcal;
-  const carbs_g = round1(Math.max(0, carbs_kcal / 4));
-  return { protein_g, carbs_g, fat_g };
 }
 
 function calculateBMR(
@@ -90,18 +60,6 @@ function calculateBodyFat(
   return 495 / (1.0324 - 0.19077 * Math.log10(diff) + 0.15456 * Math.log10(height_cm)) - 450;
 }
 
-function getDailyCalorieTarget(
-  goal: string,
-  calories_bulk: number,
-  calories_maintain: number,
-  calories_cut: number
-): number {
-  if (BULK_GOALS.includes(goal)) return calories_bulk;
-  if (CUT_GOALS.includes(goal)) return calories_cut;
-  // Default to maintenance for maintain goals or unknown
-  return calories_maintain;
-}
-
 interface OnboardingRequest {
   user_id: string;
   goal: string;
@@ -122,6 +80,11 @@ interface OnboardingRequest {
   intolerances: string[];
   meals_per_day: number;
   supplements: string[];
+  training_experience?: string;
+  sport_category?: string;
+  season_phase?: string;
+  goal_subtype?: string;
+  calorie_surplus_deficit?: number;
 }
 
 export async function POST(request: NextRequest) {
@@ -169,19 +132,7 @@ export async function POST(request: NextRequest) {
   const multiplier = ACTIVITY_MULTIPLIERS[activity_level] ?? 1.2;
   const tdee = round1(bmr * multiplier);
 
-  // 3. Calorie targets
-  const calories_bulk = round1(tdee + 300);
-  const calories_maintain = round1(tdee);
-  const calories_cut = round1(tdee - 400);
-  const daily_calorie_target = round1(
-    getDailyCalorieTarget(goal, calories_bulk, calories_maintain, calories_cut)
-  );
-
-  // 4. Macro split (per-goal g/kg ratios from TDEEinfo.md)
-  const goalType = getGoalType(goal);
-  const { protein_g, carbs_g, fat_g } = computeGoalMacros(daily_calorie_target, weight_kg, goalType);
-
-  // 5. Body fat % (US Navy Formula) — only if measurements provided
+  // 3. Body fat % (US Navy Formula) — only if measurements provided
   let body_fat_percentage: number | null = null;
   let lean_mass_kg: number | null = null;
 
@@ -192,6 +143,32 @@ export async function POST(request: NextRequest) {
       lean_mass_kg = round1(weight_kg * (1 - body_fat_percentage / 100));
     }
   }
+
+  // 4. Use goal-classifier for dynamic calorie/macro calculation
+  const classInput: ClassificationInput = {
+    goal,
+    gender,
+    weight_kg,
+    height_cm,
+    age,
+    body_fat_percentage,
+    training_experience: (body.training_experience as TrainingExperience) || 'intermediate',
+    activity_level,
+    sport_category: body.sport_category as SportCategory | undefined,
+    season_phase: body.season_phase as SeasonPhase | undefined,
+  };
+
+  const classification = classifyGoal(classInput, tdee);
+
+  const daily_calorie_target = round1(classification.daily_calorie_target);
+  const protein_g = round1(classification.macro_protein_g);
+  const carbs_g = round1(classification.macro_carbs_g);
+  const fat_g = round1(classification.macro_fat_g);
+
+  // Still compute reference targets for CalorieTargets display
+  const calories_cut = round1(tdee - 450);
+  const calories_maintain = round1(tdee);
+  const calories_bulk = round1(tdee + 225);
 
   // Save to users table
   const updateData = {
@@ -229,6 +206,13 @@ export async function POST(request: NextRequest) {
     // Body composition
     body_fat_percentage,
     lean_mass_kg,
+
+    // Goal classification fields
+    training_experience: body.training_experience || null,
+    goal_subtype: classification.goal_subtype,
+    calorie_surplus_deficit: classification.calorie_surplus_deficit,
+    sport_category: body.sport_category || null,
+    season_phase: body.season_phase || null,
 
     // Also update existing goal fields for backward compatibility (INT columns)
     daily_calorie_goal: Math.round(daily_calorie_target),
