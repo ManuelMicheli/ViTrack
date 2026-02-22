@@ -118,6 +118,13 @@ export default function StatsPage() {
 
   if (!user) return null;
 
+  // Supabase returns DECIMAL columns as strings — parse them to numbers
+  const num = (v: unknown): number | null => {
+    if (v === null || v === undefined) return null;
+    const n = Number(v);
+    return isNaN(n) ? null : n;
+  };
+
   return (
     <motion.div
       className="px-4 md:px-8 py-6 space-y-8 max-w-2xl"
@@ -154,8 +161,8 @@ export default function StatsPage() {
       {/* Metabolic overview */}
       <motion.div variants={staggerItem}>
         <MetabolicOverview
-          bmr={user.bmr}
-          tdee={user.tdee}
+          bmr={num(user.bmr)}
+          tdee={num(user.tdee)}
           activityLevel={user.activity_level}
         />
       </motion.div>
@@ -163,9 +170,9 @@ export default function StatsPage() {
       {/* Calorie targets */}
       <motion.div variants={staggerItem}>
         <CalorieTargets
-          caloriesCut={user.calories_cut}
-          caloriesMaintain={user.calories_maintain}
-          caloriesBulk={user.calories_bulk}
+          caloriesCut={num(user.calories_cut)}
+          caloriesMaintain={num(user.calories_maintain)}
+          caloriesBulk={num(user.calories_bulk)}
           goal={user.goal}
         />
       </motion.div>
@@ -173,19 +180,19 @@ export default function StatsPage() {
       {/* Macro chart */}
       <motion.div variants={staggerItem}>
         <MacroChart
-          proteinG={user.macro_protein_g}
-          carbsG={user.macro_carbs_g}
-          fatG={user.macro_fat_g}
-          weightKg={user.weight_kg}
+          proteinG={num(user.macro_protein_g)}
+          carbsG={num(user.macro_carbs_g)}
+          fatG={num(user.macro_fat_g)}
+          weightKg={num(user.weight_kg)}
         />
       </motion.div>
 
       {/* Body composition */}
       <motion.div variants={staggerItem}>
         <BodyComposition
-          bodyFatPercentage={user.body_fat_percentage}
-          leanMassKg={user.lean_mass_kg}
-          weightKg={user.weight_kg}
+          bodyFatPercentage={num(user.body_fat_percentage)}
+          leanMassKg={num(user.lean_mass_kg)}
+          weightKg={num(user.weight_kg)}
           gender={user.gender}
         />
       </motion.div>
@@ -206,8 +213,8 @@ export default function StatsPage() {
         <WeightTracker
           userId={user.id}
           weightLogs={weightLogs}
-          startingWeight={user.weight_kg}
-          targetWeight={user.target_weight_kg}
+          startingWeight={num(user.weight_kg)}
+          targetWeight={num(user.target_weight_kg)}
           onWeightLogged={handleWeightLogged}
         />
       </motion.div>
