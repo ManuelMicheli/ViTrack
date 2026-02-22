@@ -19,6 +19,7 @@ export default function BottomNav({ currentPath }: BottomNavProps) {
     { href: "/dashboard/meals", label: "PASTI" },
     { href: "/dashboard/workouts", label: "WORKOUT" },
     { href: "/dashboard/stats", label: "STATS" },
+    { href: "/dashboard/profile", label: "PROFILO" },
     { href: "/dashboard/settings", label: "INFO" },
   ];
 
@@ -26,7 +27,9 @@ export default function BottomNav({ currentPath }: BottomNavProps) {
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-black border-t border-border z-20 pb-[env(safe-area-inset-bottom)]">
       <div className="flex items-center justify-around py-3">
         {navItems.map((item) => {
-          const isActive = currentPath === item.href;
+          const isActive = item.href === "/dashboard"
+            ? currentPath === "/dashboard"
+            : currentPath.startsWith(item.href);
           return (
             <Link
               key={item.href}

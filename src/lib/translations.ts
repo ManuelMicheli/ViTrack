@@ -11,6 +11,7 @@ const translations = {
   "nav.home": { it: "Home", en: "Home" },
   "nav.workoutsShort": { it: "Allenam.", en: "Workouts" },
   "nav.settingsShort": { it: "Impostaz.", en: "Settings" },
+  "nav.profile": { it: "Profilo", en: "Profile" },
   "nav.logout": { it: "Esci", en: "Logout" },
   "nav.user": { it: "Utente", en: "User" },
 

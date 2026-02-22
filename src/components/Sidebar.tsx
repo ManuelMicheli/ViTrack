@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { HomeIcon, UtensilsIcon, DumbbellIcon, ChartIcon, SettingsIcon, ChatIcon } from "./icons";
+import { HomeIcon, UtensilsIcon, DumbbellIcon, ChartIcon, UserIcon, SettingsIcon, ChatIcon } from "./icons";
 import { useChat } from "@/lib/chat-context";
 import { usePreferences } from "@/lib/preferences-context";
 import { useLanguage } from "@/lib/language-context";
@@ -25,6 +25,7 @@ export default function Sidebar({ currentPath, user, onLogout }: SidebarProps) {
     { href: "/dashboard/meals", label: t("nav.meals"), icon: UtensilsIcon },
     { href: "/dashboard/workouts", label: t("nav.workouts"), icon: DumbbellIcon },
     { href: "/dashboard/stats", label: t("nav.stats"), icon: ChartIcon },
+    { href: "/dashboard/profile", label: t("nav.profile"), icon: UserIcon },
     { href: "/dashboard/settings", label: t("nav.settings"), icon: SettingsIcon },
   ];
 
@@ -43,7 +44,9 @@ export default function Sidebar({ currentPath, user, onLogout }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 px-4 pt-4 space-y-0.5">
         {navItems.map((item) => {
-          const isActive = currentPath === item.href;
+          const isActive = item.href === "/dashboard"
+            ? currentPath === "/dashboard"
+            : currentPath.startsWith(item.href);
           const Icon = item.icon;
           return (
             <Link
