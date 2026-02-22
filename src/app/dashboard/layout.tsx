@@ -37,7 +37,7 @@ export default function DashboardLayout({
           if (res.ok) {
             const userData = await res.json();
             if (userData.onboarding_completed === false) {
-              router.push("/onboarding");
+              window.location.href = "/onboarding";
               return;
             }
             setUser(userData);

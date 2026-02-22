@@ -158,9 +158,9 @@ export async function POST(request: NextRequest) {
   const updateData: Record<string, unknown> = {
     // Updated raw fields (only if provided)
     ...(body.weight_kg !== undefined && { weight_kg: body.weight_kg }),
-    ...(body.neck_cm !== undefined && { neck_cm: body.neck_cm }),
-    ...(body.waist_cm !== undefined && { waist_cm: body.waist_cm }),
-    ...(body.hip_cm !== undefined && { hip_cm: body.hip_cm }),
+    ...(body.neck_cm !== undefined && { neck_cm: body.neck_cm ? Math.round(body.neck_cm) : null }),
+    ...(body.waist_cm !== undefined && { waist_cm: body.waist_cm ? Math.round(body.waist_cm) : null }),
+    ...(body.hip_cm !== undefined && { hip_cm: body.hip_cm ? Math.round(body.hip_cm) : null }),
     ...(body.activity_level !== undefined && { activity_level: body.activity_level }),
     ...(body.goal !== undefined && { goal: body.goal }),
 
@@ -177,11 +177,11 @@ export async function POST(request: NextRequest) {
     body_fat_percentage,
     lean_mass_kg,
 
-    // Backward-compatible goal fields
-    daily_calorie_goal: daily_calorie_target,
-    protein_goal: protein_g,
-    carbs_goal: carbs_g,
-    fat_goal: fat_g,
+    // Backward-compatible goal fields (INT columns)
+    daily_calorie_goal: Math.round(daily_calorie_target),
+    protein_goal: Math.round(protein_g),
+    carbs_goal: Math.round(carbs_g),
+    fat_goal: Math.round(fat_g),
   };
 
   // 5. Update users table

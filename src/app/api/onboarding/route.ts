@@ -176,9 +176,9 @@ export async function POST(request: NextRequest) {
     height_cm,
     weight_kg,
     target_weight_kg: target_weight_kg ?? null,
-    neck_cm: neck_cm ?? null,
-    waist_cm: waist_cm ?? null,
-    hip_cm: hip_cm ?? null,
+    neck_cm: neck_cm ? Math.round(neck_cm) : null,
+    waist_cm: waist_cm ? Math.round(waist_cm) : null,
+    hip_cm: hip_cm ? Math.round(hip_cm) : null,
     activity_level,
     workout_types: workout_types ?? [],
     weekly_frequency: weekly_frequency ?? null,
@@ -204,11 +204,11 @@ export async function POST(request: NextRequest) {
     body_fat_percentage,
     lean_mass_kg,
 
-    // Also update existing goal fields for backward compatibility
-    daily_calorie_goal: daily_calorie_target,
-    protein_goal: protein_g,
-    carbs_goal: carbs_g,
-    fat_goal: fat_g,
+    // Also update existing goal fields for backward compatibility (INT columns)
+    daily_calorie_goal: Math.round(daily_calorie_target),
+    protein_goal: Math.round(protein_g),
+    carbs_goal: Math.round(carbs_g),
+    fat_goal: Math.round(fat_g),
     weight_goal_kg: target_weight_kg ?? null,
 
     // Mark onboarding complete

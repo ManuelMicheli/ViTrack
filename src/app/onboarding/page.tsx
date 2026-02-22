@@ -212,7 +212,8 @@ export default function OnboardingPage() {
       });
 
       if (res.ok) {
-        router.push("/dashboard");
+        // Full page reload to cross layout boundary and ensure fresh state
+        window.location.href = "/dashboard";
       } else {
         const err = await res.json().catch(() => null);
         console.error("Onboarding error:", err);
