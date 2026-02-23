@@ -84,7 +84,7 @@ export const AI_TOOLS: ToolDefinition[] = [
         "Registra un allenamento dell'utente. Usa quando l'utente descrive un workout completato.",
       parameters: {
         type: "object",
-        required: ["description", "workout_type", "exercises"],
+        required: ["description", "workout_type"],
         properties: {
           description: {
             type: "string",

@@ -134,7 +134,7 @@ async function handleLogMeal(
     const description = descParts.join(", ");
 
     // Insert into meals table
-    const { error } = await supabase.from("meals").insert({
+    const { data: mealData, error } = await supabase.from("meals").insert({
       user_id: userId,
       description,
       calories: Math.round(totalCal),
@@ -143,7 +143,7 @@ async function handleLogMeal(
       fat_g: parseFloat(totalFat.toFixed(1)),
       fiber_g: parseFloat(totalFiber.toFixed(1)),
       meal_type: mealType,
-    });
+    }).select("id").single();
 
     if (error) {
       console.error("[ToolExecutor] log_meal insert error:", error);
@@ -153,6 +153,7 @@ async function handleLogMeal(
     return {
       success: true,
       data: {
+        meal_id: mealData?.id ?? null,
         description,
         calories: Math.round(totalCal),
         protein_g: parseFloat(totalProt.toFixed(1)),
@@ -225,7 +226,10 @@ async function handleLogWater(
 ): Promise<ToolResult> {
   try {
     const amountMl = args.amount_ml as number;
-    const todayDate = new Date().toISOString().split("T")[0];
+    const italianNow = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Europe/Rome" })
+    );
+    const todayDate = italianNow.toISOString().split("T")[0];
 
     // Check for existing water_log today
     const { data: existing } = await supabase
@@ -377,7 +381,10 @@ async function handleSearchFood(
 
 async function handleDailySummary(userId: string): Promise<ToolResult> {
   try {
-    const todayDate = new Date().toISOString().split("T")[0];
+    const italianNow = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Europe/Rome" })
+    );
+    const todayDate = italianNow.toISOString().split("T")[0];
     const startOfDay = `${todayDate}T00:00:00.000Z`;
     const endOfDay = `${todayDate}T23:59:59.999Z`;
 

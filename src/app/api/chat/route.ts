@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
-import { processMessage, resultToMessageType } from "@/lib/chat-processor";
+import { buildAIContext } from "@/ai/context-builder";
+import { buildAISystemPrompt } from "@/ai/system-prompt";
+import { chatWithAI } from "@/ai/ai-client";
 
 // GET /api/chat?user_id=...&limit=50 — load message history
 export async function GET(request: NextRequest) {
@@ -26,7 +28,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(data?.reverse() ?? []);
 }
 
-// POST /api/chat — send a message and get a response
+// POST /api/chat — send a message and get a response (non-streaming fallback)
 export async function POST(request: NextRequest) {
   try {
     const { user_id, message } = await request.json();
@@ -40,7 +42,15 @@ export async function POST(request: NextRequest) {
 
     const text = message.trim();
 
-    // Save user message
+    // Build context BEFORE saving user message to avoid duplicate in history
+    const ctx = await buildAIContext(user_id);
+    const systemPrompt = buildAISystemPrompt(ctx);
+    const history = [
+      ...(ctx?.recentMessages ?? []),
+      { role: "user", content: text },
+    ];
+
+    // Save user message (after context build so it's not in recentMessages)
     const { data: userMsg, error: userErr } = await supabase
       .from("chat_messages")
       .insert({
@@ -60,24 +70,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Process the message through the shared processor
-    const result = await processMessage(user_id, text);
+    // Non-streaming AI call
+    const result = await chatWithAI({
+      messages: history,
+      systemPrompt,
+      userId: user_id,
+      stream: false,
+    });
+
+    // Determine message type based on tool calls
+    let messageType = "text";
+    if (result.toolCalls.some((tc) => tc.name === "log_meal"))
+      messageType = "meal_saved";
+    else if (result.toolCalls.some((tc) => tc.name === "log_workout"))
+      messageType = "workout_saved";
 
     // Save assistant response
-    const msgType = resultToMessageType(result.kind);
-    const metadata: Record<string, unknown> = {};
-    if ("data" in result) metadata.data = result.data;
-    if ("workoutId" in result) metadata.workoutId = result.workoutId;
-
     const { data: assistantMsg, error: assistantErr } = await supabase
       .from("chat_messages")
       .insert({
         user_id,
         role: "assistant",
-        content: result.reply,
-        message_type: msgType,
+        content: result.content,
+        message_type: messageType,
         source: "web",
-        metadata,
+        metadata: { toolCalls: result.toolCalls.map((tc) => tc.name) },
       })
       .select()
       .single();
