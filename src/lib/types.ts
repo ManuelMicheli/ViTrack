@@ -148,19 +148,126 @@ export interface WeightLog {
   logged_at: string;
 }
 
+// Rich chat message types for the premium widget
+export type ChatMessageType =
+  | "text"
+  | "meal_saved"        // legacy: kept for backward compat with DB records
+  | "workout_saved"     // legacy
+  | "meal_confirm"      // pre-save: interactive card to verify parsed meal
+  | "meal_logged"       // post-save: success card with day progress
+  | "workout_confirm"   // pre-save: exercise list with confirm/cancel
+  | "workout_logged"    // post-save: workout success
+  | "daily_summary"     // full day recap with charts
+  | "meal_suggestion"   // selectable meal options
+  | "water_logged"      // compact water progress
+  | "weight_logged"     // weight confirmation
+  | "welcome"           // first-of-day greeting
+  | "need_info"
+  | "command_result"
+  | "error";
+
 export interface ChatMessage {
   id: string;
   user_id: string;
   role: "user" | "assistant";
   content: string;
-  message_type:
-    | "text"
-    | "meal_saved"
-    | "workout_saved"
-    | "need_info"
-    | "command_result"
-    | "error";
+  message_type: ChatMessageType;
   source: "telegram" | "web";
   metadata: Record<string, unknown>;
   created_at: string;
+}
+
+// Structured data carried in metadata for rich cards
+export interface MealItemData {
+  name: string;
+  quantity_g: number;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+}
+
+export interface MacroTotals {
+  kcal: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+}
+
+export interface DayStatus {
+  total_calories: number;
+  target_calories: number;
+  remaining_calories: number;
+  total_protein: number;
+  target_protein: number;
+  total_carbs: number;
+  target_carbs: number;
+  total_fat: number;
+  target_fat: number;
+}
+
+export interface MealConfirmData {
+  temp_id: string;
+  meal_type: string;
+  items: MealItemData[];
+  totals: MacroTotals;
+}
+
+export interface MealLoggedData {
+  meal_id: string;
+  meal_type: string;
+  items: MealItemData[];
+  totals: MacroTotals;
+  day_status: DayStatus;
+}
+
+export interface WorkoutConfirmData {
+  temp_id: string;
+  description: string;
+  workout_type: string;
+  duration_min: number | null;
+  exercises: { name: string; sets: number; reps: number; weight_kg?: number }[];
+}
+
+export interface WorkoutLoggedData {
+  description: string;
+  workout_type: string;
+  exercises: { name: string; sets: number; reps: number; weight_kg?: number }[];
+}
+
+export interface DailySummaryData {
+  date: string;
+  calories: { current: number; target: number };
+  macros: {
+    protein: { current: number; target: number };
+    carbs: { current: number; target: number };
+    fat: { current: number; target: number };
+  };
+  water: { current_ml: number; target_ml: number };
+  meals: { time: string; type: string; description: string; calories: number }[];
+  workouts: { description: string; duration_min: number | null }[];
+  streak: number;
+  insight: string;
+}
+
+export interface MealSuggestionData {
+  context: string;
+  options: {
+    name: string;
+    description: string;
+    kcal: number;
+    macros: MacroTotals;
+  }[];
+  remaining: MacroTotals;
+}
+
+export interface WaterLoggedData {
+  amount_added_ml: number;
+  current_ml: number;
+  target_ml: number;
+}
+
+export interface WeightLoggedData {
+  weight_kg: number;
+  previous_kg: number | null;
 }
