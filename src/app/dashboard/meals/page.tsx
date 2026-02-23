@@ -41,6 +41,17 @@ export default function MealsPage() {
   const [mealModalOpen, setMealModalOpen] = useState(false);
   const [mealModalType, setMealModalType] = useState<string | undefined>();
   const [foodSearchOpen, setFoodSearchOpen] = useState(false);
+  const [foodSearchMealType, setFoodSearchMealType] = useState<string | undefined>();
+
+  const openFoodSearch = (mealType?: string) => {
+    setFoodSearchMealType(mealType);
+    setFoodSearchOpen(true);
+  };
+
+  const closeFoodSearch = () => {
+    setFoodSearchOpen(false);
+    setFoodSearchMealType(undefined);
+  };
 
   const { user } = useUser();
   const userId = user?.id ?? (typeof window !== "undefined" ? localStorage.getItem("vitrack_user_id") : null);
@@ -184,35 +195,34 @@ export default function MealsPage() {
 
       {/* SECTION 3: Meal Sections */}
       {grouped.map(({ type, label, meals: sectionMeals, totalCal }) => (
-        <motion.div key={type} variants={staggerItem}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <span className="text-base">{mealTypeEmojis[type]}</span>
-              <span className="font-mono-label text-text-tertiary">{label}</span>
+        <motion.div key={type} variants={staggerItem} className="data-card !p-0 overflow-hidden">
+          {/* Section header */}
+          <div className="flex items-center justify-between px-4 py-3 bg-surface/50">
+            <div className="flex items-center gap-2.5">
+              <span className="text-lg">{mealTypeEmojis[type]}</span>
+              <span className="font-display text-sm font-semibold text-text-primary">{label}</span>
               {totalCal > 0 && (
-                <span className="font-mono-label text-text-tertiary ml-1">{totalCal} kcal</span>
+                <span className="font-mono-label text-xs text-text-tertiary">{totalCal} kcal</span>
               )}
             </div>
             <motion.button
               whileTap={{ scale: 0.9 }}
-              onClick={() => setFoodSearchOpen(true)}
-              className="p-2.5 -m-1 rounded-lg hover:bg-surface-raised text-text-tertiary hover:text-text-primary transition-all"
+              onClick={() => openFoodSearch(type)}
+              className="p-2 rounded-lg hover:bg-surface-raised text-text-tertiary hover:text-text-primary transition-all"
             >
               <PlusIcon className="w-4 h-4" />
             </motion.button>
           </div>
 
           {sectionMeals.length === 0 ? (
-            <motion.button
-              whileHover={{ scale: 1.005 }}
-              whileTap={{ scale: 0.99 }}
-              onClick={() => setFoodSearchOpen(true)}
-              className="w-full py-6 rounded-lg border border-dashed border-border text-text-tertiary text-sm hover:border-[var(--color-accent-dynamic)]/30 hover:text-text-secondary active:bg-surface/50 transition-all font-body"
+            <button
+              onClick={() => openFoodSearch(type)}
+              className="w-full py-5 text-text-tertiary text-sm hover:text-text-secondary hover:bg-surface/30 active:bg-surface/50 transition-all font-body border-t border-border-subtle"
             >
               + {t("mealsPage.addType")} {label.toLowerCase()}
-            </motion.button>
+            </button>
           ) : (
-            <div className="data-card !p-0 divide-y divide-border-subtle overflow-hidden">
+            <div className="divide-y divide-border-subtle border-t border-border-subtle">
               {sectionMeals.map((meal) => (
                 <MealCard
                   key={meal.id}
@@ -241,7 +251,7 @@ export default function MealsPage() {
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.9 }}
-        onClick={() => setFoodSearchOpen(true)}
+        onClick={() => openFoodSearch()}
         className="fixed bottom-24 right-4 md:bottom-8 md:right-8 z-40 w-14 h-14 rounded-full bg-[var(--color-accent-dynamic)] text-black shadow-lg shadow-[var(--color-accent-dynamic)]/25 flex items-center justify-center"
       >
         <PlusIcon className="w-6 h-6" />
@@ -250,8 +260,9 @@ export default function MealsPage() {
       {/* Full-screen food search overlay */}
       <FoodSearch
         isOpen={foodSearchOpen}
-        onClose={() => setFoodSearchOpen(false)}
+        onClose={closeFoodSearch}
         onSave={handleSaveMeal}
+        preselectedMealType={foodSearchMealType}
         dailyIntake={{
           protein_g: totalProtein,
           carbs_g: totalCarbs,

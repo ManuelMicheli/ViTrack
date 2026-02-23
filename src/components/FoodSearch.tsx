@@ -46,6 +46,8 @@ interface FoodSearchProps {
     carbs_g: number | null;
     fat_g: number | null;
   };
+  /** When set, skip the meal type picker and use this type directly */
+  preselectedMealType?: string;
 }
 
 interface CartItem extends FoodItem {
@@ -83,7 +85,7 @@ function scaleDecimal(value: number, grams: number): number {
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-export default function FoodSearch({ isOpen, onClose, onSave, dailyIntake, goals }: FoodSearchProps) {
+export default function FoodSearch({ isOpen, onClose, onSave, dailyIntake, goals, preselectedMealType }: FoodSearchProps) {
   const { t } = useLanguage();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -418,9 +420,17 @@ export default function FoodSearch({ isOpen, onClose, onSave, dailyIntake, goals
             {/* Header with search bar */}
             <div className="shrink-0 px-4 pt-4 pb-3 border-b border-border space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="font-display text-lg font-bold text-text-primary">
-                  {t("foodSearch.addFood")}
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-display text-lg font-bold text-text-primary">
+                    {t("foodSearch.addFood")}
+                  </h2>
+                  {preselectedMealType && (
+                    <span className="px-2 py-0.5 rounded-md bg-surface-raised border border-border font-mono-label text-xs text-text-secondary flex items-center gap-1">
+                      {mealTypeKeys.find(m => m.value === preselectedMealType)?.icon}
+                      {t(mealTypeKeys.find(m => m.value === preselectedMealType)?.labelKey ?? "meal.snack")}
+                    </span>
+                  )}
+                </div>
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={onClose}
@@ -626,50 +636,62 @@ export default function FoodSearch({ isOpen, onClose, onSave, dailyIntake, goals
 
                   {/* Log meal / Meal type picker */}
                   <div className="px-4 pb-4 pt-2">
-                    <AnimatePresence mode="wait">
-                      {!showMealType ? (
-                        <motion.button
-                          key="log-btn"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          whileTap={{ scale: 0.97 }}
-                          onClick={() => setShowMealType(true)}
-                          className="w-full py-3 rounded-lg bg-[var(--color-accent-dynamic)] text-black font-mono-label hover:opacity-90 transition-all"
-                        >
-                          {t("foodSearch.logMeal")}
-                        </motion.button>
-                      ) : (
-                        <motion.div
-                          key="meal-type-picker"
-                          initial={{ opacity: 0, y: 4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: 4 }}
-                          className="space-y-2"
-                        >
-                          <p className="font-mono-label text-text-tertiary text-center">
-                            {t("foodSearch.selectMealType")}
-                          </p>
-                          <div className="grid grid-cols-4 gap-2">
-                            {mealTypeKeys.map((type) => (
-                              <motion.button
-                                key={type.value}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => handleLogMeal(type.value)}
-                                className={`py-2.5 rounded-lg font-mono-label text-xs transition-all border border-border hover:bg-surface-raised hover:text-text-primary text-text-secondary ${
-                                  getDefaultMealType() === type.value
-                                    ? "bg-surface-raised text-text-primary border-border"
-                                    : ""
-                                }`}
-                              >
-                                <span className="block text-base mb-0.5">{type.icon}</span>
-                                {t(type.labelKey)}
-                              </motion.button>
-                            ))}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    {preselectedMealType ? (
+                      /* Preselected meal type — skip picker, save directly */
+                      <motion.button
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => handleLogMeal(preselectedMealType)}
+                        className="w-full py-3 rounded-lg bg-[var(--color-accent-dynamic)] text-black font-mono-label hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                      >
+                        <span>{mealTypeKeys.find(m => m.value === preselectedMealType)?.icon}</span>
+                        {t("foodSearch.logMeal")} — {t(mealTypeKeys.find(m => m.value === preselectedMealType)?.labelKey ?? "meal.snack")}
+                      </motion.button>
+                    ) : (
+                      <AnimatePresence mode="wait">
+                        {!showMealType ? (
+                          <motion.button
+                            key="log-btn"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            whileTap={{ scale: 0.97 }}
+                            onClick={() => setShowMealType(true)}
+                            className="w-full py-3 rounded-lg bg-[var(--color-accent-dynamic)] text-black font-mono-label hover:opacity-90 transition-all"
+                          >
+                            {t("foodSearch.logMeal")}
+                          </motion.button>
+                        ) : (
+                          <motion.div
+                            key="meal-type-picker"
+                            initial={{ opacity: 0, y: 4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 4 }}
+                            className="space-y-2"
+                          >
+                            <p className="font-mono-label text-text-tertiary text-center">
+                              {t("foodSearch.selectMealType")}
+                            </p>
+                            <div className="grid grid-cols-4 gap-2">
+                              {mealTypeKeys.map((type) => (
+                                <motion.button
+                                  key={type.value}
+                                  whileTap={{ scale: 0.95 }}
+                                  onClick={() => handleLogMeal(type.value)}
+                                  className={`py-2.5 rounded-lg font-mono-label text-xs transition-all border border-border hover:bg-surface-raised hover:text-text-primary text-text-secondary ${
+                                    getDefaultMealType() === type.value
+                                      ? "bg-surface-raised text-text-primary border-border"
+                                      : ""
+                                  }`}
+                                >
+                                  <span className="block text-base mb-0.5">{type.icon}</span>
+                                  {t(type.labelKey)}
+                                </motion.button>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    )}
                   </div>
                 </motion.div>
               )}
