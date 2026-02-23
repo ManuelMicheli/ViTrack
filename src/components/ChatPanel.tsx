@@ -7,6 +7,8 @@ import { CloseIcon, SendIcon } from "./icons";
 import { springs } from "@/lib/animation-config";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { useLanguage } from "@/lib/language-context";
+import { AIVoiceInput } from "@/components/ui/ai-voice-input";
+import { Mic } from "lucide-react";
 import type { ChatMessage } from "@/lib/types";
 
 const getUserId = async (): Promise<string | null> => {
@@ -36,6 +38,7 @@ export default function ChatPanel() {
   const [loading, setLoading] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [voiceMode, setVoiceMode] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -269,30 +272,85 @@ export default function ChatPanel() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Bar */}
-            <div className="px-4 py-3 border-t border-border pb-[env(safe-area-inset-bottom,12px)]">
-              <div className="flex items-end gap-2 border border-border rounded-lg bg-transparent px-3 py-2">
-                <textarea
-                  ref={textareaRef}
-                  value={input}
-                  onChange={handleTextareaChange}
-                  onKeyDown={handleKeyDown}
-                  placeholder={t("chat.placeholder")}
-                  rows={1}
-                  className="flex-1 bg-transparent text-sm text-text-primary placeholder-text-tertiary font-body
-                    resize-none outline-none max-h-[120px] leading-5 py-1"
-                />
-                <button
-                  onClick={() => sendMessage(input)}
-                  disabled={!input.trim() || loading}
-                  className="p-1.5 rounded-full bg-[var(--color-accent-dynamic)] text-black
-                    disabled:opacity-30 disabled:cursor-not-allowed
-                    hover:opacity-90 transition-colors flex-shrink-0"
+            {/* Voice Recording Overlay */}
+            <AnimatePresence>
+              {voiceMode && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  transition={{ duration: 0.2 }}
+                  className="border-t border-border bg-black/95"
                 >
-                  <SendIcon className="w-4 h-4" />
-                </button>
+                  <AIVoiceInput
+                    onTranscription={(text) => {
+                      setVoiceMode(false);
+                      sendMessage(text);
+                    }}
+                    onError={(err) => {
+                      setVoiceMode(false);
+                      setMessages((prev) => [
+                        ...prev,
+                        {
+                          id: `err-${Date.now()}`,
+                          user_id: userId ?? "",
+                          role: "assistant",
+                          content: err,
+                          message_type: "error",
+                          source: "web",
+                          metadata: {},
+                          created_at: new Date().toISOString(),
+                        },
+                      ]);
+                    }}
+                    disabled={loading}
+                    visualizerBars={32}
+                  />
+                  <button
+                    onClick={() => setVoiceMode(false)}
+                    className="w-full py-2 text-xs text-text-tertiary hover:text-text-secondary transition-colors"
+                  >
+                    Annulla
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Input Bar */}
+            {!voiceMode && (
+              <div className="px-4 py-3 border-t border-border pb-[env(safe-area-inset-bottom,12px)]">
+                <div className="flex items-end gap-2 border border-border rounded-lg bg-transparent px-3 py-2">
+                  <textarea
+                    ref={textareaRef}
+                    value={input}
+                    onChange={handleTextareaChange}
+                    onKeyDown={handleKeyDown}
+                    placeholder={t("chat.placeholder")}
+                    rows={1}
+                    className="flex-1 bg-transparent text-sm text-text-primary placeholder-text-tertiary font-body
+                      resize-none outline-none max-h-[120px] leading-5 py-1"
+                  />
+                  <button
+                    onClick={() => setVoiceMode(true)}
+                    disabled={loading}
+                    className="p-1.5 rounded-full text-text-tertiary hover:text-white
+                      hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed
+                      transition-colors flex-shrink-0"
+                  >
+                    <Mic className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => sendMessage(input)}
+                    disabled={!input.trim() || loading}
+                    className="p-1.5 rounded-full bg-[var(--color-accent-dynamic)] text-black
+                      disabled:opacity-30 disabled:cursor-not-allowed
+                      hover:opacity-90 transition-colors flex-shrink-0"
+                  >
+                    <SendIcon className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </motion.div>
         </>
       )}
