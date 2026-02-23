@@ -110,50 +110,98 @@ export default function ChatPanel() {
       setMessages((prev) => [...prev, tempUserMsg]);
       setLoading(true);
 
+      // Create streaming assistant message placeholder
+      const streamMsgId = `stream-${Date.now()}`;
+      const streamMsg: ChatMessage = {
+        id: streamMsgId,
+        user_id: userId,
+        role: "assistant",
+        content: "",
+        message_type: "text",
+        source: "web",
+        metadata: {},
+        created_at: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, streamMsg]);
+
       try {
-        const res = await fetch("/api/chat", {
+        const res = await fetch("/api/chat/stream", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ user_id: userId, message: trimmed }),
         });
 
-        if (res.ok) {
-          const { userMessage, assistantMessage } = await res.json();
-          setMessages((prev) => {
-            // Replace temp user message with real one, add assistant message
-            const filtered = prev.filter((m) => m.id !== tempUserMsg.id);
-            return [...filtered, userMessage, assistantMessage];
-          });
-        } else {
-          // Add error message
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `err-${Date.now()}`,
-              user_id: userId,
-              role: "assistant",
-              content: t("chat.error"),
-              message_type: "error",
-              source: "web",
-              metadata: {},
-              created_at: new Date().toISOString(),
-            },
-          ]);
+        if (!res.ok || !res.body) throw new Error("Stream failed");
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = "";
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const data = JSON.parse(line.slice(6));
+
+              if (data.type === "delta") {
+                accumulated += data.content;
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === streamMsgId
+                      ? { ...m, content: accumulated }
+                      : m
+                  )
+                );
+              } else if (data.type === "done") {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === streamMsgId
+                      ? {
+                          ...m,
+                          content: data.content,
+                          message_type: data.messageType,
+                        }
+                      : m
+                  )
+                );
+              } else if (data.type === "error") {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === streamMsgId
+                      ? {
+                          ...m,
+                          content: data.message,
+                          message_type: "error" as const,
+                        }
+                      : m
+                  )
+                );
+              }
+            } catch {
+              // Skip malformed SSE data
+            }
+          }
         }
       } catch {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `err-${Date.now()}`,
-            user_id: userId,
-            role: "assistant",
-            content: t("chat.networkError"),
-            message_type: "error",
-            source: "web",
-            metadata: {},
-            created_at: new Date().toISOString(),
-          },
-        ]);
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === streamMsgId
+              ? {
+                  ...m,
+                  content: "Errore di connessione.",
+                  message_type: "error" as const,
+                }
+              : m
+          )
+        );
       } finally {
         setLoading(false);
       }
@@ -252,7 +300,7 @@ export default function ChatPanel() {
                 </motion.div>
               ))}
 
-              {loading && (
+              {loading && !messages.some(m => m.id.startsWith("stream-")) && (
                 <div className="flex items-start gap-2">
                   <div className="bg-surface border border-border rounded-lg px-4 py-3">
                     <div className="flex gap-1.5">
