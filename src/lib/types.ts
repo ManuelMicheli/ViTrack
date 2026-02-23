@@ -50,6 +50,16 @@ export interface User {
   meals_per_day: number | null;
   supplements: string[];
 
+  // AI assistant profile
+  cooking_skill: "none" | "basic" | "intermediate" | "advanced";
+  allergies: string[];
+  disliked_foods: string[];
+  preferred_cuisine: string[];
+  available_equipment: string[];
+  injuries_or_limitations: string[];
+  training_days_per_week: number;
+  preferred_training_time: string | null;
+
   // Calculated metabolic fields
   bmr: number | null;
   tdee: number | null;
