@@ -11,7 +11,7 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
 // ---------------------------------------------------------------------------
 let _foodDbSummary: string | null = null;
 
-function buildFoodDatabaseSummary(): string {
+export function buildFoodDatabaseSummary(): string {
   if (_foodDbSummary) return _foodDbSummary;
 
   const foods = getAllFoods();
