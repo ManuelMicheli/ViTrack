@@ -1,13 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 
 type Tab = "email" | "telegram";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const [activeTab, setActiveTab] = useState<Tab>("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -15,6 +23,8 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const confirmed = searchParams.get("confirmed") === "true";
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,6 +105,14 @@ export default function LoginPage() {
           <p className="font-body text-sm text-text-tertiary text-center mb-6">
             Track. Train. Transform.
           </p>
+
+          {confirmed && (
+            <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 mb-6">
+              <p className="text-sm text-emerald-400 text-center font-body">
+                Email confermata! Ora puoi accedere.
+              </p>
+            </div>
+          )}
 
           {/* Tabs */}
           <div className="flex text-center mb-6">

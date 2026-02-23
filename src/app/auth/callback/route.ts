@@ -47,7 +47,15 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      return NextResponse.redirect(new URL(next, request.url));
+      // Explicit redirect (e.g. password reset): keep session and redirect
+      if (next) {
+        return NextResponse.redirect(new URL(next, request.url));
+      }
+
+      // Email confirmation: sign out so the user lands on the login page
+      // (the email is already verified by exchangeCodeForSession above)
+      await supabase.auth.signOut();
+      return NextResponse.redirect(new URL("/?confirmed=true", request.url));
     }
   }
 
