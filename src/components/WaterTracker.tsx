@@ -294,12 +294,12 @@ export default function WaterTracker({
                   </motion.button>
                 </div>
               ) : (
-                <div className="flex gap-1">
+                <div className="flex gap-1 flex-wrap">
                   {QUICK_ML_OPTIONS.map((amount) => (
                     <motion.button
                       key={amount}
                       onClick={() => handleAddMl(amount)}
-                      className="flex-1 py-1.5 rounded-lg bg-water/10 border border-water/20 text-water font-mono-label hover:bg-water/20 transition-colors"
+                      className="flex-1 min-w-[48px] py-1.5 rounded-lg bg-water/10 border border-water/20 text-water font-mono-label hover:bg-water/20 transition-colors"
                       whileTap={{ scale: 0.9 }}
                       transition={springs.tap}
                     >
@@ -321,12 +321,12 @@ export default function WaterTracker({
 
           {/* Glass buttons row (glasses mode only) */}
           {mode === "glasses" && (
-            <div className="flex gap-1 mb-3">
+            <div className="flex gap-1 mb-3 flex-wrap">
               {Array.from({ length: goalGlasses }).map((_, i) => (
                 <motion.button
                   key={i}
                   onClick={() => handleGlassToggle(i)}
-                  className={`flex-1 h-6 rounded-md transition-colors duration-300 ${
+                  className={`min-w-[24px] flex-1 h-6 rounded-md transition-colors duration-300 ${
                     i < glasses
                       ? "bg-water/30 border border-water/40"
                       : "bg-surface-raised border border-border hover:bg-surface-raised"

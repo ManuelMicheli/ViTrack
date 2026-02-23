@@ -474,7 +474,7 @@ export default function WeightChart({
             {/* Stats row */}
             {data.length > 1 && (
               <motion.div
-                className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-border"
+                className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 pt-3 border-t border-border"
                 variants={staggerContainer()}
                 initial="initial"
                 animate="animate"

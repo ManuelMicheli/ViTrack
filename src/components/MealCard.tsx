@@ -90,20 +90,20 @@ export default function MealCard({ meal, locale, onDelete }: MealCardProps) {
           >
             <div className="px-4 pb-4 space-y-3">
               {/* Macro detail grid */}
-              <div className="grid grid-cols-4 gap-2">
-                <div className="p-2 rounded-lg bg-protein/10 text-center">
+              <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                <div className="p-1.5 sm:p-2 rounded-lg bg-protein/10 text-center">
                   <p className="font-mono-label text-[10px] text-protein">P</p>
                   <p className="font-display text-xs font-bold text-text-primary">{protein}g</p>
                 </div>
-                <div className="p-2 rounded-lg bg-carbs/10 text-center">
+                <div className="p-1.5 sm:p-2 rounded-lg bg-carbs/10 text-center">
                   <p className="font-mono-label text-[10px] text-carbs">C</p>
                   <p className="font-display text-xs font-bold text-text-primary">{carbs}g</p>
                 </div>
-                <div className="p-2 rounded-lg bg-fat/10 text-center">
+                <div className="p-1.5 sm:p-2 rounded-lg bg-fat/10 text-center">
                   <p className="font-mono-label text-[10px] text-fat">G</p>
                   <p className="font-display text-xs font-bold text-text-primary">{fat}g</p>
                 </div>
-                <div className="p-2 rounded-lg bg-fiber/10 text-center">
+                <div className="p-1.5 sm:p-2 rounded-lg bg-fiber/10 text-center">
                   <p className="font-mono-label text-[10px] text-fiber">F</p>
                   <p className="font-display text-xs font-bold text-text-primary">{fiber}g</p>
                 </div>

@@ -41,8 +41,8 @@ export default function CalorieProgress({ current, goal, burned, compact }: Calo
       <div className="flex flex-col">
         {/* Hero calorie number */}
         <div>
-          <span className="font-display text-4xl font-bold text-text-primary"><AnimatedNum value={current} /></span>
-          <span className="font-body text-sm text-text-tertiary ml-2">kcal su {goal}</span>
+          <span className="font-display text-3xl sm:text-4xl font-bold text-text-primary"><AnimatedNum value={current} /></span>
+          <span className="font-body text-xs sm:text-sm text-text-tertiary ml-2">kcal su {goal}</span>
         </div>
 
         {/* Percentage */}
@@ -58,7 +58,7 @@ export default function CalorieProgress({ current, goal, burned, compact }: Calo
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-3 gap-6 mt-5 w-full text-center">
+        <div className="grid grid-cols-3 gap-3 sm:gap-6 mt-5 w-full text-center">
           <div>
             <p className="font-display text-lg font-bold"><AnimatedNum value={current} /></p>
             <p className="font-mono-label text-text-tertiary">{t("calories.consumed")}</p>

@@ -5,10 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { User } from "@/lib/types";
 
 const INPUT_CLASS =
-  "w-full px-4 py-3 rounded-lg bg-transparent border border-border text-text-primary placeholder-text-tertiary text-sm font-body focus:outline-none focus:border-[var(--color-accent-dynamic)] transition-all";
+  "w-full px-3 sm:px-4 py-3 rounded-lg bg-transparent border border-border text-text-primary placeholder-text-tertiary text-sm font-body focus:outline-none focus:border-[var(--color-accent-dynamic)] transition-all min-h-[48px]";
 
 const SELECT_CLASS =
-  "w-full px-4 py-3 rounded-lg bg-transparent border border-border text-text-primary text-sm font-body focus:outline-none focus:border-[var(--color-accent-dynamic)] transition-all appearance-none";
+  "w-full px-3 sm:px-4 py-3 rounded-lg bg-transparent border border-border text-text-primary text-sm font-body focus:outline-none focus:border-[var(--color-accent-dynamic)] transition-all appearance-none min-h-[48px]";
 
 interface EditStatsFormProps {
   user: User;
@@ -119,7 +119,7 @@ export default function EditStatsForm({ user, onSaved }: EditStatsFormProps) {
               </div>
 
               {/* Body measurements row */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 <div>
                   <label className="font-mono-label text-text-tertiary mb-2 block">Collo</label>
                   <div className="relative">
@@ -129,7 +129,7 @@ export default function EditStatsForm({ user, onSaved }: EditStatsFormProps) {
                       value={neckCm}
                       onChange={(e) => setNeckCm(e.target.value)}
                       placeholder="38"
-                      className={INPUT_CLASS + " pr-10"}
+                      className={INPUT_CLASS + " pr-8 sm:pr-10 min-h-[48px]"}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono-label text-text-tertiary text-xs">cm</span>
                   </div>
@@ -143,7 +143,7 @@ export default function EditStatsForm({ user, onSaved }: EditStatsFormProps) {
                       value={waistCm}
                       onChange={(e) => setWaistCm(e.target.value)}
                       placeholder="82"
-                      className={INPUT_CLASS + " pr-10"}
+                      className={INPUT_CLASS + " pr-8 sm:pr-10 min-h-[48px]"}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono-label text-text-tertiary text-xs">cm</span>
                   </div>
@@ -157,7 +157,7 @@ export default function EditStatsForm({ user, onSaved }: EditStatsFormProps) {
                       value={hipCm}
                       onChange={(e) => setHipCm(e.target.value)}
                       placeholder="95"
-                      className={INPUT_CLASS + " pr-10"}
+                      className={INPUT_CLASS + " pr-8 sm:pr-10 min-h-[48px]"}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono-label text-text-tertiary text-xs">cm</span>
                   </div>
@@ -197,7 +197,7 @@ export default function EditStatsForm({ user, onSaved }: EditStatsFormProps) {
               <button
                 onClick={handleRecalculate}
                 disabled={saving}
-                className="w-full py-3 rounded-lg bg-[var(--color-accent-dynamic)] text-black text-sm font-mono-label hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="w-full py-3 min-h-[48px] rounded-lg bg-[var(--color-accent-dynamic)] text-black text-sm font-mono-label hover:opacity-90 transition-opacity disabled:opacity-50 active:scale-[0.98]"
               >
                 {saving ? "Ricalcolo in corso..." : saved ? "Salvato!" : "Ricalcola tutto"}
               </button>

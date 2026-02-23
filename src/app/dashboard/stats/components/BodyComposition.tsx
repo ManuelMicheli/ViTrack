@@ -123,8 +123,8 @@ export default function BodyComposition({ bodyFatPercentage, leanMassKg, weightK
             {zones.map((zone) => {
               const width = ((zone.max - zone.min) / totalRange) * 100;
               return (
-                <div key={zone.label} style={{ width: `${width}%` }}>
-                  <span className="font-body text-[9px] text-text-tertiary">{zone.label}</span>
+                <div key={zone.label} className="overflow-hidden" style={{ width: `${width}%` }}>
+                  <span className="font-body text-[8px] sm:text-[9px] text-text-tertiary truncate block">{zone.label}</span>
                 </div>
               );
             })}

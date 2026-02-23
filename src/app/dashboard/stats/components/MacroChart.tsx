@@ -76,8 +76,8 @@ export default function MacroChart({ proteinG, carbsG, fatG, weightKg }: MacroCh
     <div className="space-y-3">
       <p className="font-mono-label text-text-tertiary">Ripartizione macro</p>
       <div className="data-card">
-        <div className="flex items-center gap-6">
-          <div className="w-32 h-32 flex-shrink-0">
+        <div className="flex items-center gap-4 sm:gap-6">
+          <div className="w-24 h-24 sm:w-32 sm:h-32 flex-shrink-0">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -99,7 +99,7 @@ export default function MacroChart({ proteinG, carbsG, fatG, weightKg }: MacroCh
           </div>
 
           <motion.div
-            className="flex-1 space-y-3"
+            className="flex-1 min-w-0 space-y-3"
             variants={staggerContainer(0.1)}
             initial="initial"
             animate="animate"

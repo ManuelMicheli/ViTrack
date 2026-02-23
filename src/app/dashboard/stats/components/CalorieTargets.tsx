@@ -115,7 +115,7 @@ function AnimatedCard({
       <p className="font-mono-label text-text-tertiary mt-2">{label}</p>
 
       {macros && (
-        <div className="mt-3 pt-3 border-t border-border-subtle flex justify-center gap-3">
+        <div className="mt-3 pt-3 border-t border-border-subtle flex justify-center gap-2 flex-wrap">
           <div className="flex items-center gap-1">
             <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "var(--color-protein)" }} />
             <span className="font-mono-label text-[10px] text-text-tertiary">{macros.protein}g</span>
@@ -167,7 +167,7 @@ export default function CalorieTargets({
     <div className="space-y-3">
       <p className="font-mono-label text-text-tertiary">Obiettivi calorici</p>
       <motion.div
-        className="grid grid-cols-3 gap-3"
+        className="grid grid-cols-1 sm:grid-cols-3 gap-3"
         variants={staggerContainer(0.06)}
         initial="initial"
         animate="animate"

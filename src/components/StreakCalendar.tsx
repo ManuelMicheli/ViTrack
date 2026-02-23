@@ -84,7 +84,7 @@ export default function StreakCalendar({ userId }: StreakCalendarProps) {
         <div className="h-10 shimmer rounded-lg" />
       ) : (
         <motion.div
-          className="grid grid-cols-10 gap-1"
+          className="grid grid-cols-10 gap-[3px] sm:gap-1 overflow-x-auto"
           initial="initial"
           animate="animate"
           variants={staggerContainer(0.02)}

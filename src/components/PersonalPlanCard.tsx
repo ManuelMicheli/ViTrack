@@ -96,7 +96,7 @@ export default function PersonalPlanCard({ user }: PersonalPlanCardProps) {
 
       {/* Macro row */}
       {protein != null && carbs != null && fat != null && (
-        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/5">
+        <div className="flex items-center gap-3 sm:gap-4 mt-3 pt-3 border-t border-white/5 flex-wrap">
           <MacroDot
             color="var(--color-protein)"
             label="Proteine"
@@ -128,12 +128,12 @@ function MacroDot({
   grams: number;
 }) {
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1 sm:gap-1.5">
       <span
         className="w-2 h-2 rounded-full shrink-0"
         style={{ backgroundColor: color }}
       />
-      <span className="font-mono-label text-xs text-text-secondary">
+      <span className="font-mono-label text-[10px] sm:text-xs text-text-secondary truncate">
         {label}
       </span>
       <span className="font-mono-label text-xs font-semibold text-text-primary">

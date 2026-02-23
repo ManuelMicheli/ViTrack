@@ -123,27 +123,27 @@ export default function TDEEHero({ bmr, tdee, activityLevel, proteinG, carbsG, f
           transition={{ delay: 0.9 }}
         >
           <p className="font-mono-label text-text-tertiary text-center mb-3">Macro giornalieri consigliati</p>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="text-center rounded-lg border border-border-subtle p-3">
-              <div className="w-2 h-2 rounded-full mx-auto mb-1.5" style={{ backgroundColor: "var(--color-protein)" }} />
-              <p className="font-display text-lg font-bold text-text-primary">
-                <motion.span>{animProtein}</motion.span><span className="text-xs font-normal text-text-tertiary">g</span>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="text-center rounded-lg border border-border-subtle p-2 sm:p-3">
+              <div className="w-2 h-2 rounded-full mx-auto mb-1" style={{ backgroundColor: "var(--color-protein)" }} />
+              <p className="font-display text-base sm:text-lg font-bold text-text-primary">
+                <motion.span>{animProtein}</motion.span><span className="text-[10px] sm:text-xs font-normal text-text-tertiary">g</span>
               </p>
-              <p className="font-mono-label text-text-tertiary">Proteine</p>
+              <p className="font-mono-label text-[10px] sm:text-xs text-text-tertiary truncate">Proteine</p>
             </div>
-            <div className="text-center rounded-lg border border-border-subtle p-3">
-              <div className="w-2 h-2 rounded-full mx-auto mb-1.5" style={{ backgroundColor: "var(--color-carbs)" }} />
-              <p className="font-display text-lg font-bold text-text-primary">
-                <motion.span>{animCarbs}</motion.span><span className="text-xs font-normal text-text-tertiary">g</span>
+            <div className="text-center rounded-lg border border-border-subtle p-2 sm:p-3">
+              <div className="w-2 h-2 rounded-full mx-auto mb-1" style={{ backgroundColor: "var(--color-carbs)" }} />
+              <p className="font-display text-base sm:text-lg font-bold text-text-primary">
+                <motion.span>{animCarbs}</motion.span><span className="text-[10px] sm:text-xs font-normal text-text-tertiary">g</span>
               </p>
-              <p className="font-mono-label text-text-tertiary">Carboidrati</p>
+              <p className="font-mono-label text-[10px] sm:text-xs text-text-tertiary truncate">Carbo</p>
             </div>
-            <div className="text-center rounded-lg border border-border-subtle p-3">
-              <div className="w-2 h-2 rounded-full mx-auto mb-1.5" style={{ backgroundColor: "var(--color-fat)" }} />
-              <p className="font-display text-lg font-bold text-text-primary">
-                <motion.span>{animFat}</motion.span><span className="text-xs font-normal text-text-tertiary">g</span>
+            <div className="text-center rounded-lg border border-border-subtle p-2 sm:p-3">
+              <div className="w-2 h-2 rounded-full mx-auto mb-1" style={{ backgroundColor: "var(--color-fat)" }} />
+              <p className="font-display text-base sm:text-lg font-bold text-text-primary">
+                <motion.span>{animFat}</motion.span><span className="text-[10px] sm:text-xs font-normal text-text-tertiary">g</span>
               </p>
-              <p className="font-mono-label text-text-tertiary">Grassi</p>
+              <p className="font-mono-label text-[10px] sm:text-xs text-text-tertiary truncate">Grassi</p>
             </div>
           </div>
         </motion.div>
