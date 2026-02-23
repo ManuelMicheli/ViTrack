@@ -97,6 +97,34 @@ const POPULARITY: Record<string, number> = {
   // Potatoes
   patata: 1,
   "patata dolce": 2,
+  // Hamburger & prepared meats
+  "hamburger di pollo": 1,
+  "hamburger di tacchino": 2,
+  "hamburger di manzo": 3,
+  salsiccia: 4,
+  wurstel: 5,
+  kebab: 6,
+  // Soy & plant-based
+  tofu: 1,
+  seitan: 2,
+  tempeh: 3,
+  // Lactose-free
+  "latte senza lattosio": 1,
+  "mozzarella senza lattosio": 2,
+  // Butter & cream
+  burro: 1,
+  "panna fresca": 2,
+  // Alcoholic beverages
+  birra: 1,
+  "vino rosso": 2,
+  prosecco: 3,
+  // Prepared fish
+  "tonno sott'olio": 2,
+  sushi: 3,
+  // Bars & supplements
+  "barretta proteica": 1,
+  "whey protein": 2,
+  skyr: 3,
 };
 
 function getPopularity(food: FoodItem): number {
