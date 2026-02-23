@@ -153,7 +153,7 @@ export default function StatsPage() {
       variants={staggerContainer(0.08)}
     >
       {/* Title */}
-      <motion.div variants={staggerItem}>
+      <motion.div variants={staggerItem} className="hidden md:block">
         <h1 className="font-display text-2xl font-bold text-text-primary">
           {t("statsPage.title").toUpperCase()}
         </h1>
@@ -206,7 +206,7 @@ export default function StatsPage() {
           <button
             key={p}
             onClick={() => setPeriod(p)}
-            className={`relative font-mono-label border rounded-lg px-4 py-2 transition-all ${
+            className={`relative font-mono-label border rounded-lg px-4 py-2.5 min-h-[44px] transition-all active:scale-[0.97] ${
               period === p
                 ? "border-[var(--color-accent-dynamic)] text-text-primary"
                 : "border-border text-text-tertiary hover:text-text-secondary"

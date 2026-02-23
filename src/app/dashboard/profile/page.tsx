@@ -24,10 +24,10 @@ async function recalculateStats(userId: string): Promise<User | null> {
 }
 
 const INPUT_CLASS =
-  "w-full px-4 py-3 rounded-lg bg-transparent border border-border text-text-primary placeholder-text-tertiary text-sm font-body focus:outline-none focus:border-[var(--color-accent-dynamic)] transition-all";
+  "w-full px-4 py-3 min-h-[48px] rounded-lg bg-transparent border border-border text-text-primary placeholder-text-tertiary text-sm font-body focus:outline-none focus:border-[var(--color-accent-dynamic)] transition-all";
 
 const SELECT_CLASS =
-  "w-full px-4 py-3 rounded-lg bg-transparent border border-border text-text-primary text-sm font-body focus:outline-none focus:border-[var(--color-accent-dynamic)] transition-all appearance-none";
+  "w-full px-4 py-3 min-h-[48px] rounded-lg bg-transparent border border-border text-text-primary text-sm font-body focus:outline-none focus:border-[var(--color-accent-dynamic)] transition-all appearance-none";
 
 /** Compute carbs from remaining calories after protein + fat */
 function calcAutoCarbs(calories: number, proteinG: number, fatG: number): number {
@@ -283,7 +283,7 @@ export default function ProfilePage() {
 
   return (
     <motion.div className="px-4 md:px-8 py-6 space-y-10 max-w-2xl" initial="initial" animate="animate" variants={staggerContainer(0.08)}>
-      <motion.div variants={staggerItem}>
+      <motion.div variants={staggerItem} className="hidden md:block">
         <h1 className="font-display text-2xl font-bold text-text-primary">{t("profile.title")}</h1>
       </motion.div>
 
@@ -294,13 +294,13 @@ export default function ProfilePage() {
             <Image
               src={user.avatar_url}
               alt="Avatar"
-              width={80}
-              height={80}
-              className="w-20 h-20 rounded-full object-cover border-2 border-border"
+              width={96}
+              height={96}
+              className="w-24 h-24 rounded-full object-cover border-2 border-border"
             />
           ) : (
-            <div className="w-20 h-20 rounded-full bg-surface border border-border flex items-center justify-center">
-              <span className="font-display text-2xl font-bold text-text-primary">{initials}</span>
+            <div className="w-24 h-24 rounded-full bg-surface border border-border flex items-center justify-center">
+              <span className="font-display text-3xl font-bold text-text-primary">{initials}</span>
             </div>
           )}
           {uploadingAvatar && (
@@ -320,7 +320,7 @@ export default function ProfilePage() {
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={uploadingAvatar}
-          className="font-mono-label text-[var(--color-accent-dynamic)] hover:opacity-80 transition-colors disabled:opacity-50"
+          className="font-mono-label text-[var(--color-accent-dynamic)] hover:opacity-80 active:scale-95 transition-all disabled:opacity-50 min-h-[44px] px-4"
         >
           {uploadingAvatar ? t("profile.uploading") : t("profile.changePhoto")}
         </button>
@@ -420,7 +420,7 @@ export default function ProfilePage() {
         <button
           onClick={handleSavePersonal}
           disabled={savingSection === "personal"}
-          className="w-full py-3 rounded-lg bg-[var(--color-accent-dynamic)] text-black text-sm font-mono-label hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="w-full py-3.5 min-h-[48px] rounded-lg bg-[var(--color-accent-dynamic)] text-black text-sm font-mono-label hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
         >
           {savingSection === "personal" ? t("common.saving") : t("common.save")}
         </button>
@@ -543,7 +543,7 @@ export default function ProfilePage() {
         <button
           onClick={handleSaveGoals}
           disabled={savingSection === "goals"}
-          className="w-full py-3 rounded-lg bg-[var(--color-accent-dynamic)] text-black text-sm font-mono-label hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="w-full py-3.5 min-h-[48px] rounded-lg bg-[var(--color-accent-dynamic)] text-black text-sm font-mono-label hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
         >
           {savingSection === "goals" ? t("common.saving") : t("common.save")}
         </button>
@@ -562,7 +562,7 @@ export default function ProfilePage() {
           {dietaryOptions.map((opt) => (
             <label
               key={opt.value}
-              className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+              className={`flex items-center gap-3 p-3.5 min-h-[48px] rounded-lg border cursor-pointer transition-all active:scale-[0.97] ${
                 dietaryPreferences.includes(opt.value)
                   ? "bg-[var(--color-accent-dynamic)]/10 border-[var(--color-accent-dynamic)]/30"
                   : "bg-transparent border-border hover:border-border"
@@ -595,7 +595,7 @@ export default function ProfilePage() {
         <button
           onClick={handleSaveDietary}
           disabled={savingSection === "dietary"}
-          className="w-full py-3 rounded-lg bg-[var(--color-accent-dynamic)] text-black text-sm font-mono-label hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="w-full py-3.5 min-h-[48px] rounded-lg bg-[var(--color-accent-dynamic)] text-black text-sm font-mono-label hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
         >
           {savingSection === "dietary" ? t("common.saving") : t("common.save")}
         </button>

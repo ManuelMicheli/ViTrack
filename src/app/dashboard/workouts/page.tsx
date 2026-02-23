@@ -237,7 +237,7 @@ export default function WorkoutsPage() {
     <motion.div className="px-4 md:px-8 py-6 space-y-4" initial="initial" animate="animate" variants={staggerContainer(0.08)}>
       {/* Header */}
       <motion.div variants={staggerItem} className="flex items-center justify-between">
-        <h1 className="font-display text-2xl font-bold text-text-primary">{t("workoutsPage.title")}</h1>
+        <h1 className="hidden md:block font-display text-2xl font-bold text-text-primary">{t("workoutsPage.title")}</h1>
         {activeTab === "today" && <DatePicker value={date} onChange={setDate} />}
       </motion.div>
 
@@ -247,7 +247,7 @@ export default function WorkoutsPage() {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`relative font-mono-label border rounded-lg px-4 py-2 transition-all ${
+            className={`relative font-mono-label border rounded-lg px-4 py-2.5 min-h-[44px] transition-all active:scale-[0.97] ${
               activeTab === tab.key
                 ? "border-[var(--color-accent-dynamic)] text-text-primary"
                 : "border-border text-text-tertiary hover:text-text-secondary"
@@ -331,8 +331,8 @@ export default function WorkoutsPage() {
                         </div>
                       </div>
                       <button
-                        onClick={() => setDeleteId(workout.id)}
-                        className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-danger hover:bg-danger/10 rounded p-1 transition-all"
+                        onClick={(e) => { e.stopPropagation(); setDeleteId(workout.id); }}
+                        className="absolute top-4 right-4 opacity-60 md:opacity-0 group-hover:opacity-100 text-danger hover:bg-danger/10 rounded p-2 -m-1 transition-all"
                       >
                         <TrashIcon className="w-4 h-4" />
                       </button>
@@ -415,7 +415,7 @@ export default function WorkoutsPage() {
                     <button
                       key={range}
                       onClick={() => setHistoryRange(range)}
-                      className={`relative font-mono-label border rounded-lg px-4 py-2 transition-all ${
+                      className={`relative font-mono-label border rounded-lg px-4 py-2.5 min-h-[44px] transition-all active:scale-[0.97] ${
                         historyRange === range
                           ? "border-[var(--color-accent-dynamic)] text-text-primary"
                           : "border-border text-text-tertiary hover:text-text-secondary"
@@ -504,7 +504,7 @@ export default function WorkoutsPage() {
                   <select
                     value={selectedExercise}
                     onChange={(e) => setSelectedExercise(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-lg bg-transparent border border-border text-text-primary font-body text-sm focus:outline-none focus:border-[var(--color-accent-dynamic)]/30 transition-all"
+                    className="w-full px-3 py-3 min-h-[48px] rounded-lg bg-transparent border border-border text-text-primary font-body text-sm focus:outline-none focus:border-[var(--color-accent-dynamic)]/30 transition-all"
                   >
                     {exerciseList.map((ex) => (
                       <option key={ex} value={ex}>{ex}</option>

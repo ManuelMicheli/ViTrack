@@ -159,7 +159,7 @@ export default function MealsPage() {
     <motion.div className="px-4 md:px-8 py-6 space-y-5" initial="initial" animate="animate" variants={staggerContainer(0.08)}>
       {/* Header */}
       <motion.div variants={staggerItem} className="flex items-center justify-between">
-        <h1 className="font-display text-2xl font-bold text-text-primary">{t("mealsPage.title")}</h1>
+        <h1 className="hidden md:block font-display text-2xl font-bold text-text-primary">{t("mealsPage.title")}</h1>
         <DatePicker value={date} onChange={setDate} />
       </motion.div>
 
@@ -196,7 +196,7 @@ export default function MealsPage() {
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => setFoodSearchOpen(true)}
-              className="p-1.5 rounded-lg hover:bg-surface-raised text-text-tertiary hover:text-text-primary transition-all"
+              className="p-2.5 -m-1 rounded-lg hover:bg-surface-raised text-text-tertiary hover:text-text-primary transition-all"
             >
               <PlusIcon className="w-4 h-4" />
             </motion.button>
@@ -207,7 +207,7 @@ export default function MealsPage() {
               whileHover={{ scale: 1.005 }}
               whileTap={{ scale: 0.99 }}
               onClick={() => setFoodSearchOpen(true)}
-              className="w-full py-5 rounded-lg border border-dashed border-border text-text-tertiary text-sm hover:border-[var(--color-accent-dynamic)]/30 hover:text-text-secondary transition-all font-body"
+              className="w-full py-6 rounded-lg border border-dashed border-border text-text-tertiary text-sm hover:border-[var(--color-accent-dynamic)]/30 hover:text-text-secondary active:bg-surface/50 transition-all font-body"
             >
               + {t("mealsPage.addType")} {label.toLowerCase()}
             </motion.button>
@@ -242,7 +242,7 @@ export default function MealsPage() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => setFoodSearchOpen(true)}
-        className="fixed bottom-20 right-4 sm:bottom-8 sm:right-8 z-40 w-14 h-14 rounded-full bg-[var(--color-accent-dynamic)] text-black shadow-lg shadow-[var(--color-accent-dynamic)]/25 flex items-center justify-center"
+        className="fixed bottom-24 right-4 md:bottom-8 md:right-8 z-40 w-14 h-14 rounded-full bg-[var(--color-accent-dynamic)] text-black shadow-lg shadow-[var(--color-accent-dynamic)]/25 flex items-center justify-center"
       >
         <PlusIcon className="w-6 h-6" />
       </motion.button>

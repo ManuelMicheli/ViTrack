@@ -115,8 +115,8 @@ export default function DashboardPage() {
     greeting: (
       <motion.div key="greeting" variants={staggerItem} className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold text-text-primary">DASHBOARD</h1>
-          <p className="font-body text-base text-text-secondary mt-1">{getGreeting(user?.first_name ?? null, language)}</p>
+          <h1 className="hidden md:block font-display text-2xl font-bold text-text-primary">DASHBOARD</h1>
+          <p className="font-body text-base text-text-secondary md:mt-1">{getGreeting(user?.first_name ?? null, language)}</p>
           {summary && (
             <p className="font-body text-sm text-text-tertiary mt-0.5">
               {getMotivation({
@@ -179,14 +179,14 @@ export default function DashboardPage() {
       <motion.div key="meals" variants={staggerItem}>
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-mono-label text-text-tertiary">{t("dashboard.todaysMeals")}</h3>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1">
             <button
               onClick={() => setMealModalOpen(true)}
-              className="font-mono-label text-xs text-[var(--color-accent-dynamic)] hover:opacity-80 transition-opacity"
+              className="font-mono-label text-xs text-[var(--color-accent-dynamic)] hover:opacity-80 transition-opacity min-h-[44px] min-w-[44px] flex items-center justify-center px-2"
             >
               + Aggiungi
             </button>
-            <Link href="/dashboard/meals" className="font-mono-label text-text-tertiary hover:text-text-primary transition-colors">
+            <Link href="/dashboard/meals" className="font-mono-label text-text-tertiary hover:text-text-primary transition-colors min-h-[44px] flex items-center px-2">
               {t("dashboard.viewAll")} &rarr;
             </Link>
           </div>
@@ -198,14 +198,14 @@ export default function DashboardPage() {
       <motion.div key="workouts" variants={staggerItem}>
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-mono-label text-text-tertiary">{t("dashboard.todaysWorkouts")}</h3>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1">
             <Link
               href="/dashboard/workouts"
-              className="font-mono-label text-xs text-[var(--color-accent-dynamic)] hover:opacity-80 transition-opacity"
+              className="font-mono-label text-xs text-[var(--color-accent-dynamic)] hover:opacity-80 transition-opacity min-h-[44px] min-w-[44px] flex items-center justify-center px-2"
             >
               + Aggiungi
             </Link>
-            <Link href="/dashboard/workouts" className="font-mono-label text-text-tertiary hover:text-text-primary transition-colors">
+            <Link href="/dashboard/workouts" className="font-mono-label text-text-tertiary hover:text-text-primary transition-colors min-h-[44px] flex items-center px-2">
               {t("dashboard.viewAll")} &rarr;
             </Link>
           </div>

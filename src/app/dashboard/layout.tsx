@@ -11,6 +11,7 @@ import { PreferencesProvider, type AccentColor } from "@/lib/preferences-context
 import { ThemeProvider } from "@/lib/theme-context";
 import { LanguageProvider } from "@/lib/language-context";
 import { UserProvider } from "@/lib/user-provider";
+import MobileHeader from "@/components/MobileHeader";
 import PageTransition from "@/components/PageTransition";
 import Celebration from "@/components/Celebration";
 import { VTLogo } from "@/components/ViTrackTransition";
@@ -112,8 +113,9 @@ export default function DashboardLayout({
             <Celebration>
               <ChatProvider>
                 <div className="min-h-screen">
+                  <MobileHeader />
                   <Sidebar currentPath={pathname} user={user} onLogout={handleLogout} />
-                  <main className="md:ml-[220px] pb-20 md:pb-0 min-h-screen">
+                  <main className="md:ml-[220px] pt-12 md:pt-0 pb-20 md:pb-0 min-h-screen">
                     <PageTransition>{children}</PageTransition>
                   </main>
                   <BottomNav currentPath={pathname} />

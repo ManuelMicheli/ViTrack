@@ -326,7 +326,7 @@ export default function SettingsPage() {
 
   return (
     <div className="px-4 md:px-8 py-6 space-y-10 animate-fade-in max-w-2xl">
-      <h1 className="font-display text-2xl font-bold text-text-primary">{t("settings.title").toUpperCase()}</h1>
+      <h1 className="hidden md:block font-display text-2xl font-bold text-text-primary">{t("settings.title").toUpperCase()}</h1>
 
       {/* Global toasts */}
       {resetSuccess && (
@@ -374,7 +374,7 @@ export default function SettingsPage() {
               <span className="font-body text-sm text-text-secondary">{t("settings.password")}</span>
               <button
                 onClick={() => setShowPasswordForm(!showPasswordForm)}
-                className="font-mono-label text-[var(--color-accent-dynamic)] hover:opacity-80 transition-colors"
+                className="font-mono-label text-[var(--color-accent-dynamic)] hover:opacity-80 active:scale-95 transition-all min-h-[44px] px-2"
               >
                 {showPasswordForm ? t("settings.cancel") : t("settings.changePassword")}
               </button>
@@ -386,14 +386,14 @@ export default function SettingsPage() {
                   placeholder={t("settings.newPassword")}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg bg-transparent border border-border focus:outline-none focus:border-[var(--color-accent-dynamic)] text-text-primary placeholder-text-tertiary font-body transition-all"
+                  className="w-full px-4 py-3 min-h-[48px] rounded-lg bg-transparent border border-border focus:outline-none focus:border-[var(--color-accent-dynamic)] text-text-primary placeholder-text-tertiary font-body transition-all"
                 />
                 <input
                   type="password"
                   placeholder={t("settings.confirmPassword")}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg bg-transparent border border-border focus:outline-none focus:border-[var(--color-accent-dynamic)] text-text-primary placeholder-text-tertiary font-body transition-all"
+                  className="w-full px-4 py-3 min-h-[48px] rounded-lg bg-transparent border border-border focus:outline-none focus:border-[var(--color-accent-dynamic)] text-text-primary placeholder-text-tertiary font-body transition-all"
                 />
                 {passwordMsg && (
                   <p
@@ -407,7 +407,7 @@ export default function SettingsPage() {
                 <button
                   onClick={handlePasswordChange}
                   disabled={passwordSaving || !newPassword || !confirmPassword}
-                  className="w-full px-4 py-2 bg-[var(--color-accent-dynamic)] text-black rounded-lg font-mono-label tracking-wider transition-all hover:opacity-90 disabled:opacity-50"
+                  className="w-full px-4 py-3 min-h-[48px] bg-[var(--color-accent-dynamic)] text-black rounded-lg font-mono-label tracking-wider transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
                 >
                   {passwordSaving ? t("settings.updating") : t("settings.updatePassword")}
                 </button>
@@ -494,12 +494,12 @@ export default function SettingsPage() {
                               placeholder={t("settings.telegramIdPlaceholder")}
                               value={telegramInput}
                               onChange={(e) => setTelegramInput(e.target.value.replace(/\D/g, ""))}
-                              className="flex-1 px-4 py-3 rounded-lg bg-transparent border border-border text-sm text-text-primary placeholder-text-tertiary focus:outline-none focus:border-[var(--color-accent-dynamic)] font-body transition-all"
+                              className="flex-1 px-4 py-3 min-h-[48px] rounded-lg bg-transparent border border-border text-sm text-text-primary placeholder-text-tertiary focus:outline-none focus:border-[var(--color-accent-dynamic)] font-body transition-all"
                             />
                             <button
                               onClick={handleLinkTelegram}
                               disabled={telegramSaving || !telegramInput.trim()}
-                              className="px-5 py-3 bg-[var(--color-accent-dynamic)] text-black rounded-lg font-mono-label text-sm tracking-wider transition-all hover:opacity-90 disabled:opacity-40 shrink-0"
+                              className="px-5 py-3 min-h-[48px] bg-[var(--color-accent-dynamic)] text-black rounded-lg font-mono-label text-sm tracking-wider transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-40 shrink-0"
                             >
                               {telegramSaving ? "..." : t("settings.link")}
                             </button>
@@ -560,7 +560,7 @@ export default function SettingsPage() {
                   whileTap={{ scale: 0.95 }}
                 >
                   <div
-                    className={`w-8 h-8 rounded-full border-2 transition-colors ${
+                    className={`w-10 h-10 rounded-full border-2 transition-colors ${
                       accentColor === key ? "border-text-primary" : "border-transparent"
                     }`}
                     style={{ backgroundColor: hex }}
@@ -584,14 +584,14 @@ export default function SettingsPage() {
             <div className="flex bg-surface-raised rounded-lg p-0.5">
               <button
                 onClick={() => { setLayoutMode("compact"); showPrefSaved(); }}
-                className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+                className="px-4 py-2 min-h-[36px] rounded-md text-xs font-medium transition-all"
                 style={layoutMode === "compact" ? { backgroundColor: `${accentHex}20`, color: accentHex } : { color: "var(--color-text-tertiary)" }}
               >
                 {t("settings.compact")}
               </button>
               <button
                 onClick={() => { setLayoutMode("expanded"); showPrefSaved(); }}
-                className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+                className="px-4 py-2 min-h-[36px] rounded-md text-xs font-medium transition-all"
                 style={layoutMode === "expanded" ? { backgroundColor: `${accentHex}20`, color: accentHex } : { color: "var(--color-text-tertiary)" }}
               >
                 {t("settings.expanded")}
@@ -612,7 +612,7 @@ export default function SettingsPage() {
                 <Reorder.Item
                   key={section}
                   value={section}
-                  className="flex items-center gap-3 p-3 rounded-lg bg-surface border border-border cursor-grab active:cursor-grabbing"
+                  className="flex items-center gap-3 p-3.5 min-h-[48px] rounded-lg bg-surface border border-border cursor-grab active:cursor-grabbing"
                 >
                   <span className="text-text-tertiary">&#x2807;</span>
                   <span className="font-body text-sm text-text-primary flex-1">{getSectionLabel(section)}</span>
@@ -711,7 +711,7 @@ export default function SettingsPage() {
                   <button
                     key={opt.value}
                     onClick={() => handleQuickSave("language", opt.value)}
-                    className={`flex-1 py-2 rounded-lg text-sm font-body transition-all ${
+                    className={`flex-1 py-2.5 min-h-[44px] rounded-lg text-sm font-body transition-all active:scale-[0.97] ${
                       isSelected
                         ? "border border-[var(--color-accent-dynamic)] text-text-primary"
                         : "border border-border text-text-tertiary hover:text-text-primary hover:bg-surface-raised"
@@ -740,7 +740,7 @@ export default function SettingsPage() {
                   <button
                     key={opt.value}
                     onClick={() => handleQuickSave("unit_system", opt.value)}
-                    className={`flex-1 py-2 rounded-lg text-sm font-body transition-all ${
+                    className={`flex-1 py-2.5 min-h-[44px] rounded-lg text-sm font-body transition-all active:scale-[0.97] ${
                       isSelected
                         ? "border border-[var(--color-accent-dynamic)] text-text-primary"
                         : "border border-border text-text-tertiary hover:text-text-primary hover:bg-surface-raised"
@@ -768,15 +768,15 @@ export default function SettingsPage() {
           </div>
           <button
             onClick={() => handleQuickSave("notifications_enabled", !user?.notifications_enabled)}
-            className={`relative w-12 h-7 rounded-full transition-colors ${
+            className={`relative w-14 h-8 rounded-full transition-colors shrink-0 ${
               user?.notifications_enabled ? "" : "bg-surface-raised"
             }`}
             style={user?.notifications_enabled ? { backgroundColor: accentHex } : undefined}
             aria-label="Toggle notifiche"
           >
             <span
-              className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                user?.notifications_enabled ? "left-6" : "left-1"
+              className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                user?.notifications_enabled ? "left-7" : "left-1"
               }`}
             />
           </button>
@@ -795,7 +795,7 @@ export default function SettingsPage() {
             </div>
             <button
               onClick={() => setResetType("meals")}
-              className="px-4 py-2 bg-danger/10 border border-danger/20 text-danger rounded-lg font-mono-label tracking-wider transition-all hover:bg-danger/20"
+              className="px-4 py-2.5 min-h-[44px] bg-danger/10 border border-danger/20 text-danger rounded-lg font-mono-label tracking-wider transition-all hover:bg-danger/20 active:scale-[0.97] shrink-0"
             >
               {t("settings.reset")}
             </button>
@@ -811,7 +811,7 @@ export default function SettingsPage() {
             </div>
             <button
               onClick={() => setResetType("workouts")}
-              className="px-4 py-2 bg-danger/10 border border-danger/20 text-danger rounded-lg font-mono-label tracking-wider transition-all hover:bg-danger/20"
+              className="px-4 py-2.5 min-h-[44px] bg-danger/10 border border-danger/20 text-danger rounded-lg font-mono-label tracking-wider transition-all hover:bg-danger/20 active:scale-[0.97] shrink-0"
             >
               {t("settings.reset")}
             </button>
@@ -827,7 +827,7 @@ export default function SettingsPage() {
             </div>
             <button
               onClick={() => setResetType("all")}
-              className="px-4 py-2 bg-danger/10 border border-danger/20 text-danger rounded-lg font-mono-label tracking-wider transition-all hover:bg-danger/20"
+              className="px-4 py-2.5 min-h-[44px] bg-danger/10 border border-danger/20 text-danger rounded-lg font-mono-label tracking-wider transition-all hover:bg-danger/20 active:scale-[0.97] shrink-0"
             >
               {t("settings.resetAllBtn")}
             </button>
@@ -854,7 +854,7 @@ export default function SettingsPage() {
       {/* ──────────── 5. Logout ──────────── */}
       <button
         onClick={handleLogout}
-        className="w-full py-3 rounded-lg bg-danger/10 border border-danger/20 text-danger font-mono-label tracking-wider transition-all hover:bg-danger/20"
+        className="w-full py-3.5 min-h-[48px] rounded-lg bg-danger/10 border border-danger/20 text-danger font-mono-label tracking-wider transition-all hover:bg-danger/20 active:scale-[0.98]"
       >
         {t("settings.logoutBtn")}
       </button>
