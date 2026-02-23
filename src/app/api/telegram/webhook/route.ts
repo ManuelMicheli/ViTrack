@@ -2,15 +2,11 @@ import { NextResponse, after } from "next/server";
 import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
 import { sendMessage, editMessage, sendTyping, downloadFile } from "@/lib/telegram";
 import {
-  classifyStream,
-  buildSystemPrompt,
   transcribeAudio,
   type MealClassification,
   type ParsedMeal,
-  type WorkoutClassification,
 } from "@/lib/openai";
 import { parseExerciseLocal, type ParsedExercise } from "@/lib/exercise-parser";
-import { buildUserContext } from "@/lib/user-context";
 import { warmupCache, type NutrientResult } from "@/lib/nutrition";
 import { enrichWithNutrition } from "@/lib/chat-processor";
 import { analyzePhoto, lookupByBarcode, labelToNutrients } from "@/lib/vision";
@@ -23,6 +19,9 @@ import {
   findRecipeByName,
   type Recipe,
 } from "@/lib/recipes";
+import { buildAIContext } from "@/ai/context-builder";
+import { buildAISystemPrompt } from "@/ai/system-prompt";
+import { chatWithAI } from "@/ai/ai-client";
 
 // ---------------------------------------------------------------------------
 // In-memory state
@@ -366,7 +365,7 @@ async function handleGoal(
 }
 
 // ---------------------------------------------------------------------------
-// Free text — AI classification → save meal or workout
+// Free text — AI pipeline with streaming + function calling
 // ---------------------------------------------------------------------------
 async function handleFreeText(
   chatId: number,
@@ -391,114 +390,76 @@ async function handleFreeText(
 
   const t0 = performance.now();
 
-  // Send placeholder, typing, and load user context in parallel — zero added latency
+  // Send placeholder, typing, and build AI context in parallel
   const [thinkingId, , ctx] = await Promise.all([
     sendMessage(chatId, "\u23F3 Sto elaborando..."),
     sendTyping(chatId),
-    buildUserContext(userId, { messageLimit: 15 }),
+    buildAIContext(userId),
   ]);
 
-  // Build conversation history from recent messages + current message
-  const history: { role: string; content: string }[] = [
+  const systemPrompt = buildAISystemPrompt(ctx);
+  const history = [
     ...(ctx?.recentMessages ?? []),
     { role: "user", content: text },
   ];
-  const systemPrompt = buildSystemPrompt(ctx);
 
-  // Progressive editing state for chat streaming
+  // Progressive streaming state
+  let accumulated = "";
   let lastEditTime = 0;
-  let lastEditText = "";
-  let isChat = false;
+  let firstDelta = true;
   const anim = thinkingId ? startHourglassAnimation(chatId, thinkingId) : null;
 
-  const result = await classifyStream(history, {
-    onTypeDetected: (type) => {
-      console.log(`[Perf] Type "${type}" detected: ${(performance.now() - t0).toFixed(0)}ms`);
-      if (type === "chat") {
-        isChat = true;
-        anim?.stop(); // Stop hourglass — streamed text replaces it
-      }
-    },
-    onChatDelta: (partial) => {
-      if (!thinkingId || !partial) return;
-      const now = Date.now();
-      if (now - lastEditTime > 400 && partial !== lastEditText) {
-        lastEditTime = now;
-        lastEditText = partial;
-        editMessage(chatId, thinkingId, partial + " \u258D").catch(() => {});
-      }
-    },
-  }, systemPrompt);
-
-  if (!isChat) anim?.stop();
-  console.log(`[Perf] AI complete: ${(performance.now() - t0).toFixed(0)}ms`);
-
   try {
-    if (result.type === "meal") {
-      const isParsedMeal = !("calories" in result);
-      if (isParsedMeal) {
-        const enrichResult = await enrichWithNutrition(result as ParsedMeal);
-        console.log(`[Perf] Nutrition enriched: ${(performance.now() - t0).toFixed(0)}ms`);
-
-        if (enrichResult.failedItems.length > 0 && !enrichResult.meal) {
-          const itemNames = enrichResult.failedItems.join(", ");
-          const reply = `Non ho trovato i valori nutrizionali per ${itemNames}. Puoi mandarmi una foto dell'etichetta nutrizionale o del codice a barre?`;
-          if (thinkingId) await editMessage(chatId, thinkingId, reply);
-          else await sendMessage(chatId, reply);
-          saveChatMsg(userId, "assistant", reply, "need_info");
-          awaitingPhotos.set(telegramId, {
-            items: (result as ParsedMeal).items,
-            failedItemNames: enrichResult.failedItems,
-            meal_type: (result as ParsedMeal).meal_type,
-            expiresAt: Date.now() + 5 * 60 * 1000,
-          });
-        } else if (enrichResult.meal) {
-          let extraMsg = "";
-          if (enrichResult.failedItems.length > 0) {
-            const itemNames = enrichResult.failedItems.join(", ");
-            extraMsg = `\n\nNon ho trovato i valori per: ${itemNames}\nMandami una foto dell'etichetta per aggiungerli.`;
-            awaitingPhotos.set(telegramId, {
-              items: (result as ParsedMeal).items,
-              failedItemNames: enrichResult.failedItems,
-              meal_type: (result as ParsedMeal).meal_type,
-              expiresAt: Date.now() + 5 * 60 * 1000,
-            });
+    const result = await chatWithAI({
+      messages: history,
+      systemPrompt,
+      userId,
+      stream: true,
+      callbacks: {
+        onTextDelta: (delta) => {
+          if (firstDelta) {
+            firstDelta = false;
+            anim?.stop();
           }
-          await saveMealWithEdit(chatId, userId, enrichResult.meal, thinkingId, extraMsg);
-        } else {
-          const reply = "Errore nell'elaborazione del pasto.";
-          if (thinkingId) await editMessage(chatId, thinkingId, reply);
-          else await sendMessage(chatId, reply);
-          saveChatMsg(userId, "assistant", reply, "error");
-        }
-      } else {
-        // Legacy MealClassification fallback
-        const legacyMeal = result as MealClassification;
-        console.log(`[Perf] Nutrition enriched (legacy): ${(performance.now() - t0).toFixed(0)}ms`);
-        await saveMealWithEdit(chatId, userId, legacyMeal, thinkingId);
-      }
-    } else if (result.type === "need_info") {
-      pendingMeals.set(telegramId, {
-        history: [
-          { role: "user", content: text },
-          { role: "assistant", content: JSON.stringify(result) },
-        ],
-      });
-      const reply = result.message;
-      if (thinkingId) await editMessage(chatId, thinkingId, reply);
-      else await sendMessage(chatId, reply);
-      saveChatMsg(userId, "assistant", reply, "need_info");
-    } else if (result.type === "workout") {
-      if (thinkingId) await editMessage(chatId, thinkingId, "\uD83C\uDFCB Registro allenamento...");
-      await saveWorkout(chatId, telegramId, userId, result);
-    } else {
-      // chat / error — final edit removes cursor, shows complete message
-      const reply = result.message;
-      const msgType = result.type === "error" ? "error" : "text";
-      if (thinkingId) await editMessage(chatId, thinkingId, reply);
-      else await sendMessage(chatId, reply);
-      saveChatMsg(userId, "assistant", reply, msgType);
-    }
+          accumulated += delta;
+          if (!thinkingId) return;
+          const now = Date.now();
+          if (now - lastEditTime > 400) {
+            lastEditTime = now;
+            editMessage(chatId, thinkingId, accumulated + " \u258D").catch(() => {});
+          }
+        },
+        onToolCall: (name) => {
+          if (!thinkingId) return;
+          const toolLabels: Record<string, string> = {
+            log_meal: "\uD83C\uDF7D Registro il pasto...",
+            log_workout: "\uD83C\uDFCB Registro l'allenamento...",
+            search_food: "\uD83D\uDD0D Cerco i valori nutrizionali...",
+            log_water: "\uD83D\uDCA7 Registro l'acqua...",
+            log_weight: "\u2696 Registro il peso...",
+            get_daily_summary: "\uD83D\uDCCA Preparo il riepilogo...",
+            get_weekly_report: "\uD83D\uDCC8 Preparo il report...",
+            delete_meal: "\uD83D\uDDD1 Elimino il pasto...",
+          };
+          const label = toolLabels[name] || "\u23F3 Elaboro...";
+          editMessage(chatId, thinkingId, label).catch(() => {});
+        },
+      },
+    });
+
+    anim?.stop();
+    console.log(`[Perf] AI complete: ${(performance.now() - t0).toFixed(0)}ms`);
+
+    // Determine message type based on tool calls
+    let messageType = "text";
+    if (result.toolCalls.some((tc) => tc.name === "log_meal")) messageType = "meal_saved";
+    else if (result.toolCalls.some((tc) => tc.name === "log_workout")) messageType = "workout_saved";
+
+    // Final edit with complete response
+    const reply = result.content || "Operazione completata.";
+    if (thinkingId) await editMessage(chatId, thinkingId, reply);
+    else await sendMessage(chatId, reply);
+    saveChatMsg(userId, "assistant", reply, messageType);
   } catch (err) {
     anim?.stop();
     throw err;
@@ -938,109 +899,13 @@ async function handlePendingMealResponse(
         const thinkId = await sendMessage(chatId, "\u23F3 Calcolo i valori...");
         await saveMealFromNutrients(chatId, userId, nutrients, grams, "snack", thinkId, labelData.product_name);
         return;
-      } catch { /* fall through to normal classification */ }
+      } catch { /* fall through */ }
     }
   }
 
-  pending.history.push({ role: "user", content: text });
-
-  const [thinkingId, , pendingCtx] = await Promise.all([
-    sendMessage(chatId, "\u23F3 Sto elaborando..."),
-    sendTyping(chatId),
-    buildUserContext(userId, { messageLimit: 5 }),
-  ]);
-  const pendingSystemPrompt = buildSystemPrompt(pendingCtx);
-
-  // Progressive editing state for chat streaming
-  let lastEditTime = 0;
-  let lastEditText = "";
-  let isChat = false;
-  const anim = thinkingId ? startHourglassAnimation(chatId, thinkingId) : null;
-
-  const result = await classifyStream(pending.history, {
-    onTypeDetected: (type) => {
-      if (type === "chat") {
-        isChat = true;
-        anim?.stop();
-      }
-    },
-    onChatDelta: (partial) => {
-      if (!thinkingId || !partial) return;
-      const now = Date.now();
-      if (now - lastEditTime > 400 && partial !== lastEditText) {
-        lastEditTime = now;
-        lastEditText = partial;
-        editMessage(chatId, thinkingId, partial + " \u258D").catch(() => {});
-      }
-    },
-  }, pendingSystemPrompt);
-
-  if (!isChat) anim?.stop();
-
-  try {
-    if (result.type === "meal") {
-      pendingMeals.delete(telegramId);
-      const isParsedMeal = !("calories" in result);
-      if (isParsedMeal) {
-        const enrichResult = await enrichWithNutrition(result as ParsedMeal);
-        if (enrichResult.failedItems.length > 0 && !enrichResult.meal) {
-          const itemNames = enrichResult.failedItems.join(", ");
-          const reply = `Non ho trovato i valori nutrizionali per ${itemNames}. Puoi mandarmi una foto dell'etichetta nutrizionale o del codice a barre?`;
-          if (thinkingId) await editMessage(chatId, thinkingId, reply);
-          else await sendMessage(chatId, reply);
-          saveChatMsg(userId, "assistant", reply, "need_info");
-          awaitingPhotos.set(telegramId, {
-            items: (result as ParsedMeal).items,
-            failedItemNames: enrichResult.failedItems,
-            meal_type: (result as ParsedMeal).meal_type,
-            expiresAt: Date.now() + 5 * 60 * 1000,
-          });
-        } else if (enrichResult.meal) {
-          let extraMsg = "";
-          if (enrichResult.failedItems.length > 0) {
-            const itemNames = enrichResult.failedItems.join(", ");
-            extraMsg = `\n\nNon ho trovato i valori per: ${itemNames}\nMandami una foto dell'etichetta per aggiungerli.`;
-            awaitingPhotos.set(telegramId, {
-              items: (result as ParsedMeal).items,
-              failedItemNames: enrichResult.failedItems,
-              meal_type: (result as ParsedMeal).meal_type,
-              expiresAt: Date.now() + 5 * 60 * 1000,
-            });
-          }
-          await saveMealWithEdit(chatId, userId, enrichResult.meal, thinkingId, extraMsg);
-        } else {
-          const reply = "Errore nell'elaborazione del pasto.";
-          if (thinkingId) await editMessage(chatId, thinkingId, reply);
-          else await sendMessage(chatId, reply);
-          saveChatMsg(userId, "assistant", reply, "error");
-        }
-      } else {
-        // Legacy MealClassification fallback
-        await saveMealWithEdit(chatId, userId, result as MealClassification, thinkingId);
-      }
-    } else if (result.type === "need_info") {
-      pending.history.push({ role: "assistant", content: JSON.stringify(result) });
-      const reply = result.message;
-      if (thinkingId) await editMessage(chatId, thinkingId, reply);
-      else await sendMessage(chatId, reply);
-      saveChatMsg(userId, "assistant", reply, "need_info");
-    } else if (result.type === "chat") {
-      pending.history.push({ role: "assistant", content: JSON.stringify(result) });
-      const reply = result.message;
-      if (thinkingId) await editMessage(chatId, thinkingId, reply);
-      else await sendMessage(chatId, reply);
-      saveChatMsg(userId, "assistant", reply, "text");
-    } else {
-      pendingMeals.delete(telegramId);
-      const msg = result.type === "error" ? result.message : "Qualcosa e andato storto. Riprova.";
-      if (thinkingId) await editMessage(chatId, thinkingId, msg);
-      else await sendMessage(chatId, msg);
-      saveChatMsg(userId, "assistant", msg, "error");
-    }
-  } catch (err) {
-    anim?.stop();
-    throw err;
-  }
+  // For all other cases, clear pending state and let AI handle via context
+  pendingMeals.delete(telegramId);
+  await handleFreeText(chatId, telegramId, text, uid);
 }
 
 // ---------------------------------------------------------------------------
@@ -1394,92 +1259,6 @@ async function saveMealWithEdit(
   }
 
   saveChatMsg(userId, "assistant", msg, "meal_saved");
-}
-
-async function saveMeal(
-  chatId: number,
-  userId: string,
-  meal: MealClassification
-) {
-  const { error } = await supabase.from("meals").insert({
-    user_id: userId,
-    description: meal.description,
-    calories: meal.calories,
-    protein_g: meal.protein_g,
-    carbs_g: meal.carbs_g,
-    fat_g: meal.fat_g,
-    fiber_g: meal.fiber_g,
-    meal_type: meal.meal_type,
-  });
-
-  if (error) {
-    await sendMessage(chatId, "Errore nel salvataggio del pasto.");
-    return;
-  }
-
-  await sendMessage(
-    chatId,
-    `<b>Pasto registrato!</b>\n\n` +
-      `${meal.description}\n\n` +
-      `Calorie: ${meal.calories} kcal\n` +
-      `Proteine: ${meal.protein_g}g\n` +
-      `Carboidrati: ${meal.carbs_g}g\n` +
-      `Grassi: ${meal.fat_g}g\n` +
-      `Fibre: ${meal.fiber_g}g\n\n` +
-      `Tipo: ${meal.meal_type}`
-  );
-}
-
-async function saveWorkout(
-  chatId: number,
-  telegramId: number,
-  userId: string,
-  workout: WorkoutClassification
-) {
-  const hasExercises = workout.exercises && workout.exercises.length > 0;
-
-  // Save workout to DB
-  const { data, error } = await supabase.from("workouts").insert({
-    user_id: userId,
-    description: workout.description,
-    workout_type: workout.workout_type,
-    duration_min: workout.duration_min,
-    calories_burned: workout.calories_burned,
-    exercises: hasExercises ? workout.exercises : null,
-  }).select("id").single();
-
-  if (error || !data) {
-    await sendMessage(chatId, "Errore nel salvataggio dell'allenamento.");
-    return;
-  }
-
-  if (hasExercises) {
-    const list = workout.exercises
-      .map((e) => {
-        const base = `  - ${e.name}: ${e.sets}x${e.reps}`;
-        return e.weight_kg ? `${base} @ ${e.weight_kg}kg` : base;
-      })
-      .join("\n");
-
-    const reply =
-      `\u2705 <b>Allenamento registrato!</b>\n\n` +
-      `\uD83C\uDFCB ${workout.description}\n\n` +
-      `\uD83D\uDCAA Esercizi:\n${list}`;
-    await sendMessage(chatId, reply);
-    saveChatMsg(userId, "assistant", reply, "workout_saved");
-  } else {
-    pendingWorkouts.set(telegramId, {
-      workoutId: data.id,
-      description: workout.description,
-      workout_type: workout.workout_type,
-    });
-
-    const reply =
-      `\u2705 <b>${workout.description}</b> registrato!\n\n` +
-      `Vuoi aggiungere gli esercizi che hai fatto? (si/no)`;
-    await sendMessage(chatId, reply);
-    saveChatMsg(userId, "assistant", reply, "need_info");
-  }
 }
 
 // ---------------------------------------------------------------------------

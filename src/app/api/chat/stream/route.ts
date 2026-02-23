@@ -13,7 +13,11 @@ export async function POST(request: NextRequest) {
 
   const text = message.trim();
 
-  // Save user message
+  // Build context BEFORE saving user message to avoid duplicate in history
+  const ctx = await buildAIContext(user_id);
+  const systemPrompt = buildAISystemPrompt(ctx);
+
+  // Save user message (after context build so it's not in recentMessages)
   await supabase.from("chat_messages").insert({
     user_id,
     role: "user",
@@ -21,10 +25,6 @@ export async function POST(request: NextRequest) {
     message_type: "text",
     source: "web",
   });
-
-  // Build context and prompt
-  const ctx = await buildAIContext(user_id);
-  const systemPrompt = buildAISystemPrompt(ctx);
 
   // Build conversation history
   const history = [
