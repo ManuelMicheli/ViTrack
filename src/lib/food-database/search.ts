@@ -125,6 +125,18 @@ const POPULARITY: Record<string, number> = {
   "barretta proteica": 1,
   "whey protein": 2,
   skyr: 3,
+  // Protein powders
+  "whey protein concentrate": 1,
+  "whey protein isolate": 2,
+  caseina: 3,
+  "caseina micellare": 3,
+  "proteine di piselli": 4,
+  "proteine di soia": 5,
+  "proteine di riso": 6,
+  "collagene idrolizzato": 7,
+  "mass gainer": 8,
+  creatina: 9,
+  bcaa: 10,
 };
 
 function getPopularity(food: FoodItem): number {
