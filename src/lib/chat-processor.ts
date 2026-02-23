@@ -2,11 +2,13 @@ import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
 import {
   classifyMessage,
   classifyWithContext,
+  buildSystemPrompt,
   generateRecipe,
   type MealClassification,
   type ParsedMeal,
   type WorkoutClassification,
 } from "@/lib/openai";
+import { buildUserContext } from "@/lib/user-context";
 import { parseExerciseLocal, type ParsedExercise } from "@/lib/exercise-parser";
 import { lookupNutrients, type NutrientResult } from "@/lib/nutrition";
 import {
@@ -736,9 +738,19 @@ export async function processFreeText(
     return processRecipeMatch(userId, recipeMatch.recipe, recipeMatch.portions);
   }
 
-  const result = conversationHistory
-    ? await classifyWithContext(conversationHistory)
-    : await classifyMessage(text);
+  // Load user context for enriched AI prompt (profile, goals, today's intake)
+  const ctx = await buildUserContext(userId, { messageLimit: 15 });
+  const systemPrompt = buildSystemPrompt(ctx);
+
+  // If no conversation history provided, build from recent messages
+  let history = conversationHistory;
+  if (!history && ctx?.recentMessages && ctx.recentMessages.length > 0) {
+    history = [...ctx.recentMessages, { role: "user", content: text }];
+  }
+
+  const result = history
+    ? await classifyWithContext(history, systemPrompt)
+    : await classifyMessage(text, systemPrompt);
 
   if (result.type === "meal") {
     // ParsedMeal has no "calories" field — detect by checking

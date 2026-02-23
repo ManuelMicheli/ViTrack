@@ -1,8 +1,61 @@
 import type { UserContext } from "./user-context";
+import { getActivityLabel, getGoalLabel } from "./user-context";
+import { getAllFoods, CATEGORIES } from "./food-database";
+import type { FoodCategory } from "./food-database";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
 
-const BASE_SYSTEM_PROMPT = `Sei ViTrack, un assistente personale per nutrizione e fitness integrato in Telegram. Sei amichevole, motivante e competente. Parli in modo naturale e conciso — questa è una chat, non un manuale. Rispondi nella lingua dell'utente.
+// ---------------------------------------------------------------------------
+// Food database summary — top food names per category for the AI prompt.
+// Cached after first call since the food database is static.
+// ---------------------------------------------------------------------------
+let _foodDbSummary: string | null = null;
+
+function buildFoodDatabaseSummary(): string {
+  if (_foodDbSummary) return _foodDbSummary;
+
+  const foods = getAllFoods();
+
+  if (foods.length === 0) {
+    _foodDbSummary = "";
+    return _foodDbSummary;
+  }
+
+  // Group by category, pick generic (no brand) foods first, limit per category
+  const byCategory = new Map<FoodCategory, string[]>();
+
+  for (const cat of CATEGORIES) {
+    byCategory.set(cat.id, []);
+  }
+
+  // Add generic foods first (no brand), then branded
+  const generic = foods.filter((f) => !f.brand);
+  const branded = foods.filter((f) => !!f.brand);
+
+  const seen = new Set<string>();
+  for (const food of [...generic, ...branded]) {
+    const list = byCategory.get(food.category);
+    if (!list) continue;
+    const key = food.name_it.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (list.length < 12) {
+      list.push(food.name_it.toLowerCase());
+    }
+  }
+
+  const lines: string[] = [];
+  for (const cat of CATEGORIES) {
+    const names = byCategory.get(cat.id);
+    if (!names || names.length === 0) continue;
+    lines.push(`${cat.label_it}: ${names.join(", ")}`);
+  }
+
+  _foodDbSummary = lines.join("\n");
+  return _foodDbSummary;
+}
+
+const BASE_SYSTEM_PROMPT = `Sei ViTrack, un assistente personale per nutrizione e fitness. Sei amichevole, motivante e competente. Parli in modo naturale e conciso — questa è una chat, non un manuale. Rispondi nella lingua dell'utente.
 
 Rispondi SEMPRE con JSON valido, senza markdown, senza commenti fuori dal JSON.
 
@@ -47,7 +100,7 @@ Se hai TUTTI i dati (alimento + quantità):
 {"type":"meal","items":[{"name":"petto di pollo","name_en":"chicken breast meat raw","brand":null,"quantity_g":200,"is_branded":false}],"meal_type":"colazione|pranzo|cena|snack"}
 
 CAMPO ITEMS (obbligatorio per type "meal"):
-- "name": nome dell'alimento in italiano (es: "petto di pollo", "yogurt alla fragola")
+- "name": nome dell'alimento in italiano — USA I NOMI ESATTI DAL DATABASE quando possibile (vedi sezione DATABASE ALIMENTI)
 - "name_en": traduzione USDA in inglese. Sii specifico: "chicken breast meat raw" non "chicken". Per pesce: "atlantic salmon raw". Aggiungi "raw" se crudo.
 - "brand": nome della marca se menzionata (es: "Müller", "Kinder", "Barilla"), null se generico
 - "quantity_g": grammatura specificata dall'utente
@@ -84,17 +137,18 @@ QUANDO USARE type "chat":
 - Saluti, domande su nutrizione/fitness, ringraziamenti, richieste di aiuto
 - Qualsiasi cosa che non sia un pasto/allenamento da registrare
 - "come sto andando?", "come va la mia giornata?" → usa il contesto utente per dare dati reali
-- "cosa dovrei mangiare?" → suggerisci in base ai macro mancanti
+- "cosa dovrei mangiare?" → suggerisci in base ai macro mancanti e al profilo
 
 STILE CONVERSAZIONE:
-- Sii conciso — 2-5 frasi, questa è una chat Telegram
+- Sii conciso — 2-5 frasi, questa è una chat
 - Sii amichevole, motivante e proattivo — dai consigli concreti
 - Usa il "tu" informale
 - Puoi usare emoji con moderazione
 - Se hai il contesto utente, usa i dati reali nelle risposte (calorie consumate, macro, obiettivi)
 - Se l'utente chiede come sta andando, rispondi con numeri reali dal contesto
-- Se mancano macro specifici, suggerisci cosa mangiare
+- Se mancano macro specifici, suggerisci cosa mangiare basandoti sul suo profilo e obiettivo
 - Ricorda la conversazione precedente e fai riferimento a cose dette prima
+- Se conosci il profilo utente, personalizza i consigli (es: se in cut, suggerisci cibi proteici e sazianti)
 
 ATTENZIONE — DISTINGUI BENE:
 - "ho mangiato pollo" → type "need_info" (manca la quantità)
@@ -110,7 +164,7 @@ Usa type "error" SOLO per messaggi completamente incomprensibili:
 REGOLE ASSOLUTE:
 - NON calcolare MAI calorie o macronutrienti. Le API lo fanno.
 - Restituisci SOLO nome, quantità, marca, e traduzione inglese per ogni item.
-- Sii conciso — questa è una chat Telegram.`;
+- Sii conciso — questa è una chat.`;
 
 export interface ParsedMealItem {
   name: string;
@@ -182,11 +236,48 @@ export type Classification =
   | ErrorClassification;
 
 // ---------------------------------------------------------------------------
-// Dynamic system prompt — enriches base prompt with user context
+// Dynamic system prompt — enriches base prompt with user context + food DB
 // ---------------------------------------------------------------------------
 export function buildSystemPrompt(ctx?: UserContext | null): string {
-  if (!ctx) return BASE_SYSTEM_PROMPT;
+  // Always append food database summary (static, cached)
+  const foodSummary = buildFoodDatabaseSummary();
+  const foodDbBlock = foodSummary ? `
 
+=== DATABASE ALIMENTI ===
+Quando parsi un alimento, usa ESATTAMENTE i nomi italiani dal nostro database quando corrispondono.
+Questo garantisce un match preciso nel lookup nutrizionale.
+
+${foodSummary}
+
+Se l'alimento non è nel database, usa il nome italiano più comune.` : "";
+
+  if (!ctx) return BASE_SYSTEM_PROMPT + foodDbBlock;
+
+  // --- Profile section ---
+  const p = ctx.profile;
+  const profileLines: string[] = [];
+  profileLines.push(`Nome: ${ctx.firstName || "utente"}`);
+  if (p.gender) profileLines.push(`Sesso: ${p.gender === "male" ? "Maschio" : p.gender === "female" ? "Femmina" : "Altro"}`);
+  if (p.age) profileLines.push(`Età: ${p.age} anni`);
+  if (p.heightCm) profileLines.push(`Altezza: ${p.heightCm} cm`);
+  if (p.weightKg) profileLines.push(`Peso attuale: ${p.weightKg} kg`);
+  if (p.targetWeightKg) profileLines.push(`Peso obiettivo: ${p.targetWeightKg} kg`);
+  if (p.goal) profileLines.push(`Obiettivo: ${getGoalLabel(p.goal)}${p.goalSubtype ? ` (${p.goalSubtype})` : ""}`);
+  if (p.activityLevel) profileLines.push(`Attività: ${getActivityLabel(p.activityLevel)}`);
+  if (p.tdee) profileLines.push(`TDEE: ${Math.round(p.tdee)} kcal`);
+  if (p.bodyFatPercentage) profileLines.push(`Grasso corporeo: ${p.bodyFatPercentage}%`);
+  if (p.trainingExperience) profileLines.push(`Esperienza: ${p.trainingExperience}`);
+  if (p.dietType) profileLines.push(`Dieta: ${p.dietType}`);
+  if (p.intolerances.length > 0) profileLines.push(`Intolleranze: ${p.intolerances.join(", ")}`);
+
+  // --- Weight trend ---
+  const wt = ctx.weightTrend;
+  if (wt.current && wt.change !== null) {
+    const dir = wt.change > 0 ? "+" : "";
+    profileLines.push(`Trend peso (7gg): ${dir}${wt.change} kg (${wt.current} kg attuale)`);
+  }
+
+  // --- Daily targets & intake ---
   const remaining = ctx.dailyCalorieGoal - ctx.todayIntake.calories;
   const macroGoals = [
     ctx.proteinGoal ? `${ctx.proteinGoal}g P` : null,
@@ -195,22 +286,43 @@ export function buildSystemPrompt(ctx?: UserContext | null): string {
   ].filter(Boolean).join(" | ");
 
   const goalLine = macroGoals
-    ? `Obiettivo: ${ctx.dailyCalorieGoal} kcal | ${macroGoals}`
-    : `Obiettivo: ${ctx.dailyCalorieGoal} kcal`;
+    ? `Obiettivo giornaliero: ${ctx.dailyCalorieGoal} kcal | ${macroGoals}`
+    : `Obiettivo giornaliero: ${ctx.dailyCalorieGoal} kcal`;
+
+  // Macro remaining calculation
+  const macroRemaining: string[] = [];
+  if (ctx.proteinGoal) {
+    const rem = ctx.proteinGoal - Math.round(ctx.todayIntake.protein_g);
+    macroRemaining.push(`P: ${rem > 0 ? rem + "g da raggiungere" : "raggiunto"}`);
+  }
+  if (ctx.carbsGoal) {
+    const rem = ctx.carbsGoal - Math.round(ctx.todayIntake.carbs_g);
+    macroRemaining.push(`C: ${rem > 0 ? rem + "g da raggiungere" : "raggiunto"}`);
+  }
+  if (ctx.fatGoal) {
+    const rem = ctx.fatGoal - Math.round(ctx.todayIntake.fat_g);
+    macroRemaining.push(`G: ${rem > 0 ? rem + "g da raggiungere" : "raggiunto"}`);
+  }
 
   const workoutLine = ctx.todayWorkouts.count > 0
-    ? `Allenamenti: ${ctx.todayWorkouts.descriptions.join(", ")} (${ctx.todayWorkouts.totalBurned} kcal bruciate)`
-    : "Allenamenti: nessuno oggi";
+    ? `Allenamenti oggi: ${ctx.todayWorkouts.descriptions.join(", ")} (${ctx.todayWorkouts.totalBurned} kcal bruciate)`
+    : "Allenamenti oggi: nessuno";
 
   const contextBlock = `
 
-=== CONTESTO UTENTE ===
-Nome: ${ctx.firstName || "utente"}
-${goalLine}
-Oggi: ${ctx.todayIntake.calories} kcal (${Math.round(ctx.todayIntake.protein_g)}g P, ${Math.round(ctx.todayIntake.carbs_g)}g C, ${Math.round(ctx.todayIntake.fat_g)}g G) — ${remaining > 0 ? `Restano ${remaining} kcal` : `Superato di ${Math.abs(remaining)} kcal`}
-Pasti: ${ctx.todayIntake.mealCount} | ${workoutLine}`;
+=== PROFILO UTENTE ===
+${profileLines.join("\n")}
 
-  return BASE_SYSTEM_PROMPT + contextBlock;
+=== GIORNATA DI OGGI ===
+${goalLine}
+Consumato: ${ctx.todayIntake.calories} kcal (${Math.round(ctx.todayIntake.protein_g)}g P, ${Math.round(ctx.todayIntake.carbs_g)}g C, ${Math.round(ctx.todayIntake.fat_g)}g G)
+${remaining > 0 ? `Restano: ${remaining} kcal` : `Superato di: ${Math.abs(remaining)} kcal`}
+${macroRemaining.length > 0 ? `Macro rimanenti: ${macroRemaining.join(" | ")}` : ""}
+Pasti registrati: ${ctx.todayIntake.mealCount} | ${workoutLine}
+
+Usa questi dati per personalizzare consigli e risposte. Se l'utente chiede come sta andando, rispondi con i numeri reali.`;
+
+  return BASE_SYSTEM_PROMPT + foodDbBlock + contextBlock;
 }
 
 export async function classifyMessage(text: string, systemPrompt?: string): Promise<Classification> {
