@@ -8,6 +8,21 @@ import { staggerContainer, staggerItem } from "@/lib/animation-config";
 import { useLanguage } from "@/lib/language-context";
 import { useUser } from "@/lib/user-provider";
 
+/** Call /api/recalculate to refresh TDEE, macros, and calorie targets */
+async function recalculateStats(userId: string): Promise<User | null> {
+  try {
+    const res = await fetch("/api/recalculate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId }),
+    });
+    if (res.ok) return (await res.json()) as User;
+  } catch {
+    // non-fatal
+  }
+  return null;
+}
+
 const INPUT_CLASS =
   "w-full px-4 py-3 rounded-lg bg-transparent border border-border text-text-primary placeholder-text-tertiary text-sm font-body focus:outline-none focus:border-[var(--color-accent-dynamic)] transition-all";
 
@@ -111,36 +126,53 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSavePersonal = () => {
-    saveSection("personal", {
-      first_name: firstName || null,
-      date_of_birth: dateOfBirth || null,
-      gender: gender || null,
-      height_cm: heightCm ? parseInt(heightCm) : null,
-      activity_level: activityLevel,
-    });
+  const handleSavePersonal = async () => {
+    if (!user) return;
+    setSavingSection("personal");
+    try {
+      const updated = await ctxSaveUser({
+        first_name: firstName || null,
+        date_of_birth: dateOfBirth || null,
+        gender: gender || null,
+        height_cm: heightCm ? parseInt(heightCm) : null,
+        activity_level: activityLevel,
+      });
+      if (updated) {
+        // Recalculate TDEE & stats when metabolic-affecting fields change
+        const recalculated = await recalculateStats(user.id);
+        if (recalculated) updateUser(recalculated);
+        setSavedSection("personal");
+        setTimeout(() => setSavedSection(null), 2000);
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setSavingSection(null);
+    }
   };
 
-  const handleSaveGoals = () => {
-    const cal = dailyCalorieGoal ? parseInt(dailyCalorieGoal) : 2000;
-    const prot = proteinGoal ? parseInt(proteinGoal) : null;
-    const carbs = carbsGoal ? parseInt(carbsGoal) : null;
-    const fat = fatGoal ? parseInt(fatGoal) : null;
-
-    saveSection("goals", {
-      // Legacy fields
-      daily_calorie_goal: cal,
-      protein_goal: prot,
-      carbs_goal: carbs,
-      fat_goal: fat,
-      // New fields (API sync will also mirror, but explicit is clearer)
-      daily_calorie_target: cal,
-      macro_protein_g: prot,
-      macro_carbs_g: carbs,
-      macro_fat_g: fat,
-      weight_goal_kg: weightGoalKg ? parseFloat(weightGoalKg) : null,
-      water_goal_ml: waterGoalMl ? parseInt(waterGoalMl) : 2000,
-    });
+  const handleSaveGoals = async () => {
+    if (!user) return;
+    setSavingSection("goals");
+    try {
+      // Save non-metabolic goals via PATCH
+      const saved = await ctxSaveUser({
+        weight_goal_kg: weightGoalKg ? parseFloat(weightGoalKg) : null,
+        water_goal_ml: waterGoalMl ? parseInt(waterGoalMl) : 2000,
+      });
+      if (saved) {
+        // Trigger full TDEE recalculation — updates calorie targets,
+        // macros, reference cards (dimagrimento/mantenimento/massa)
+        const recalculated = await recalculateStats(user.id);
+        if (recalculated) updateUser(recalculated);
+        setSavedSection("goals");
+        setTimeout(() => setSavedSection(null), 2000);
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setSavingSection(null);
+    }
   };
 
   const handleSaveDietary = () => {
