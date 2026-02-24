@@ -446,3 +446,163 @@ export async function buildAIContext(
     return null;
   }
 }
+
+// ---------------------------------------------------------------------------
+// buildFastContext — LIGHTWEIGHT context for fast tier (~3 queries vs 8)
+// ---------------------------------------------------------------------------
+// Only fetches: user profile, today's meals, recent messages (4).
+// Skips: workouts, water, weekly history, weight trend, streak.
+// Target: ~150ms vs ~400ms for full context.
+// ---------------------------------------------------------------------------
+
+export async function buildFastContext(
+  userId: string
+): Promise<AIUserContext | null> {
+  // Check cache first — shared with full context
+  const cached = cacheGet<AIUserContext>(CACHE_KEYS.fullContext(userId));
+  if (cached) return cached;
+
+  try {
+    const italianNow = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Europe/Rome" })
+    );
+    const todayDate = italianNow.toISOString().split("T")[0];
+    const dayOfWeek = DAY_NAMES[italianNow.getDay()];
+    const currentTime = `${String(italianNow.getHours()).padStart(2, "0")}:${String(italianNow.getMinutes()).padStart(2, "0")}`;
+
+    const startOfDay = `${todayDate}T00:00:00.000Z`;
+    const endOfDay = `${todayDate}T23:59:59.999Z`;
+
+    // Only 3 parallel queries (vs 8 for full context)
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    const [userRes, todayMealsRes, messagesRes] = await Promise.all([
+      supabase
+        .from("users")
+        .select("*")
+        .eq("id", userId)
+        .single() as unknown as Promise<{ data: any; error: any }>,
+
+      supabase
+        .from("meals")
+        .select(
+          "id, description, calories, protein_g, carbs_g, fat_g, fiber_g, meal_type, logged_at"
+        )
+        .eq("user_id", userId)
+        .gte("logged_at", startOfDay)
+        .lte("logged_at", endOfDay)
+        .order("logged_at", { ascending: true }),
+
+      supabase
+        .from("chat_messages")
+        .select("role, content")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(4),
+    ]);
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+
+    const user = userRes.data;
+    if (!user) return null;
+
+    // Today's meals
+    const todayMeals = (todayMealsRes.data ?? []) as any[];
+    let totalCalories = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0, totalFiber = 0;
+
+    const formattedMeals = todayMeals.map((m: any) => {
+      const cal = m.calories || 0;
+      const pro = m.protein_g || 0;
+      const carb = m.carbs_g || 0;
+      const fat = m.fat_g || 0;
+      totalCalories += cal;
+      totalProtein += pro;
+      totalCarbs += carb;
+      totalFat += fat;
+      totalFiber += m.fiber_g || 0;
+
+      return {
+        id: m.id,
+        time: "",
+        type: m.meal_type || "",
+        description: m.description || "",
+        calories: cal,
+        protein_g: pro,
+        carbs_g: carb,
+        fat_g: fat,
+      };
+    });
+
+    const dailyCalorieGoal: number = user.daily_calorie_goal ?? 2000;
+    const proteinGoal: number | null = user.protein_goal ?? null;
+    const carbsGoal: number | null = user.carbs_goal ?? null;
+    const fatGoal: number | null = user.fat_goal ?? null;
+
+    const recentMessages = ((messagesRes.data ?? []) as any[])
+      .reverse()
+      .map((m: any) => ({ role: m.role as string, content: m.content as string }));
+
+    const context: AIUserContext = {
+      userId,
+      firstName: user.first_name ?? "",
+      signupDate: user.created_at ?? null,
+      gender: user.gender ?? null,
+      age: user.age ?? null,
+      heightCm: user.height_cm ?? null,
+      weightKg: user.weight_kg ?? null,
+      targetWeightKg: user.target_weight_kg ? parseFloat(String(user.target_weight_kg)) : null,
+      bodyFatPercentage: null,
+      activityLevel: user.activity_level ?? null,
+      trainingExperience: null,
+      goal: user.goal ?? null,
+      goalSubtype: user.goal_subtype ?? null,
+      bmr: null,
+      tdee: null,
+      dailyCalorieGoal,
+      proteinGoal,
+      carbsGoal,
+      fatGoal,
+      dietType: user.diet_type ?? null,
+      intolerances: user.intolerances ?? [],
+      allergies: user.allergies ?? [],
+      dislikedFoods: [],
+      preferredCuisine: [],
+      cookingSkill: "intermedio",
+      availableEquipment: [],
+      injuriesOrLimitations: [],
+      trainingDaysPerWeek: 3,
+      preferredTrainingTime: null,
+      today: {
+        date: todayDate,
+        dayOfWeek,
+        currentTime,
+        meals: formattedMeals,
+        totalCalories,
+        totalProtein,
+        totalCarbs,
+        totalFat,
+        totalFiber,
+        remainingCalories: dailyCalorieGoal - totalCalories,
+        remainingProtein: (proteinGoal ?? 0) - totalProtein,
+        remainingCarbs: (carbsGoal ?? 0) - totalCarbs,
+        remainingFat: (fatGoal ?? 0) - totalFat,
+        workouts: [],
+        waterMl: 0,
+      },
+      recentHistory: {
+        avgDailyCalories: 0,
+        avgDailyProtein: 0,
+        workoutsThisWeek: 0,
+        weightTrend: [],
+        weightChange7d: null,
+        streakDays: 0,
+        adherencePercentage: 0,
+      },
+      recentMessages,
+    };
+
+    // Don't cache fast context — let full context cache take priority
+    return context;
+  } catch (err) {
+    console.error("[AIContext] Error building fast context:", err);
+    return null;
+  }
+}

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
-import { buildAIContext } from "@/ai/context-builder";
+import { buildAIContext, buildFastContext } from "@/ai/context-builder";
 import {
   buildAISystemPrompt,
   buildCompactSystemPrompt,
@@ -137,10 +137,13 @@ export async function POST(request: NextRequest) {
   const tierConfig = MODEL_TIER_CONFIGS[tier];
 
   // ═══════════════════════════════════════════════════════════════
-  // STEP 3: BUILD CONTEXT (cached: ~5ms, miss: ~400ms)
+  // STEP 3: BUILD CONTEXT (fast: ~150ms/3 queries, smart: ~400ms/8 queries)
   // ═══════════════════════════════════════════════════════════════
-  const messageLimit = tier === "fast" ? 6 : 10;
-  const ctx = await buildAIContext(user_id, { messageLimit });
+  const tCtx = Date.now();
+  const ctx = tier === "fast"
+    ? await buildFastContext(user_id)
+    : await buildAIContext(user_id, { messageLimit: 10 });
+  console.log(`[Perf] Context (${tier}): ${Date.now() - tCtx}ms`);
 
   // ═══════════════════════════════════════════════════════════════
   // STEP 4: BUILD SYSTEM PROMPT (compact for fast, full for smart)
@@ -149,6 +152,7 @@ export async function POST(request: NextRequest) {
     tier === "fast"
       ? buildCompactSystemPrompt(ctx)
       : buildAISystemPrompt(ctx);
+  console.log(`[Perf] Prompt tokens ~${Math.round(systemPrompt.length / 4)} (${tier})`);
 
   // Save user message (after context build so it's not in recentMessages)
   // Fire-and-forget — don't wait for this before starting AI

@@ -231,7 +231,32 @@ L'utente punta alla salute generale. Approccio Mediterranean-like:
 - Equilibrio tra nutrizione, attivit\u00E0 fisica, sonno e gestione dello stress`;
 
 // ---------------------------------------------------------------------------
-// SECTION F — Knowledge base & rules (fixed)
+// SECTION F COMPACT — essential operational knowledge only (~400 tokens)
+// Full nutritional values handled by tool executor (USDA/OFF/FatSecret lookup)
+// ---------------------------------------------------------------------------
+const SECTION_F_COMPACT = `## PORZIONI STANDARD & DECOMPOSIZIONE
+
+Porzioni italiane (se utente non specifica):
+- Pasta/riso: 80g crudo · Pane: 50g · Carne: 100-150g · Pesce: 150-200g
+- Verdure: 200g · Frutta: 150g · Olio: 10ml · Formaggio: 50g · Uovo: 60g
+- Yogurt: 125g · Latte: 200ml · Affettati: 60-80g · Frutta secca: 30g
+
+Piatti composti (scomponi in ingredienti):
+- carbonara \u2192 pasta 80g + guanciale 30g + tuorlo 18g + pecorino 20g
+- amatriciana \u2192 pasta 80g + guanciale 30g + pomodoro 80g + pecorino 15g
+- cacio e pepe \u2192 pasta 80g + pecorino 40g
+- pasta al pomodoro \u2192 pasta 80g + salsa pomodoro 80g + olio 5g
+- parmigiana \u2192 melanzane 200g + mozzarella 80g + pomodoro 100g + parmigiano 20g + olio 15g
+- risotto funghi \u2192 riso 80g + funghi 100g + parmigiano 15g + olio 5g
+- pizza margherita \u2192 piatto unico ~800 kcal (P:30 C:100 F:30)
+
+Condimenti pasta comuni (per 1 porzione, da SOMMARE a pasta 80g = 284 kcal):
+- rag\u00F9: +180 kcal \u00B7 pesto genovese: +250 kcal \u00B7 aglio olio peperoncino: +120 kcal
+- panna e prosciutto: +200 kcal \u00B7 tonno e pomodoro: +130 kcal \u00B7 verdure: +80 kcal
+Per piatti al forno (lasagna, cannelloni): valori gi\u00E0 completi, NON sommare pasta base.`;
+
+// ---------------------------------------------------------------------------
+// SECTION F — Knowledge base & rules (LEGACY, kept but no longer included in prompts)
 // ---------------------------------------------------------------------------
 const SECTION_F = `## KNOWLEDGE BASE \u2014 NUTRIZIONE
 
@@ -712,22 +737,35 @@ export type ModelTier = "fast" | "smart";
 export function selectModelTier(text: string): ModelTier {
   const input = text.toLowerCase().trim();
 
-  // FAST: simple meal logging, workout logging, food info
+  // FAST: meal logging, workout logging, food info, greetings, short messages
   const fastPatterns = [
-    /^(?:ho mangiato|ho pranzato|ho cenato|a colazione|a pranzo|a cena|per colazione|per pranzo|per cena)/,
+    // Meal logging (with and without prefix)
+    /^(?:ho mangiato|ho pranzato|ho cenato|a colazione|a pranzo|a cena|per colazione|per pranzo|per cena|mangiato|stamattina|stasera|oggi ho)/,
     /^(?:registra|segna|logga)/,
-    /^(?:quanto ha|calorie di|valori di|quante calorie ha)/,
-    /^(?:ho fatto|allenamento|workout|palestra|sono andato in palestra)/,
+    // Food info
+    /^(?:quanto ha|calorie di|valori di|quante calorie ha|quante proteine)/,
+    // Workout logging
+    /^(?:ho fatto|allenamento|workout|palestra|sono andato|corsa|corsetta|camminata|nuoto|ciclismo|bici|ho corso|ho nuotato|ho camminato)/,
+    // Water/weight (not handled by quick actions — with extra text)
     /^(?:ho bevuto|acqua|peso)\s/,
-    // Common meal descriptions with quantities (e.g., "pollo 200g", "pasta 80g")
-    /^\w+\s+\d+\s*(?:g|gr|grammi|ml|kg)/,
+    // Food descriptions with quantities (e.g., "pollo 200g", "pasta 80g", "2 uova")
+    /^\w+\s+\d+\s*(?:g|gr|grammi|ml|kg|cl|etto|etti)/,
+    /^\d+\s+\w+/,  // "2 uova", "3 fette", "200g pollo"
+    // Direct food names (common Italian foods — likely meal logging)
+    /^(?:pasta|riso|pollo|petto di pollo|tonno|insalata|uova?|pane|latte|yogurt|frutta|banana|mela|bresaola|prosciutto|mozzarella|pizza)\b/,
     // Confirmations (si, ok, conferma — fast response to pending meals)
-    /^(?:s[iì]|ok|conferma|registra|vai|perfetto)$/,
+    /^(?:s[iì]|ok|conferma|registra|vai|perfetto|fatto|esatto|corretto|giusto)$/,
     // Cancellations
-    /^(?:no|annulla|cancella|non registrare)$/,
+    /^(?:no|annulla|cancella|non registrare|niente|lascia stare|lascia)$/,
+    // Greetings (fast, minimal context needed)
+    /^(?:ciao|hey|buongiorno|buonasera|buonanotte|salve|ehi)$/,
+    // Short messages (< 5 words, likely simple requests)
   ];
 
   if (fastPatterns.some((p) => p.test(input))) return "fast";
+
+  // Short messages (≤ 4 words) are almost always simple → fast
+  if (input.split(/\s+/).length <= 4) return "fast";
 
   // SMART: analysis, suggestions, complex conversations, coaching
   return "smart";
@@ -772,17 +810,9 @@ export function buildAISystemPrompt(ctx: AIUserContext | null): string {
     sections.push(buildPersonalityAdaptation(ctx));
   }
 
-  // F — Knowledge base (always)
-  sections.push(SECTION_F);
-
-  // H — Pasta condiments database (always)
-  sections.push(buildPastaCondimentsSection());
-
-  // G — Food database (always)
-  const foodDb = buildFoodDbSection();
-  if (foodDb) {
-    sections.push(foodDb);
-  }
+  // F — Knowledge base: only portion standards + decomposition rules
+  // (Full nutritional values are handled by the tool executor via USDA/OFF/FatSecret)
+  sections.push(SECTION_F_COMPACT);
 
   return sections.join("\n\n");
 }
@@ -792,69 +822,38 @@ export function buildAISystemPrompt(ctx: AIUserContext | null): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Builds a compact system prompt for the "fast" model tier.
- * Used for simple meal/workout logging and confirmations.
- * Dramatically reduces token count for faster AI responses.
+ * Builds an ultra-compact system prompt for the "fast" model tier.
+ * ~400-500 tokens TOTAL. Used for meal/workout logging, confirmations.
+ * NO food database, NO pasta condiments, NO knowledge base.
+ * The tool executor handles nutrition lookup — the AI just needs to parse.
  */
 export function buildCompactSystemPrompt(ctx: AIUserContext | null): string {
-  const humorLevel = ctx ? getHumorLevel(ctx) : "medium";
+  let prompt = `Sei ViTrack Coach. Italiano, conciso, 2-3 frasi max.
 
-  let prompt = `Sei ViTrack Coach, assistente nutrizionale e fitness. Rispondi in italiano, tono amichevole.
-Livello umorismo: ${humorLevel}. Una battuta max. Sii conciso — 2-4 frasi.`;
+REGOLE PASTO:
+- Utente dice cibo+quantità → chiama log_meal con items (name, name_en, quantity_g)
+- Se manca quantità → chiedi
+- Piatti composti: scomponi (carbonara 80g → pasta 80g + guanciale 30g + tuorlo 18g + pecorino 20g)
+- Peso = crudo salvo "cotto". NON chiedere condimenti base
+- Conferma utente ("sì","ok") → chiama log_meal coi dati precedenti
+- "no","annulla" → NON chiamare log_meal
+- Dopo log: "✅ Registrato! [totale kcal] Giornata: X/Y kcal"
+- Per marca: brand separato (es: "Müller yogurt" → brand:"Müller", name:"yogurt")
+
+REGOLE WORKOUT:
+- Utente descrive allenamento → chiama log_workout`;
 
   if (ctx) {
     const { today, dailyCalorieGoal, proteinGoal, carbsGoal, fatGoal } = ctx;
-
     prompt += `
 
-UTENTE: ${ctx.firstName}, ${ctx.age ? ctx.age + "anni" : ""}, ${ctx.weightKg ? ctx.weightKg + "kg" : ""}
-OBIETTIVO: ${ctx.goal ?? "non specificato"} | Target: ${dailyCalorieGoal}kcal${proteinGoal ? ` P:${proteinGoal}g` : ""}${carbsGoal ? ` C:${carbsGoal}g` : ""}${fatGoal ? ` G:${fatGoal}g` : ""}
-
-OGGI (${today.dayOfWeek} ${today.currentTime}):
-Calorie: ${today.totalCalories}/${dailyCalorieGoal} | Rimanenti: ${today.remainingCalories}kcal
-Macro rimasti: P:${today.remainingProtein}g C:${today.remainingCarbs}g G:${today.remainingFat}g
-Pasti: ${today.meals.length} | Acqua: ${today.waterMl}ml`;
-
-    if (today.meals.length > 0) {
-      const mealSummary = today.meals
-        .map((m) => `${m.type}: ${m.calories}kcal`)
-        .join(" | ");
-      prompt += `\n${mealSummary}`;
-    }
+${ctx.firstName} | ${dailyCalorieGoal}kcal${proteinGoal ? ` P:${proteinGoal}g` : ""}${carbsGoal ? ` C:${carbsGoal}g` : ""}${fatGoal ? ` G:${fatGoal}g` : ""}
+Oggi: ${today.totalCalories}/${dailyCalorieGoal}kcal | Rimangono ${today.remainingCalories}kcal P:${today.remainingProtein}g C:${today.remainingCarbs}g G:${today.remainingFat}g`;
 
     if (ctx.allergies.length > 0) {
       prompt += `\n⚠️ ALLERGIE: ${ctx.allergies.join(", ")}`;
     }
-    if (ctx.intolerances.length > 0) {
-      prompt += `\nIntolleranze: ${ctx.intolerances.join(", ")}`;
-    }
   }
-
-  prompt += `
-
-TOOL USAGE:
-- Quando l'utente dice cosa ha mangiato con quantità, chiedi conferma poi usa log_meal
-- Se manca la quantità, chiedi (NON assumere default)
-- Per piatti composti (carbonara, ecc.), scomponi in ingredienti
-- Dopo registrazione: mostra totale pasto + situazione giornata
-- Il peso si intende CRUDO salvo che l'utente dica "cotto"
-- NON chiedere informazioni su condimenti base (olio, sale, spezie)
-- Per prodotti di marca, separa brand dal nome
-
-FORMATO DOPO REGISTRAZIONE:
-✅ [Tipo] registrato!
-[Lista alimenti]
-Totale: X kcal | P: Xg | C: Xg | G: Xg
-📊 Giornata: X/Y kcal | Rimanenti: X kcal`;
-
-  // Add food database (critical for accurate parsing)
-  const foodDb = buildFoodDbSection();
-  if (foodDb) {
-    prompt += "\n\n" + foodDb;
-  }
-
-  // Add pasta condiments (critical for meal logging)
-  prompt += "\n\n" + buildPastaCondimentsSection();
 
   return prompt;
 }

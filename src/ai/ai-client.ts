@@ -34,7 +34,7 @@ export interface ModelTierConfig {
 
 export const MODEL_TIER_CONFIGS: Record<string, ModelTierConfig> = {
   fast: {
-    maxTokens: 1024,
+    maxTokens: 512,
     temperature: 0.2,
     tools: AI_TOOLS_FAST,
   },
