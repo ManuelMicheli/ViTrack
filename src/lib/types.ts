@@ -158,6 +158,7 @@ export type ChatMessageType =
   | "workout_confirm"   // pre-save: exercise list with confirm/cancel
   | "workout_logged"    // post-save: workout success
   | "daily_summary"     // full day recap with charts
+  | "weekly_summary"    // weekly recap with averages
   | "meal_suggestion"   // selectable meal options
   | "water_logged"      // compact water progress
   | "weight_logged"     // weight confirmation
@@ -259,6 +260,15 @@ export interface MealSuggestionData {
     macros: MacroTotals;
   }[];
   remaining: MacroTotals;
+}
+
+export interface WeeklySummaryData {
+  avg_daily_calories: number;
+  calorie_goal: number;
+  avg_daily_protein: number;
+  workout_count: number;
+  weight_change: number | null;
+  weight_entries: { date: string; weight_kg: number }[];
 }
 
 export interface WaterLoggedData {

@@ -10,6 +10,7 @@ import { DailySummaryCard } from "./DailySummaryCard";
 import { MealSuggestionCard } from "./MealSuggestionCard";
 import { WaterLoggedCard } from "./WaterLoggedCard";
 import { WeightLoggedCard } from "./WeightLoggedCard";
+import { WeeklySummaryCard } from "./WeeklySummaryCard";
 
 interface MessageRendererProps {
   message: ChatMessage;
@@ -53,6 +54,11 @@ export function MessageRenderer({ message, onSendMessage }: MessageRendererProps
     case "daily_summary":
       if (message.metadata && "calories" in message.metadata) {
         return <DailySummaryCard message={message} />;
+      }
+      return <TextBubble message={message} />;
+    case "weekly_summary":
+      if (message.metadata && "avg_daily_calories" in message.metadata) {
+        return <WeeklySummaryCard message={message} />;
       }
       return <TextBubble message={message} />;
     case "meal_suggestion":

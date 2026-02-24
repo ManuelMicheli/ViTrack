@@ -213,6 +213,18 @@ export async function POST(request: NextRequest) {
               streak: (summaryData as Record<string, unknown>).streak ?? 0,
               insight: "",
             };
+          } else if (lastTool.name === "get_weekly_report" && lastTool.result.success) {
+            messageType = "weekly_summary";
+            const weekData = lastTool.result.data as Record<string, unknown>;
+            metadata = {
+              ...metadata,
+              avg_daily_calories: weekData.avgDailyCalories,
+              calorie_goal: weekData.calorieGoal,
+              avg_daily_protein: weekData.avgDailyProtein,
+              workout_count: weekData.workoutCount,
+              weight_change: weekData.weightChange ?? null,
+              weight_entries: weekData.weightEntries ?? [],
+            };
           }
         }
 
