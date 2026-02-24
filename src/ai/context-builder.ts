@@ -87,6 +87,9 @@ export interface AIUserContext {
     adherencePercentage: number;
   };
 
+  // Account age (for humor level)
+  signupDate: string | null;
+
   // Conversation context
   recentMessages: { role: string; content: string }[];
 }
@@ -354,6 +357,7 @@ export async function buildAIContext(
     return {
       userId,
       firstName: user.first_name ?? "",
+      signupDate: user.created_at ?? null,
 
       gender: user.gender ?? null,
       age: user.age ?? null,
