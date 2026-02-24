@@ -13,6 +13,7 @@ const ACCENT_COLORS: Record<AccentColor, string> = {
 
 const DEFAULT_SECTION_ORDER = [
   "greeting",
+  "daily-tip",
   "plan",
   "calories",
   "water-streak",

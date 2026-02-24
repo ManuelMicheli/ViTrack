@@ -14,6 +14,7 @@ import PersonalPlanCard from "@/components/PersonalPlanCard";
 import StreakCalendar from "@/components/StreakCalendar";
 import WeightChart from "@/components/WeightChart";
 import AddMealModal from "@/components/AddMealModal";
+import DailyTipCard from "@/components/DailyTipCard";
 import { staggerContainer, staggerItem } from "@/lib/animation-config";
 import { getGreeting, getMotivation } from "@/lib/personalization";
 import { useCelebration } from "@/lib/celebration-context";
@@ -130,6 +131,14 @@ export default function DashboardPage() {
           )}
         </div>
         <DatePicker value={date} onChange={setDate} />
+      </motion.div>
+    ),
+    "daily-tip": (
+      <motion.div key="daily-tip" variants={staggerItem}>
+        <DailyTipCard
+          preferredTrainingTime={user?.preferred_training_time}
+          hasWorkoutToday={(summary?.totals.workouts_count ?? 0) > 0}
+        />
       </motion.div>
     ),
     plan: user?.goal_subtype ? (
