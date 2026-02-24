@@ -27,12 +27,12 @@ export function useQuickActions(user: User | null): QuickAction[] {
 
     actions.push(
       { id: "log_meal", emoji: "🍽", label: "Registra pasto", message: "Registra pasto" },
-      { id: "water", emoji: "💧", label: "Acqua", message: "Registra acqua" },
+      { id: "water", emoji: "💧", label: "Acqua", message: "__water_input__" },
       { id: "today", emoji: "📊", label: "Giornata", message: "/oggi" },
       { id: "suggest", emoji: "🥗", label: "Cosa mangio?", message: "Cosa mi suggerisci di mangiare?" },
     );
 
-    actions.push({ id: "weight", emoji: "⚖️", label: "Peso", message: "Registra peso" });
+    actions.push({ id: "weight", emoji: "⚖️", label: "Peso", message: "__weight_input__" });
     actions.push({ id: "workout", emoji: "🏋️", label: "Allenamento", message: "Registra allenamento" });
 
     const seen = new Set<string>();

@@ -92,7 +92,8 @@ export default function FoodSearch({ isOpen, onClose, onSave, dailyIntake, goals
   // State
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [grams, setGrams] = useState(100);
+  const [gramsInput, setGramsInput] = useState("100");
+  const grams = parseInt(gramsInput, 10) || 0;
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showMealType, setShowMealType] = useState(false);
   const [recentFoods, setRecentFoods] = useState<FoodItem[]>([]);
@@ -178,7 +179,7 @@ export default function FoodSearch({ isOpen, onClose, onSave, dailyIntake, goals
       setSelectedId(null);
     } else {
       setSelectedId(food.id);
-      setGrams(food.serving_size_g);
+      setGramsInput(String(food.serving_size_g));
     }
   }, [selectedId]);
 
@@ -224,7 +225,7 @@ export default function FoodSearch({ isOpen, onClose, onSave, dailyIntake, goals
     setDebouncedQuery("");
     setShowMealType(false);
     setSelectedId(null);
-    setGrams(100);
+    setGramsInput("100");
     onClose();
   };
 
@@ -292,7 +293,7 @@ export default function FoodSearch({ isOpen, onClose, onSave, dailyIntake, goals
                 {gramPresets.map((preset) => (
                   <button
                     key={preset}
-                    onClick={(e) => { e.stopPropagation(); setGrams(preset); }}
+                    onClick={(e) => { e.stopPropagation(); setGramsInput(String(preset)); }}
                     className={`px-3 py-1.5 rounded-lg font-mono-label text-xs transition-all border ${
                       grams === preset
                         ? "border-[var(--color-accent-dynamic)]/50 bg-[var(--color-accent-dynamic)]/10 text-text-primary"
@@ -304,7 +305,7 @@ export default function FoodSearch({ isOpen, onClose, onSave, dailyIntake, goals
                 ))}
                 {food.serving_size_g !== 100 && !gramPresets.includes(food.serving_size_g) && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); setGrams(food.serving_size_g); }}
+                    onClick={(e) => { e.stopPropagation(); setGramsInput(String(food.serving_size_g)); }}
                     className={`px-3 py-1.5 rounded-lg font-mono-label text-xs transition-all border ${
                       grams === food.serving_size_g
                         ? "border-[var(--color-accent-dynamic)]/50 bg-[var(--color-accent-dynamic)]/10 text-text-primary"
@@ -319,7 +320,7 @@ export default function FoodSearch({ isOpen, onClose, onSave, dailyIntake, goals
               {/* Manual input with -/+ */}
               <div className="flex items-center justify-center gap-3">
                 <button
-                  onClick={(e) => { e.stopPropagation(); setGrams((g) => Math.max(1, g - 10)); }}
+                  onClick={(e) => { e.stopPropagation(); setGramsInput(String(Math.max(1, grams - 10))); }}
                   className="w-9 h-9 rounded-lg border border-border text-text-secondary hover:bg-surface-raised hover:text-text-primary transition-all font-mono-label text-lg flex items-center justify-center"
                 >
                   -
@@ -327,12 +328,8 @@ export default function FoodSearch({ isOpen, onClose, onSave, dailyIntake, goals
                 <div className="flex items-center gap-1.5">
                   <input
                     type="number"
-                    value={grams}
-                    onChange={(e) => {
-                      const v = parseInt(e.target.value, 10);
-                      if (!isNaN(v) && v >= 1) setGrams(v);
-                      else if (e.target.value === "") setGrams(1);
-                    }}
+                    value={gramsInput}
+                    onChange={(e) => setGramsInput(e.target.value)}
                     onClick={(e) => e.stopPropagation()}
                     className="w-16 text-center bg-transparent border border-border rounded-lg py-1.5 font-mono-label text-sm text-text-primary outline-none focus:border-[var(--color-accent-dynamic)]/30 transition-all"
                     min={1}
@@ -340,7 +337,7 @@ export default function FoodSearch({ isOpen, onClose, onSave, dailyIntake, goals
                   <span className="font-mono-label text-[11px] text-text-tertiary">g</span>
                 </div>
                 <button
-                  onClick={(e) => { e.stopPropagation(); setGrams((g) => g + 10); }}
+                  onClick={(e) => { e.stopPropagation(); setGramsInput(String(grams + 10)); }}
                   className="w-9 h-9 rounded-lg border border-border text-text-secondary hover:bg-surface-raised hover:text-text-primary transition-all font-mono-label text-lg flex items-center justify-center"
                 >
                   +

@@ -14,6 +14,8 @@ import { MessageRenderer } from "@/components/chat/messages/MessageRenderer";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { QuickActionsBar } from "@/components/chat/QuickActionsBar";
 import { WelcomeCard } from "@/components/chat/messages/WelcomeCard";
+import { WeightInput } from "@/components/chat/modals/WeightInput";
+import { WaterPicker } from "@/components/chat/modals/WaterPicker";
 
 export default function ChatPanel() {
   const { isChatOpen, closeChat } = useChat();
@@ -22,6 +24,8 @@ export default function ChatPanel() {
   const [voiceMode, setVoiceMode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [input, setInput] = useState("");
+  const [showWeightInput, setShowWeightInput] = useState(false);
+  const [showWaterPicker, setShowWaterPicker] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -59,6 +63,16 @@ export default function ChatPanel() {
   const handleSend = (text?: string) => {
     const msg = text ?? input;
     if (!msg.trim()) return;
+
+    if (msg === "__weight_input__") {
+      setShowWeightInput(true);
+      return;
+    }
+    if (msg === "__water_input__") {
+      setShowWaterPicker(true);
+      return;
+    }
+
     sendMessage(msg);
     setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
@@ -160,6 +174,32 @@ export default function ChatPanel() {
 
               <div ref={messagesEndRef} />
             </div>
+
+            {/* Weight Input Modal */}
+            <AnimatePresence>
+              {showWeightInput && (
+                <WeightInput
+                  onLog={(kg) => {
+                    setShowWeightInput(false);
+                    sendMessage(`Peso: ${kg} kg`);
+                  }}
+                  onClose={() => setShowWeightInput(false)}
+                />
+              )}
+            </AnimatePresence>
+
+            {/* Water Picker Modal */}
+            <AnimatePresence>
+              {showWaterPicker && (
+                <WaterPicker
+                  onLog={(ml) => {
+                    setShowWaterPicker(false);
+                    sendMessage(`Acqua: ${ml} ml`);
+                  }}
+                  onClose={() => setShowWaterPicker(false)}
+                />
+              )}
+            </AnimatePresence>
 
             {/* Voice Recording Overlay */}
             <AnimatePresence>
