@@ -1,5 +1,6 @@
 import { AIUserContext } from "@/ai/context-builder";
 import { buildFoodDatabaseSummary } from "@/lib/openai";
+import { PASTA_CONDIMENTS, PORTION_MULTIPLIERS } from "@/lib/pasta-condiments";
 
 // ---------------------------------------------------------------------------
 // Activity level labels (Italian)
@@ -533,6 +534,68 @@ function buildPreferencesSection(ctx: AIUserContext): string {
 }
 
 // ---------------------------------------------------------------------------
+// SECTION H — Pasta condiments database (from pasta-condiments.ts)
+// ---------------------------------------------------------------------------
+
+function buildPastaCondimentsSection(): string {
+  const lines: string[] = [
+    `## DATABASE CONDIMENTI PASTA`,
+    ``,
+    `Quando l'utente dice di aver mangiato pasta con un condimento specifico, usa i valori`,
+    `pre-impostati qui sotto. NON chiedere i grammi di ogni singolo ingrediente del condimento`,
+    `— usa la porzione standard.`,
+    ``,
+    `Chiedi solo:`,
+    `1. Se la porzione è diversa dallo standard (abbondante, mezza, ecc.)`,
+    `2. Se ci sono aggiunte evidenti ("carbonara con doppio guanciale", "pesto con aggiunta di panna")`,
+    `3. Se i grammi di pasta sono diversi da 80g`,
+    ``,
+    `Pasta base (80g cruda): 284 kcal | P: 10g | C: 57g | F: 1.5g`,
+    ``,
+    `Moltiplicatori porzione: ${Object.entries(PORTION_MULTIPLIERS).map(([k, v]) => `${k} (${v}x)`).join(", ")}`,
+    ``,
+    `### Condimenti per porzione standard:`,
+  ];
+
+  // Group by category
+  const byCategory = new Map<string, typeof PASTA_CONDIMENTS>();
+  for (const c of PASTA_CONDIMENTS) {
+    const list = byCategory.get(c.category) ?? [];
+    list.push(c);
+    byCategory.set(c.category, list);
+  }
+
+  const categoryLabels: Record<string, string> = {
+    pomodoro: "Pomodoro",
+    crema: "Crema / Uova",
+    olio: "Olio",
+    pesce: "Pesce",
+    carne: "Carne",
+    verdure: "Verdure",
+    forno: "Al forno (piatti completi — NON sommare pasta base)",
+  };
+
+  for (const [cat, label] of Object.entries(categoryLabels)) {
+    const items = byCategory.get(cat);
+    if (!items || items.length === 0) continue;
+
+    lines.push(`\n**${label}:**`);
+    for (const c of items) {
+      const s = c.per_serving;
+      lines.push(
+        `- ${c.names[0]}: ${s.kcal} kcal | P:${s.protein_g}g C:${s.carbs_g}g F:${s.fat_g}g (${c.description})`
+      );
+    }
+  }
+
+  lines.push(``);
+  lines.push(`Per piatti al forno (lasagna, cannelloni, pasta al forno, gnocchi, risotto) i valori sono già completi — NON sommare la pasta base.`);
+  lines.push(`Se il condimento non è nel database, stima basandoti sui condimenti più simili.`);
+
+  return lines.join("\n");
+}
+
+// ---------------------------------------------------------------------------
 // SECTION G — Food database names (dynamic, cached via buildFoodDatabaseSummary)
 // ---------------------------------------------------------------------------
 function buildFoodDbSection(): string {
@@ -637,7 +700,41 @@ function buildPersonalityAdaptation(ctx: AIUserContext): string {
 }
 
 // ---------------------------------------------------------------------------
-// buildAISystemPrompt — main export
+// Model tier types
+// ---------------------------------------------------------------------------
+
+export type ModelTier = "fast" | "smart";
+
+// ---------------------------------------------------------------------------
+// selectModelTier — determines fast vs smart based on message content
+// ---------------------------------------------------------------------------
+
+export function selectModelTier(text: string): ModelTier {
+  const input = text.toLowerCase().trim();
+
+  // FAST: simple meal logging, workout logging, food info
+  const fastPatterns = [
+    /^(?:ho mangiato|ho pranzato|ho cenato|a colazione|a pranzo|a cena|per colazione|per pranzo|per cena)/,
+    /^(?:registra|segna|logga)/,
+    /^(?:quanto ha|calorie di|valori di|quante calorie ha)/,
+    /^(?:ho fatto|allenamento|workout|palestra|sono andato in palestra)/,
+    /^(?:ho bevuto|acqua|peso)\s/,
+    // Common meal descriptions with quantities (e.g., "pollo 200g", "pasta 80g")
+    /^\w+\s+\d+\s*(?:g|gr|grammi|ml|kg)/,
+    // Confirmations (si, ok, conferma — fast response to pending meals)
+    /^(?:s[iì]|ok|conferma|registra|vai|perfetto)$/,
+    // Cancellations
+    /^(?:no|annulla|cancella|non registrare)$/,
+  ];
+
+  if (fastPatterns.some((p) => p.test(input))) return "fast";
+
+  // SMART: analysis, suggestions, complex conversations, coaching
+  return "smart";
+}
+
+// ---------------------------------------------------------------------------
+// buildAISystemPrompt — main export (FULL prompt, ~3000-5000 tokens)
 // ---------------------------------------------------------------------------
 
 /**
@@ -678,6 +775,9 @@ export function buildAISystemPrompt(ctx: AIUserContext | null): string {
   // F — Knowledge base (always)
   sections.push(SECTION_F);
 
+  // H — Pasta condiments database (always)
+  sections.push(buildPastaCondimentsSection());
+
   // G — Food database (always)
   const foodDb = buildFoodDbSection();
   if (foodDb) {
@@ -685,4 +785,76 @@ export function buildAISystemPrompt(ctx: AIUserContext | null): string {
   }
 
   return sections.join("\n\n");
+}
+
+// ---------------------------------------------------------------------------
+// buildCompactSystemPrompt — FAST tier prompt (~800-1000 tokens)
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds a compact system prompt for the "fast" model tier.
+ * Used for simple meal/workout logging and confirmations.
+ * Dramatically reduces token count for faster AI responses.
+ */
+export function buildCompactSystemPrompt(ctx: AIUserContext | null): string {
+  const humorLevel = ctx ? getHumorLevel(ctx) : "medium";
+
+  let prompt = `Sei ViTrack Coach, assistente nutrizionale e fitness. Rispondi in italiano, tono amichevole.
+Livello umorismo: ${humorLevel}. Una battuta max. Sii conciso — 2-4 frasi.`;
+
+  if (ctx) {
+    const { today, dailyCalorieGoal, proteinGoal, carbsGoal, fatGoal } = ctx;
+
+    prompt += `
+
+UTENTE: ${ctx.firstName}, ${ctx.age ? ctx.age + "anni" : ""}, ${ctx.weightKg ? ctx.weightKg + "kg" : ""}
+OBIETTIVO: ${ctx.goal ?? "non specificato"} | Target: ${dailyCalorieGoal}kcal${proteinGoal ? ` P:${proteinGoal}g` : ""}${carbsGoal ? ` C:${carbsGoal}g` : ""}${fatGoal ? ` G:${fatGoal}g` : ""}
+
+OGGI (${today.dayOfWeek} ${today.currentTime}):
+Calorie: ${today.totalCalories}/${dailyCalorieGoal} | Rimanenti: ${today.remainingCalories}kcal
+Macro rimasti: P:${today.remainingProtein}g C:${today.remainingCarbs}g G:${today.remainingFat}g
+Pasti: ${today.meals.length} | Acqua: ${today.waterMl}ml`;
+
+    if (today.meals.length > 0) {
+      const mealSummary = today.meals
+        .map((m) => `${m.type}: ${m.calories}kcal`)
+        .join(" | ");
+      prompt += `\n${mealSummary}`;
+    }
+
+    if (ctx.allergies.length > 0) {
+      prompt += `\n⚠️ ALLERGIE: ${ctx.allergies.join(", ")}`;
+    }
+    if (ctx.intolerances.length > 0) {
+      prompt += `\nIntolleranze: ${ctx.intolerances.join(", ")}`;
+    }
+  }
+
+  prompt += `
+
+TOOL USAGE:
+- Quando l'utente dice cosa ha mangiato con quantità, chiedi conferma poi usa log_meal
+- Se manca la quantità, chiedi (NON assumere default)
+- Per piatti composti (carbonara, ecc.), scomponi in ingredienti
+- Dopo registrazione: mostra totale pasto + situazione giornata
+- Il peso si intende CRUDO salvo che l'utente dica "cotto"
+- NON chiedere informazioni su condimenti base (olio, sale, spezie)
+- Per prodotti di marca, separa brand dal nome
+
+FORMATO DOPO REGISTRAZIONE:
+✅ [Tipo] registrato!
+[Lista alimenti]
+Totale: X kcal | P: Xg | C: Xg | G: Xg
+📊 Giornata: X/Y kcal | Rimanenti: X kcal`;
+
+  // Add food database (critical for accurate parsing)
+  const foodDb = buildFoodDbSection();
+  if (foodDb) {
+    prompt += "\n\n" + foodDb;
+  }
+
+  // Add pasta condiments (critical for meal logging)
+  prompt += "\n\n" + buildPastaCondimentsSection();
+
+  return prompt;
 }

@@ -1,8 +1,19 @@
 import { NextRequest } from "next/server";
 import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
 import { buildAIContext } from "@/ai/context-builder";
-import { buildAISystemPrompt } from "@/ai/system-prompt";
-import { chatWithAI } from "@/ai/ai-client";
+import {
+  buildAISystemPrompt,
+  buildCompactSystemPrompt,
+  selectModelTier,
+} from "@/ai/system-prompt";
+import { chatWithAI, MODEL_TIER_CONFIGS } from "@/ai/ai-client";
+import { tryQuickAction } from "@/lib/quick-actions";
+import {
+  invalidateAfterMealLog,
+  invalidateAfterWorkoutLog,
+  invalidateAfterWaterLog,
+  invalidateAfterWeightLog,
+} from "@/lib/context-cache";
 
 // Helper: get current day calorie/macro status for meal_logged cards
 async function getDayStatus(userId: string) {
@@ -62,27 +73,105 @@ export async function POST(request: NextRequest) {
   }
 
   const text = message.trim();
+  const t0 = Date.now();
 
-  // Build context BEFORE saving user message to avoid duplicate in history
-  const ctx = await buildAIContext(user_id);
-  const systemPrompt = buildAISystemPrompt(ctx);
+  // ═══════════════════════════════════════════════════════════════
+  // STEP 1: QUICK ACTION CHECK (target: <300ms, no AI)
+  // ═══════════════════════════════════════════════════════════════
+  const quick = await tryQuickAction(text, user_id);
+
+  if (quick.matched) {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        // Send done event immediately (no streaming needed)
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              type: "done",
+              content: quick.content,
+              messageType: quick.messageType,
+              metadata: quick.metadata,
+            })}\n\n`
+          )
+        );
+        controller.close();
+
+        // Fire-and-forget: save messages to DB + cache invalidation
+        Promise.all([
+          supabase.from("chat_messages").insert({
+            user_id,
+            role: "user",
+            content: text,
+            message_type: "text",
+            source: "web",
+          }).then(() => {}),
+          supabase.from("chat_messages").insert({
+            user_id,
+            role: "assistant",
+            content: quick.content,
+            message_type: quick.messageType,
+            source: "web",
+            metadata: quick.metadata,
+          }).then(() => {}),
+          quick.sideEffects ? quick.sideEffects() : Promise.resolve(),
+        ]).catch(console.error);
+      },
+    });
+
+    console.log(`[Quick Action] ${text.slice(0, 30)} → ${Date.now() - t0}ms`);
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // STEP 2: SELECT MODEL TIER (fast vs smart)
+  // ═══════════════════════════════════════════════════════════════
+  const tier = selectModelTier(text);
+  const tierConfig = MODEL_TIER_CONFIGS[tier];
+
+  // ═══════════════════════════════════════════════════════════════
+  // STEP 3: BUILD CONTEXT (cached: ~5ms, miss: ~400ms)
+  // ═══════════════════════════════════════════════════════════════
+  const messageLimit = tier === "fast" ? 6 : 10;
+  const ctx = await buildAIContext(user_id, { messageLimit });
+
+  // ═══════════════════════════════════════════════════════════════
+  // STEP 4: BUILD SYSTEM PROMPT (compact for fast, full for smart)
+  // ═══════════════════════════════════════════════════════════════
+  const systemPrompt =
+    tier === "fast"
+      ? buildCompactSystemPrompt(ctx)
+      : buildAISystemPrompt(ctx);
 
   // Save user message (after context build so it's not in recentMessages)
-  await supabase.from("chat_messages").insert({
-    user_id,
-    role: "user",
-    content: text,
-    message_type: "text",
-    source: "web",
-  });
+  // Fire-and-forget — don't wait for this before starting AI
+  supabase
+    .from("chat_messages")
+    .insert({
+      user_id,
+      role: "user",
+      content: text,
+      message_type: "text",
+      source: "web",
+    })
+    .then(() => {});
 
-  // Build conversation history
+  // Build conversation history (limited by tier)
   const history = [
     ...(ctx?.recentMessages ?? []),
     { role: "user", content: text },
   ];
 
-  // Create SSE stream
+  // ═══════════════════════════════════════════════════════════════
+  // STEP 5: STREAM AI RESPONSE
+  // ═══════════════════════════════════════════════════════════════
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
@@ -92,6 +181,7 @@ export async function POST(request: NextRequest) {
           systemPrompt,
           userId: user_id,
           stream: true,
+          tierConfig,
           callbacks: {
             onTextDelta: (delta) => {
               controller.enqueue(
@@ -122,7 +212,9 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        // Determine message type and build metadata for rich cards
+        // ═══════════════════════════════════════════════════════════
+        // STEP 6: BUILD METADATA FOR RICH CARDS
+        // ═══════════════════════════════════════════════════════════
         let messageType = "text";
         let metadata: Record<string, unknown> = {
           toolCalls: result.toolCalls.map((tc) => tc.name),
@@ -147,6 +239,8 @@ export async function POST(request: NextRequest) {
               },
               day_status: dayStatus,
             };
+            // Invalidate cache after meal log
+            invalidateAfterMealLog(user_id);
           } else if (lastTool.name === "log_workout" && lastTool.result.success) {
             messageType = "workout_logged";
             const workoutData = lastTool.result.data as Record<string, unknown>;
@@ -156,6 +250,7 @@ export async function POST(request: NextRequest) {
               workout_type: workoutData.workout_type,
               exercises: workoutData.exercises ?? [],
             };
+            invalidateAfterWorkoutLog(user_id);
           } else if (lastTool.name === "log_water" && lastTool.result.success) {
             messageType = "water_logged";
             const waterData = lastTool.result.data as Record<string, unknown>;
@@ -170,6 +265,7 @@ export async function POST(request: NextRequest) {
               current_ml: waterData.total_today_ml,
               target_ml: userData?.water_goal_ml ?? 2500,
             };
+            invalidateAfterWaterLog(user_id);
           } else if (lastTool.name === "log_weight" && lastTool.result.success) {
             messageType = "weight_logged";
             const weightData = lastTool.result.data as Record<string, unknown>;
@@ -179,6 +275,7 @@ export async function POST(request: NextRequest) {
               previous_kg: weightData.previous_kg ?? null,
               change_kg: weightData.change_kg ?? null,
             };
+            invalidateAfterWeightLog(user_id);
           } else if (lastTool.name === "get_daily_summary" && lastTool.result.success) {
             messageType = "daily_summary";
             const summaryData = lastTool.result.data as Record<string, unknown>;
@@ -237,15 +334,18 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Save assistant response
-        await supabase.from("chat_messages").insert({
-          user_id,
-          role: "assistant",
-          content: result.content,
-          message_type: messageType,
-          source: "web",
-          metadata,
-        });
+        // Save assistant response (fire-and-forget — don't block the response)
+        supabase
+          .from("chat_messages")
+          .insert({
+            user_id,
+            role: "assistant",
+            content: result.content,
+            message_type: messageType,
+            source: "web",
+            metadata,
+          })
+          .then(() => {});
 
         // Send done event with metadata for frontend rich card rendering
         controller.enqueue(
@@ -259,6 +359,10 @@ export async function POST(request: NextRequest) {
           )
         );
         controller.close();
+
+        console.log(
+          `[AI ${tier}] "${text.slice(0, 30)}" → ${Date.now() - t0}ms`
+        );
       } catch (err) {
         console.error("Stream error:", err);
         controller.enqueue(

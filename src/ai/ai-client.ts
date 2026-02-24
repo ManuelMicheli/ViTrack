@@ -9,7 +9,7 @@
 // 5. Multi-round tool calling with max depth limit
 // ---------------------------------------------------------------------------
 
-import { AI_TOOLS } from "@/ai/tools";
+import { AI_TOOLS, AI_TOOLS_FAST, type ToolDefinition } from "@/ai/tools";
 import { executeTool, type ToolResult } from "@/ai/tool-executor";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
@@ -20,6 +20,30 @@ const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
 
 const ERROR_MESSAGE =
   "Mi dispiace, si è verificato un errore. Riprova.";
+
+// ---------------------------------------------------------------------------
+// Model tier configuration
+// ---------------------------------------------------------------------------
+export type { ToolDefinition };
+
+export interface ModelTierConfig {
+  maxTokens: number;
+  temperature: number;
+  tools: ToolDefinition[];
+}
+
+export const MODEL_TIER_CONFIGS: Record<string, ModelTierConfig> = {
+  fast: {
+    maxTokens: 1024,
+    temperature: 0.2,
+    tools: AI_TOOLS_FAST,
+  },
+  smart: {
+    maxTokens: MAX_COMPLETION_TOKENS,
+    temperature: 0.3,
+    tools: AI_TOOLS,
+  },
+};
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -75,8 +99,10 @@ export async function chatWithAI(params: {
   userId: string;
   callbacks?: AIStreamCallbacks;
   stream?: boolean;
+  /** Optional tier config to override default model/tokens/tools */
+  tierConfig?: ModelTierConfig;
 }): Promise<AIResponse> {
-  const { messages, systemPrompt, userId, callbacks, stream = false } = params;
+  const { messages, systemPrompt, userId, callbacks, stream = false, tierConfig } = params;
 
   // Build OpenAI message array
   const openAIMessages: OpenAIMessage[] = [
@@ -86,9 +112,9 @@ export async function chatWithAI(params: {
 
   try {
     if (stream) {
-      return await streamingChat(openAIMessages, userId, callbacks);
+      return await streamingChat(openAIMessages, userId, callbacks, tierConfig);
     } else {
-      return await nonStreamingChat(openAIMessages, userId, callbacks);
+      return await nonStreamingChat(openAIMessages, userId, callbacks, tierConfig);
     }
   } catch (err) {
     console.error("[AIClient] chatWithAI error:", err);
@@ -103,10 +129,13 @@ export async function chatWithAI(params: {
 async function nonStreamingChat(
   messages: OpenAIMessage[],
   userId: string,
-  callbacks?: AIStreamCallbacks
+  callbacks?: AIStreamCallbacks,
+  tierConfig?: ModelTierConfig
 ): Promise<AIResponse> {
   const allToolCalls: AIResponse["toolCalls"] = [];
   let currentMessages = [...messages];
+  const tools = tierConfig?.tools ?? AI_TOOLS;
+  const maxTokens = tierConfig?.maxTokens ?? MAX_COMPLETION_TOKENS;
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     const res = await fetch(OPENAI_CHAT_URL, {
@@ -117,9 +146,9 @@ async function nonStreamingChat(
       },
       body: JSON.stringify({
         model: OPENAI_MODEL,
-        max_completion_tokens: MAX_COMPLETION_TOKENS,
+        max_completion_tokens: maxTokens,
         messages: currentMessages,
-        tools: AI_TOOLS,
+        tools,
         tool_choice: "auto",
       }),
     });
@@ -226,13 +255,14 @@ async function nonStreamingChat(
 async function streamingChat(
   messages: OpenAIMessage[],
   userId: string,
-  callbacks?: AIStreamCallbacks
+  callbacks?: AIStreamCallbacks,
+  tierConfig?: ModelTierConfig
 ): Promise<AIResponse> {
   const allToolCalls: AIResponse["toolCalls"] = [];
   let currentMessages = [...messages];
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const result = await streamOneRound(currentMessages, callbacks);
+    const result = await streamOneRound(currentMessages, callbacks, tierConfig);
 
     // Case 1: AI returned text content (done)
     if (result.type === "text") {
@@ -299,8 +329,12 @@ type StreamRoundResult = StreamTextResult | StreamToolCallResult;
 
 async function streamOneRound(
   messages: OpenAIMessage[],
-  callbacks?: AIStreamCallbacks
+  callbacks?: AIStreamCallbacks,
+  tierConfig?: ModelTierConfig
 ): Promise<StreamRoundResult> {
+  const tools = tierConfig?.tools ?? AI_TOOLS;
+  const maxTokens = tierConfig?.maxTokens ?? MAX_COMPLETION_TOKENS;
+
   const res = await fetch(OPENAI_CHAT_URL, {
     method: "POST",
     headers: {
@@ -309,10 +343,10 @@ async function streamOneRound(
     },
     body: JSON.stringify({
       model: OPENAI_MODEL,
-      max_completion_tokens: MAX_COMPLETION_TOKENS,
+      max_completion_tokens: maxTokens,
       stream: true,
       messages,
-      tools: AI_TOOLS,
+      tools,
       tool_choice: "auto",
     }),
   });
@@ -467,27 +501,28 @@ async function executeToolCalls(
   userId: string,
   callbacks?: AIStreamCallbacks
 ): Promise<AIResponse["toolCalls"]> {
-  const results: AIResponse["toolCalls"] = [];
+  // Execute ALL tool calls in PARALLEL for maximum speed
+  const results = await Promise.all(
+    toolCalls.map(async (tc) => {
+      let args: Record<string, unknown>;
+      try {
+        args = JSON.parse(tc.function.arguments);
+      } catch {
+        console.error(
+          "[AIClient] Failed to parse tool arguments:",
+          tc.function.name,
+          tc.function.arguments
+        );
+        args = {};
+      }
 
-  for (const tc of toolCalls) {
-    let args: Record<string, unknown>;
-    try {
-      args = JSON.parse(tc.function.arguments);
-    } catch {
-      console.error(
-        "[AIClient] Failed to parse tool arguments:",
-        tc.function.name,
-        tc.function.arguments
-      );
-      args = {};
-    }
+      callbacks?.onToolCall?.(tc.function.name);
+      const result = await executeTool(tc.function.name, args, userId);
+      callbacks?.onToolResult?.(tc.function.name, result);
 
-    callbacks?.onToolCall?.(tc.function.name);
-    const result = await executeTool(tc.function.name, args, userId);
-    callbacks?.onToolResult?.(tc.function.name, result);
-
-    results.push({ name: tc.function.name, args, result });
-  }
+      return { name: tc.function.name, args, result };
+    })
+  );
 
   return results;
 }

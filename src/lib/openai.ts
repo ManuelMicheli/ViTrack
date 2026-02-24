@@ -96,6 +96,13 @@ PIATTI COMPOSTI:
   - "risotto funghi 300g" → riso 100g + funghi 100g + parmigiano 15g + olio 5g
   - "insalata di pollo" → petto di pollo 150g + insalata 100g + pomodori 50g
 
+PASTA CON CONDIMENTO NOTO:
+- Se l'utente dice "pasta alla X" dove X è un condimento comune italiano (carbonara, amatriciana, pesto, ragù, ecc.), NON chiedere i grammi dei singoli ingredienti del condimento.
+- Se non specificata, la pasta è 80g standard.
+- Scomponi comunque in pasta + ingredienti principali del condimento con grammature standard.
+- Chiedi solo: porzione diversa, aggiunte evidenti, grammi pasta diversi da 80g.
+- Per piatti al forno (lasagna, cannelloni, pasta al forno): trattali come piatto unico, NON aggiungere pasta separatamente.
+
 Se hai TUTTI i dati (alimento + quantità):
 {"type":"meal","items":[{"name":"petto di pollo","name_en":"chicken breast meat raw","brand":null,"quantity_g":200,"is_branded":false}],"meal_type":"colazione|pranzo|cena|snack"}
 

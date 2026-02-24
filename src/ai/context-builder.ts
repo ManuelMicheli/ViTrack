@@ -1,4 +1,10 @@
 import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
+import {
+  cacheGet,
+  cacheSet,
+  CACHE_KEYS,
+  CACHE_TTLS,
+} from "@/lib/context-cache";
 
 // ---------------------------------------------------------------------------
 // AIUserContext — rich user context for AI system prompt enrichment
@@ -113,9 +119,16 @@ const DAY_NAMES = [
 // ---------------------------------------------------------------------------
 
 export async function buildAIContext(
-  userId: string
+  userId: string,
+  options?: { messageLimit?: number }
 ): Promise<AIUserContext | null> {
+  // Check cache first (hit = <5ms)
+  const cached = cacheGet<AIUserContext>(CACHE_KEYS.fullContext(userId));
+  if (cached) return cached;
+
   try {
+    const messageLimit = options?.messageLimit ?? 6; // Reduced from 15 for speed
+
     // ---- Italian timezone calculations ----
     const italianNow = new Date(
       new Date().toLocaleString("en-US", { timeZone: "Europe/Rome" })
@@ -198,13 +211,13 @@ export async function buildAIContext(
         .order("logged_at", { ascending: false })
         .limit(7),
 
-      // 8. Recent chat messages
+      // 8. Recent chat messages (limited for speed)
       supabase
         .from("chat_messages")
         .select("role, content")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
-        .limit(15),
+        .limit(messageLimit),
     ]);
     /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -354,7 +367,7 @@ export async function buildAIContext(
       .map((m: any) => ({ role: m.role as string, content: m.content as string }));
 
     // ---- Assemble AIUserContext ----
-    return {
+    const context: AIUserContext = {
       userId,
       firstName: user.first_name ?? "",
       signupDate: user.created_at ?? null,
@@ -423,6 +436,11 @@ export async function buildAIContext(
 
       recentMessages,
     };
+
+    // Cache assembled context (60s TTL)
+    cacheSet(CACHE_KEYS.fullContext(userId), context, CACHE_TTLS.fullContext);
+
+    return context;
   } catch (err) {
     console.error("[AIContext] Error building context:", err);
     return null;

@@ -15,6 +15,104 @@ export interface ToolDefinition {
   };
 }
 
+// ---------------------------------------------------------------------------
+// FAST TOOLS — minimal set for "fast" model tier (meal/workout/water/weight)
+// Fewer tool definitions = fewer tokens in prompt = faster AI response
+// ---------------------------------------------------------------------------
+export const AI_TOOLS_FAST: ToolDefinition[] = [
+  {
+    type: "function",
+    function: {
+      name: "log_meal",
+      description: "Registra un pasto. Chiama dopo conferma utente.",
+      parameters: {
+        type: "object",
+        required: ["items", "meal_type"],
+        properties: {
+          items: {
+            type: "array",
+            items: {
+              type: "object",
+              required: ["name", "name_en", "quantity_g"],
+              properties: {
+                name: { type: "string" },
+                name_en: { type: "string" },
+                quantity_g: { type: "number" },
+                brand: { type: "string" },
+                is_cooked: { type: "boolean" },
+              },
+            },
+          },
+          meal_type: {
+            type: "string",
+            enum: ["colazione", "pranzo", "cena", "snack"],
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "log_workout",
+      description: "Registra un allenamento completato.",
+      parameters: {
+        type: "object",
+        required: ["description", "workout_type"],
+        properties: {
+          description: { type: "string" },
+          workout_type: { type: "string" },
+          duration_min: { type: "number" },
+          exercises: {
+            type: "array",
+            items: {
+              type: "object",
+              required: ["name", "sets", "reps"],
+              properties: {
+                name: { type: "string" },
+                sets: { type: "number" },
+                reps: { type: "number" },
+                weight_kg: { type: "number" },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "log_water",
+      description: "Registra acqua bevuta.",
+      parameters: {
+        type: "object",
+        required: ["amount_ml"],
+        properties: {
+          amount_ml: { type: "number" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "log_weight",
+      description: "Registra peso corporeo.",
+      parameters: {
+        type: "object",
+        required: ["weight_kg"],
+        properties: {
+          weight_kg: { type: "number" },
+        },
+      },
+    },
+  },
+];
+
+// ---------------------------------------------------------------------------
+// FULL TOOLS — complete set for "smart" model tier
+// ---------------------------------------------------------------------------
 export const AI_TOOLS: ToolDefinition[] = [
   // -----------------------------------------------------------------------
   // 1. log_meal — Registra un pasto

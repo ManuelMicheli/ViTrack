@@ -4,6 +4,12 @@
 
 import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
 import { lookupNutrients, NutrientResult } from "@/lib/nutrition";
+import {
+  invalidateAfterMealLog,
+  invalidateAfterWorkoutLog,
+  invalidateAfterWaterLog,
+  invalidateAfterWeightLog,
+} from "@/lib/context-cache";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -152,6 +158,9 @@ async function handleLogMeal(
       return { success: false, error: "Errore nel salvataggio del pasto." };
     }
 
+    // Invalidate cache after successful meal log
+    invalidateAfterMealLog(userId);
+
     return {
       success: true,
       data: {
@@ -203,6 +212,8 @@ async function handleLogWorkout(
         error: "Errore nel salvataggio dell'allenamento.",
       };
     }
+
+    invalidateAfterWorkoutLog(userId);
 
     return {
       success: true,
@@ -257,6 +268,8 @@ async function handleLogWater(
         };
       }
 
+      invalidateAfterWaterLog(userId);
+
       return {
         success: true,
         data: {
@@ -280,6 +293,8 @@ async function handleLogWater(
           error: "Errore nel salvataggio dell'acqua.",
         };
       }
+
+      invalidateAfterWaterLog(userId);
 
       return {
         success: true,
@@ -326,6 +341,8 @@ async function handleLogWeight(
       console.error("[ToolExecutor] log_weight user update error:", updateError);
       // Weight log was saved, just user update failed — still success
     }
+
+    invalidateAfterWeightLog(userId);
 
     // Query previous weight log (the one just inserted is most recent)
     const { data: prevWeights } = await supabase
