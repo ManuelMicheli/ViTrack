@@ -65,6 +65,8 @@ export async function executeTool(
       return handleWeeklyReport(userId);
     case "delete_meal":
       return handleDeleteMeal(args, userId);
+    case "suggest_meal":
+      return handleSuggestMeal(args, userId);
     default:
       return { success: false, error: `Tool sconosciuto: ${toolName}` };
   }
@@ -664,6 +666,196 @@ async function handleDeleteMeal(
     };
   } catch (err) {
     console.error("[ToolExecutor] delete_meal error:", err);
+    return { success: false, error: "Errore nell'esecuzione." };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 9. suggest_meal
+// ---------------------------------------------------------------------------
+
+async function handleSuggestMeal(
+  args: Record<string, unknown>,
+  userId: string
+): Promise<ToolResult> {
+  try {
+    const mealType = (args.meal_type as string) ?? null;
+    const numOptions = (args.num_options as number) ?? 3;
+
+    const italianNow = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Europe/Rome" })
+    );
+    const todayDate = italianNow.toISOString().split("T")[0];
+    const startOfDay = `${todayDate}T00:00:00.000Z`;
+    const endOfDay = `${todayDate}T23:59:59.999Z`;
+
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    const [mealsRes, userRes] = await Promise.all([
+      supabase
+        .from("meals")
+        .select("calories, protein_g, carbs_g, fat_g")
+        .eq("user_id", userId)
+        .gte("logged_at", startOfDay)
+        .lte("logged_at", endOfDay),
+      supabase
+        .from("users")
+        .select(
+          "daily_calorie_goal, protein_goal, carbs_goal, fat_goal, allergies, intolerances, disliked_foods, preferred_cuisine, cooking_skill, diet_type"
+        )
+        .eq("id", userId)
+        .single(),
+    ]);
+
+    const meals = (mealsRes.data ?? []) as any[];
+    let totalCal = 0,
+      totalProt = 0,
+      totalCarbs = 0,
+      totalFat = 0;
+    for (const m of meals) {
+      totalCal += m.calories || 0;
+      totalProt += m.protein_g || 0;
+      totalCarbs += m.carbs_g || 0;
+      totalFat += m.fat_g || 0;
+    }
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+
+    const user = userRes.data;
+    const targetCal = user?.daily_calorie_goal ?? 2000;
+    const targetProt = user?.protein_goal ?? 150;
+    const targetCarbs = user?.carbs_goal ?? 200;
+    const targetFat = user?.fat_goal ?? 65;
+
+    const remainingCal = Math.max(0, targetCal - Math.round(totalCal));
+    const remainingProt = Math.max(0, targetProt - Math.round(totalProt));
+    const remainingCarbs = Math.max(0, targetCarbs - Math.round(totalCarbs));
+    const remainingFat = Math.max(0, targetFat - Math.round(totalFat));
+
+    // Infer meal type from time if not specified
+    const hour = italianNow.getHours();
+    const inferredMealType =
+      mealType ??
+      (hour < 10
+        ? "colazione"
+        : hour < 14
+          ? "pranzo"
+          : hour < 17
+            ? "snack"
+            : "cena");
+
+    // Build restriction context
+    const restrictions: string[] = [];
+    if (user?.allergies?.length)
+      restrictions.push(
+        `ALLERGIE (CRITICO — evita assolutamente): ${(user.allergies as string[]).join(", ")}`
+      );
+    if (user?.intolerances?.length)
+      restrictions.push(`Intolleranze: ${(user.intolerances as string[]).join(", ")}`);
+    if (user?.disliked_foods?.length)
+      restrictions.push(`Cibi non graditi: ${(user.disliked_foods as string[]).join(", ")}`);
+    if (user?.diet_type) restrictions.push(`Dieta: ${user.diet_type}`);
+
+    const suggestionPrompt = `Genera esattamente ${numOptions} opzioni per ${inferredMealType} italiano.
+
+Budget rimanente per oggi: ${remainingCal} kcal, Proteine: ${remainingProt}g, Carboidrati: ${remainingCarbs}g, Grassi: ${remainingFat}g
+${restrictions.length > 0 ? `\nRestrizioni:\n${restrictions.join("\n")}` : ""}
+${(user?.preferred_cuisine as string[])?.length ? `Cucine preferite: ${(user?.preferred_cuisine as string[]).join(", ")}` : ""}
+Abilità in cucina: ${user?.cooking_skill ?? "intermedio"}
+
+Rispondi SOLO con JSON valido in questo formato:
+{"options":[{"name":"Nome piatto","description":"Breve descrizione (max 15 parole)","kcal":123,"protein_g":20,"carbs_g":30,"fat_g":10}]}
+
+Regole:
+- Ogni opzione DEVE rientrare nel budget rimanente
+- Preferisci piatti italiani semplici e realistici
+- Macro realistiche e accurate
+- Varietà tra le opzioni`;
+
+    const openaiRes = await fetch(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-5-mini",
+          max_completion_tokens: 1024,
+          messages: [
+            {
+              role: "developer",
+              content:
+                "Sei un nutrizionista esperto italiano. Genera suggerimenti pasto precisi con macro realistiche. Rispondi SOLO in JSON valido.",
+            },
+            { role: "user", content: suggestionPrompt },
+          ],
+          response_format: { type: "json_object" },
+        }),
+      }
+    );
+
+    if (!openaiRes.ok) {
+      console.error(
+        "[ToolExecutor] suggest_meal OpenAI error:",
+        openaiRes.status
+      );
+      return {
+        success: false,
+        error: "Errore nella generazione dei suggerimenti.",
+      };
+    }
+
+    const openaiData = await openaiRes.json();
+    const content = openaiData.choices?.[0]?.message?.content;
+
+    let parsed: {
+      options: {
+        name: string;
+        description: string;
+        kcal: number;
+        protein_g: number;
+        carbs_g: number;
+        fat_g: number;
+      }[];
+    };
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      console.error(
+        "[ToolExecutor] suggest_meal JSON parse error:",
+        content
+      );
+      return {
+        success: false,
+        error: "Errore nel parsing dei suggerimenti.",
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        context: `Suggerimenti per ${inferredMealType}`,
+        options: (parsed.options || []).map((opt) => ({
+          name: opt.name,
+          description: opt.description,
+          kcal: opt.kcal,
+          macros: {
+            kcal: opt.kcal,
+            protein_g: opt.protein_g,
+            carbs_g: opt.carbs_g,
+            fat_g: opt.fat_g,
+          },
+        })),
+        remaining: {
+          kcal: remainingCal,
+          protein_g: remainingProt,
+          carbs_g: remainingCarbs,
+          fat_g: remainingFat,
+        },
+      },
+    };
+  } catch (err) {
+    console.error("[ToolExecutor] suggest_meal error:", err);
     return { success: false, error: "Errore nell'esecuzione." };
   }
 }

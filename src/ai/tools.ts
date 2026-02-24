@@ -257,4 +257,31 @@ export const AI_TOOLS: ToolDefinition[] = [
       },
     },
   },
+
+  // -----------------------------------------------------------------------
+  // 9. suggest_meal — Suggerisci pasti
+  // -----------------------------------------------------------------------
+  {
+    type: "function",
+    function: {
+      name: "suggest_meal",
+      description:
+        "Genera suggerimenti per il prossimo pasto basati sul budget calorico e macro rimanente. Usa quando l'utente chiede 'cosa mangio?', 'suggeriscimi qualcosa', o quando rilevi budget calorico rimanente adeguato.",
+      parameters: {
+        type: "object",
+        properties: {
+          meal_type: {
+            type: "string",
+            enum: ["colazione", "pranzo", "cena", "snack"],
+            description:
+              "Tipo di pasto da suggerire. Se non specificato, verrà dedotto dall'orario.",
+          },
+          num_options: {
+            type: "number",
+            description: "Numero di opzioni da generare (default: 3)",
+          },
+        },
+      },
+    },
+  },
 ];

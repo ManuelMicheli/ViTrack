@@ -225,6 +225,15 @@ export async function POST(request: NextRequest) {
               weight_change: weekData.weightChange ?? null,
               weight_entries: weekData.weightEntries ?? [],
             };
+          } else if (lastTool.name === "suggest_meal" && lastTool.result.success) {
+            messageType = "meal_suggestion";
+            const suggestData = lastTool.result.data as Record<string, unknown>;
+            metadata = {
+              ...metadata,
+              context: suggestData.context,
+              options: suggestData.options,
+              remaining: suggestData.remaining,
+            };
           }
         }
 
