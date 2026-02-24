@@ -270,4 +270,5 @@ export interface WaterLoggedData {
 export interface WeightLoggedData {
   weight_kg: number;
   previous_kg: number | null;
+  change_kg: number | null;
 }

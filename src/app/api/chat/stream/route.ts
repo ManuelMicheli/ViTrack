@@ -176,6 +176,8 @@ export async function POST(request: NextRequest) {
             metadata = {
               ...metadata,
               weight_kg: weightData.weight_kg,
+              previous_kg: weightData.previous_kg ?? null,
+              change_kg: weightData.change_kg ?? null,
             };
           } else if (lastTool.name === "get_daily_summary" && lastTool.result.success) {
             messageType = "daily_summary";

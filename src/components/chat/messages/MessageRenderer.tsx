@@ -9,6 +9,7 @@ import { WorkoutLoggedCard } from "./WorkoutLoggedCard";
 import { DailySummaryCard } from "./DailySummaryCard";
 import { MealSuggestionCard } from "./MealSuggestionCard";
 import { WaterLoggedCard } from "./WaterLoggedCard";
+import { WeightLoggedCard } from "./WeightLoggedCard";
 
 interface MessageRendererProps {
   message: ChatMessage;
@@ -62,6 +63,11 @@ export function MessageRenderer({ message, onSendMessage }: MessageRendererProps
     case "water_logged":
       if (message.metadata && "current_ml" in message.metadata) {
         return <WaterLoggedCard message={message} />;
+      }
+      return <TextBubble message={message} />;
+    case "weight_logged":
+      if (message.metadata && "weight_kg" in message.metadata) {
+        return <WeightLoggedCard message={message} />;
       }
       return <TextBubble message={message} />;
     case "text":

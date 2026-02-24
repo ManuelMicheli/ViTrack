@@ -325,9 +325,26 @@ async function handleLogWeight(
       // Weight log was saved, just user update failed — still success
     }
 
+    // Query previous weight log (the one just inserted is most recent)
+    const { data: prevWeights } = await supabase
+      .from("weight_logs")
+      .select("weight_kg")
+      .eq("user_id", userId)
+      .order("logged_at", { ascending: false })
+      .limit(2);
+
+    const previousKg =
+      prevWeights && prevWeights.length >= 2
+        ? (prevWeights[1] as { weight_kg: number }).weight_kg
+        : null;
+    const changeKg =
+      previousKg != null
+        ? parseFloat((weightKg - previousKg).toFixed(1))
+        : null;
+
     return {
       success: true,
-      data: { weight_kg: weightKg },
+      data: { weight_kg: weightKg, previous_kg: previousKg, change_kg: changeKg },
     };
   } catch (err) {
     console.error("[ToolExecutor] log_weight error:", err);
