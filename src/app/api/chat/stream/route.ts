@@ -201,9 +201,14 @@ export async function POST(request: NextRequest) {
                 current_ml: summaryData.waterMl,
                 target_ml: userData?.water_goal_ml ?? 2500,
               },
-              meals: summaryData.meals,
+              meals: (summaryData.meals as { time?: string; meal_type?: string; description?: string; calories?: number }[]).map((m) => ({
+                time: m.time ?? "",
+                type: m.meal_type ?? "",
+                description: m.description ?? "",
+                calories: m.calories ?? 0,
+              })),
               workouts: summaryData.workouts,
-              streak: 0,
+              streak: (summaryData as Record<string, unknown>).streak ?? 0,
               insight: "",
             };
           }

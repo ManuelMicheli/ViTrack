@@ -390,11 +390,11 @@ async function handleDailySummary(userId: string): Promise<ToolResult> {
 
     // Parallel queries
     /* eslint-disable @typescript-eslint/no-explicit-any */
-    const [mealsRes, workoutsRes, waterRes, userRes] = await Promise.all([
+    const [mealsRes, workoutsRes, waterRes, userRes, streakMealsRes] = await Promise.all([
       supabase
         .from("meals")
         .select(
-          "description, calories, protein_g, carbs_g, fat_g, fiber_g, meal_type"
+          "description, calories, protein_g, carbs_g, fat_g, fiber_g, meal_type, logged_at"
         )
         .eq("user_id", userId)
         .gte("logged_at", startOfDay)
@@ -419,6 +419,12 @@ async function handleDailySummary(userId: string): Promise<ToolResult> {
         .select("daily_calorie_goal")
         .eq("id", userId)
         .single(),
+
+      supabase
+        .from("meals")
+        .select("logged_at")
+        .eq("user_id", userId)
+        .gte("logged_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
     ]);
 
     const meals = (mealsRes.data ?? []) as any[];
@@ -452,17 +458,45 @@ async function handleDailySummary(userId: string): Promise<ToolResult> {
       (sum: number, w: any) => sum + (w.ml || 0),
       0
     );
+
+    // Streak: count consecutive days backward from today with at least 1 meal
+    const streakMeals = (streakMealsRes.data ?? []) as any[];
+    const mealDates: Record<string, boolean> = {};
+    for (const m of streakMeals) {
+      if (m.logged_at) mealDates[m.logged_at.split("T")[0]] = true;
+    }
+    let streak = 0;
+    for (let i = 0; i < 7; i++) {
+      const checkDate = new Date(italianNow);
+      checkDate.setDate(checkDate.getDate() - i);
+      if (mealDates[checkDate.toISOString().split("T")[0]]) {
+        streak++;
+      } else {
+        break;
+      }
+    }
     /* eslint-enable @typescript-eslint/no-explicit-any */
 
     return {
       success: true,
       data: {
         date: todayDate,
-        meals: meals.map((m) => ({
-          description: m.description,
-          calories: m.calories,
-          meal_type: m.meal_type,
-        })),
+        meals: meals.map((m) => {
+          let time = "";
+          if (m.logged_at) {
+            const d = new Date(m.logged_at);
+            const localD = new Date(
+              d.toLocaleString("en-US", { timeZone: "Europe/Rome" })
+            );
+            time = `${String(localD.getHours()).padStart(2, "0")}:${String(localD.getMinutes()).padStart(2, "0")}`;
+          }
+          return {
+            time,
+            description: m.description,
+            calories: m.calories,
+            meal_type: m.meal_type,
+          };
+        }),
         totalCalories: Math.round(totalCalories),
         totalProtein: Math.round(totalProtein),
         totalCarbs: Math.round(totalCarbs),
@@ -476,6 +510,7 @@ async function handleDailySummary(userId: string): Promise<ToolResult> {
         })),
         totalCaloriesBurned,
         waterMl,
+        streak,
       },
     };
   } catch (err) {
