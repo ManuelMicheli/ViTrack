@@ -37,17 +37,26 @@ export function WeightInput({ onLog, onClose }: {
         </h3>
 
         <div className="grid grid-cols-3 gap-2">
-          {PRESETS.map((kg) => (
-            <button
+          {PRESETS.map((kg, i) => (
+            <motion.button
               key={kg}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, delay: i * 0.03 }}
+              whileTap={{ scale: 0.93 }}
               onClick={() => onLog(kg)}
               className="py-3 bg-[var(--color-accent-dynamic)]/10 rounded-xl text-[var(--color-accent-dynamic)] font-medium text-sm
                          hover:bg-[var(--color-accent-dynamic)]/20 transition-colors"
             >
               {kg} kg
-            </button>
+            </motion.button>
           ))}
-          <div className="relative">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, delay: PRESETS.length * 0.03 }}
+            className="relative"
+          >
             <input
               type="number"
               step="0.1"
@@ -65,7 +74,7 @@ export function WeightInput({ onLog, onClose }: {
                 OK
               </button>
             )}
-          </div>
+          </motion.div>
         </div>
       </motion.div>
     </motion.div>

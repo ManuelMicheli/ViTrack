@@ -43,14 +43,19 @@ export default function ChatPanel() {
     }
   }, [isChatOpen, voiceMode]);
 
-  // Escape to close
+  // Escape priority: modals → fullscreen → close panel
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isChatOpen) closeChat();
+      if (e.key !== "Escape" || !isChatOpen) return;
+      if (showWeightInput) { setShowWeightInput(false); return; }
+      if (showWaterPicker) { setShowWaterPicker(false); return; }
+      if (voiceMode) { setVoiceMode(false); return; }
+      if (isFullscreen) { setIsFullscreen(false); return; }
+      closeChat();
     };
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [isChatOpen, closeChat]);
+  }, [isChatOpen, closeChat, showWeightInput, showWaterPicker, voiceMode, isFullscreen]);
 
   // Auto-resize textarea
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -109,7 +114,8 @@ export default function ChatPanel() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={springs.enter}
-            className={`fixed z-50 flex flex-col bg-black border-l border-border
+            layout
+            className={`fixed z-50 flex flex-col bg-black border-l border-border transition-all duration-300 ease-out
               ${isFullscreen
                 ? "inset-0"
                 : "inset-0 md:left-auto md:top-0 md:right-0 md:h-full md:w-[380px]"
@@ -168,9 +174,19 @@ export default function ChatPanel() {
                 </motion.div>
               ))}
 
-              {isTyping && !messages.some(m => m.id.startsWith("stream-") && m.content === "") && (
-                <TypingIndicator />
-              )}
+              <AnimatePresence>
+                {isTyping && !messages.some(m => m.id.startsWith("stream-") && m.content === "") && (
+                  <motion.div
+                    key="typing"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <TypingIndicator />
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               <div ref={messagesEndRef} />
             </div>
@@ -246,40 +262,49 @@ export default function ChatPanel() {
             </AnimatePresence>
 
             {/* Input Bar */}
-            {!voiceMode && (
-              <div className="px-3 py-3 border-t border-border pb-[env(safe-area-inset-bottom,12px)]">
-                <div className="flex items-end gap-2 border border-border rounded-xl bg-transparent px-3 py-2">
-                  <textarea
-                    ref={textareaRef}
-                    value={input}
-                    onChange={handleTextareaChange}
-                    onKeyDown={handleKeyDown}
-                    placeholder={t("chat.placeholder")}
-                    rows={1}
-                    className="flex-1 bg-transparent text-sm text-text-primary placeholder-text-tertiary font-body
-                      resize-none outline-none max-h-[120px] leading-5 py-1"
-                  />
-                  <button
-                    onClick={() => setVoiceMode(true)}
-                    disabled={loading}
-                    className="p-1.5 rounded-full text-text-tertiary hover:text-white
-                      hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed
-                      transition-colors flex-shrink-0"
-                  >
-                    <Mic className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleSend()}
-                    disabled={!input.trim() || loading}
-                    className="p-1.5 rounded-full bg-[var(--color-accent-dynamic)] text-black
-                      disabled:opacity-30 disabled:cursor-not-allowed
-                      hover:opacity-90 transition-colors flex-shrink-0"
-                  >
-                    <SendIcon className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
+            <AnimatePresence>
+              {!voiceMode && (
+                <motion.div
+                  key="input-bar"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  transition={{ duration: 0.15 }}
+                  className="px-3 py-3 border-t border-border pb-[env(safe-area-inset-bottom,12px)]"
+                >
+                  <div className="flex items-end gap-2 border border-border rounded-xl bg-transparent px-3 py-2">
+                    <textarea
+                      ref={textareaRef}
+                      value={input}
+                      onChange={handleTextareaChange}
+                      onKeyDown={handleKeyDown}
+                      placeholder={t("chat.placeholder")}
+                      rows={1}
+                      className="flex-1 bg-transparent text-sm text-text-primary placeholder-text-tertiary font-body
+                        resize-none outline-none max-h-[120px] leading-5 py-1"
+                    />
+                    <button
+                      onClick={() => setVoiceMode(true)}
+                      disabled={loading}
+                      className="p-1.5 rounded-full text-text-tertiary hover:text-white
+                        hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed
+                        transition-colors flex-shrink-0"
+                    >
+                      <Mic className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleSend()}
+                      disabled={!input.trim() || loading}
+                      className="p-1.5 rounded-full bg-[var(--color-accent-dynamic)] text-black
+                        disabled:opacity-30 disabled:cursor-not-allowed
+                        hover:opacity-90 transition-colors flex-shrink-0"
+                    >
+                      <SendIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         </>
       )}

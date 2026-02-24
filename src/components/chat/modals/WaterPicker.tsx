@@ -30,22 +30,32 @@ export function WaterPicker({ onLog, onClose }: {
         <h3 className="font-medium text-sm text-text-primary text-center">💧 Quanta acqua?</h3>
 
         <div className="grid grid-cols-3 gap-2">
-          {PRESETS.map((ml) => (
-            <button
+          {PRESETS.map((ml, i) => (
+            <motion.button
               key={ml}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, delay: i * 0.03 }}
+              whileTap={{ scale: 0.93 }}
               onClick={() => onLog(ml)}
               className="py-3 bg-water/10 rounded-xl text-water font-medium text-sm
                          hover:bg-water/20 transition-colors"
             >
               {ml >= 1000 ? `${ml / 1000}L` : `${ml}ml`}
-            </button>
+            </motion.button>
           ))}
-          <div className="relative">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, delay: PRESETS.length * 0.03 }}
+            className="relative"
+          >
             <input
               type="number"
               placeholder="ml"
               value={custom}
               onChange={(e) => setCustom(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && custom) onLog(parseInt(custom)); }}
               className="w-full py-3 text-center bg-surface-raised border border-border rounded-xl text-sm text-text-primary placeholder-text-tertiary outline-none focus:border-water"
             />
             {custom && (
@@ -56,7 +66,7 @@ export function WaterPicker({ onLog, onClose }: {
                 OK
               </button>
             )}
-          </div>
+          </motion.div>
         </div>
       </motion.div>
     </motion.div>

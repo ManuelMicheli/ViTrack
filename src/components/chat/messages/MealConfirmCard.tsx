@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import type { ChatMessage, MealConfirmData } from "@/lib/types";
 import { CoachBubble } from "./CoachBubble";
 import { MacroPill } from "../shared/MacroPill";
@@ -63,29 +64,43 @@ export function MealConfirmCard({ message, onConfirm, onCancel }: {
           </div>
         </div>
 
-        {/* Action buttons */}
-        {!confirmed && (
-          <div className="px-3 py-2.5 flex gap-2 border-t border-border">
-            <button
-              onClick={handleConfirm}
-              className="flex-1 bg-success hover:bg-success/90 text-black text-xs font-medium py-2 rounded-lg transition-colors"
+        {/* Action buttons / Confirmed state */}
+        <AnimatePresence mode="wait">
+          {!confirmed ? (
+            <motion.div
+              key="actions"
+              initial={{ opacity: 1 }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="px-3 py-2.5 flex gap-2 border-t border-border"
             >
-              Conferma
-            </button>
-            <button
-              onClick={() => onCancel(data.temp_id)}
-              className="px-3 bg-surface-raised hover:bg-border text-text-secondary text-xs font-medium py-2 rounded-lg transition-colors"
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={handleConfirm}
+                className="flex-1 bg-success hover:bg-success/90 text-black text-xs font-medium py-2 rounded-lg transition-colors"
+              >
+                Conferma
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => onCancel(data.temp_id)}
+                className="px-3 bg-surface-raised hover:bg-border text-text-secondary text-xs font-medium py-2 rounded-lg transition-colors"
+              >
+                Annulla
+              </motion.button>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="confirmed"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              transition={{ duration: 0.25 }}
+              className="px-3 py-2 bg-success/10 border-t border-border overflow-hidden"
             >
-              Annulla
-            </button>
-          </div>
-        )}
-
-        {confirmed && (
-          <div className="px-3 py-2 bg-success/10 border-t border-border">
-            <p className="text-xs text-success text-center font-medium">Confermato</p>
-          </div>
-        )}
+              <p className="text-xs text-success text-center font-medium">Confermato</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </CoachBubble>
   );

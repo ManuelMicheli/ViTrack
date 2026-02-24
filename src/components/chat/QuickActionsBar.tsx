@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { useQuickActions } from "./hooks/useQuickActions";
 import type { User } from "@/lib/types";
 
@@ -12,9 +13,13 @@ export function QuickActionsBar({ user, onAction, disabled }: {
 
   return (
     <div className="flex gap-1.5 px-3 py-2 overflow-x-auto scrollbar-none border-t border-border">
-      {actions.map((action) => (
-        <button
+      {actions.map((action, i) => (
+        <motion.button
           key={action.id}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2, delay: i * 0.03 }}
+          whileTap={{ scale: 0.93 }}
           onClick={() => onAction(action.message)}
           disabled={disabled}
           className="flex items-center gap-1 px-2.5 py-1.5 bg-surface-raised border border-border
@@ -25,7 +30,7 @@ export function QuickActionsBar({ user, onAction, disabled }: {
         >
           <span>{action.emoji}</span>
           <span>{action.label}</span>
-        </button>
+        </motion.button>
       ))}
     </div>
   );
