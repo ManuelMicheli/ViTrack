@@ -71,17 +71,24 @@ function loadLayoutMode(initial?: LayoutMode): LayoutMode {
 }
 
 function migrateSectionOrder(order: string[]): string[] {
+  let migrated = [...order];
   // Replace removed "quickadd" with "plan"
-  if (order.includes("quickadd")) {
-    return order.map((s) => (s === "quickadd" ? "plan" : s));
+  if (migrated.includes("quickadd")) {
+    migrated = migrated.map((s) => (s === "quickadd" ? "plan" : s));
   }
   // Ensure "plan" exists for older saved orders
-  if (!order.includes("plan")) {
-    const idx = order.indexOf("greeting");
+  if (!migrated.includes("plan")) {
+    const idx = migrated.indexOf("greeting");
     const insertAt = idx >= 0 ? idx + 1 : 0;
-    return [...order.slice(0, insertAt), "plan", ...order.slice(insertAt)];
+    migrated = [...migrated.slice(0, insertAt), "plan", ...migrated.slice(insertAt)];
   }
-  return order;
+  // Ensure "daily-tip" exists for older saved orders (after greeting)
+  if (!migrated.includes("daily-tip")) {
+    const idx = migrated.indexOf("greeting");
+    const insertAt = idx >= 0 ? idx + 1 : 0;
+    migrated = [...migrated.slice(0, insertAt), "daily-tip", ...migrated.slice(insertAt)];
+  }
+  return migrated;
 }
 
 function loadSectionOrder(initial?: string[]): string[] {
